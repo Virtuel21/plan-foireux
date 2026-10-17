@@ -1,0 +1,173 @@
+import { test, expect, type Page } from "@playwright/test";
+
+async function openBoard(page: Page) {
+  await page.goto(process.env.PF_TEST_URL || "/");
+  await page.getByRole("button", { name: "Essayer les épreuves" }).click();
+  await page.locator('[data-practice="secure"]').click();
+  await expect(page.locator(".electrical-board")).toHaveAttribute(
+    "data-model-ready",
+    "true",
+    { timeout: 30000 },
+  );
+}
+
+async function connectPanel(page: Page, mode: "tap" | "drag" | "keyboard") {
+  for (let i = 0; i < 3; i++) {
+    const plug = page.locator(`[data-cable="${i}"]`);
+    const terminal = page.getByRole("button", {
+      name: `Borne ${["1 △", "2 ○", "3 ╳"][i]}`,
+      exact: true,
+    });
+    if (mode === "keyboard") {
+      await plug.focus();
+      await page.keyboard.press("Enter");
+      await terminal.focus();
+      await page.keyboard.press("Enter");
+    } else if (mode === "drag" && i === 0) {
+      const a = (await plug.boundingBox())!,
+        b = (await terminal.boundingBox())!;
+      await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, {
+        steps: 8,
+      });
+      await page.mouse.up();
+    } else {
+      await plug.click();
+      await terminal.click();
+    }
+  }
+  const toggle = page.getByRole("button", {
+    name: "Valider les circuits",
+    exact: true,
+  });
+  if (mode === "keyboard") {
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+  } else await toggle.click();
+}
+
+for (const [width, height] of [
+  [1000, 800],
+  [844, 390],
+  [320, 740],
+]) {
+  test(`native electrical model, physical controls and both panels ${width}x${height}`, async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.setViewportSize({ width, height });
+    await openBoard(page);
+    const board = page.locator(".electrical-board");
+    await expect(board.locator("canvas")).toHaveCount(1);
+    await expect(board.locator("img")).toHaveCount(0);
+    expect(
+      Number(await board.getAttribute("data-switch-native-triangles")),
+    ).toBeGreaterThan(0);
+    await expect(page.locator(".trial-reward")).toHaveText(
+      "6 pièces à partager",
+    );
+    const bounds = (await board.boundingBox())!;
+    const targets = await board.locator("button").evaluateAll((buttons) =>
+      buttons.map((button) => {
+        const r = button.getBoundingClientRect();
+        return {
+          x: r.x,
+          y: r.y,
+          w: r.width,
+          h: r.height,
+          ax: Number(button.dataset.anchorX),
+          ay: Number(button.dataset.anchorY),
+        };
+      }),
+    );
+    for (const target of targets) {
+      expect(target.w).toBeGreaterThanOrEqual(44);
+      expect(target.h).toBeGreaterThanOrEqual(44);
+      expect(target.x).toBeGreaterThanOrEqual(bounds.x);
+      expect(target.y).toBeGreaterThanOrEqual(bounds.y);
+      expect(target.x + target.w).toBeLessThanOrEqual(bounds.x + bounds.width);
+      expect(target.y + target.h).toBeLessThanOrEqual(bounds.y + bounds.height);
+      // Each physical model part is inside its own generous hit area.
+      expect(bounds.x + target.ax).toBeGreaterThanOrEqual(target.x);
+      expect(bounds.x + target.ax).toBeLessThanOrEqual(target.x + target.w);
+      expect(bounds.y + target.ay).toBeGreaterThanOrEqual(target.y);
+      expect(bounds.y + target.ay).toBeLessThanOrEqual(target.y + target.h);
+    }
+    for (let i = 0; i < targets.length; i++)
+      for (const b of targets.slice(i + 1)) {
+        const a = targets[i];
+        expect(
+          a.x < b.x + b.w &&
+            a.x + a.w > b.x &&
+            a.y < b.y + b.h &&
+            a.y + a.h > b.y,
+          `overlapping controls ${i}`,
+        ).toBe(false);
+      }
+    // The switch is part of the board rather than a detached footer action.
+    await expect(
+      board.getByRole("button", { name: "Valider les circuits" }),
+    ).toHaveCount(1);
+    await connectPanel(page, width === 320 ? "tap" : "drag");
+    await expect(board).toHaveAttribute("data-panel", "2");
+    await connectPanel(page, "keyboard");
+    await expect(page.locator(".trial-status")).toContainText("Réussi");
+    await page.screenshot({
+      path: `work/electrical-qa/electrical-model-${width}x${height}.png`,
+    });
+    expect(errors).toEqual([]);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
+  });
+}
+
+test("socket clicks unplug a cable and a wrong switch attempt releases it", async ({
+  page,
+}) => {
+  await openBoard(page);
+  const board = page.locator(".electrical-board");
+  const firstSocket = page.locator('[data-terminal="0"]');
+  const firstId = await firstSocket.getAttribute("aria-label");
+  const wrongCable = firstId?.includes("1 △") ? 1 : 0;
+  await page.locator(`[data-cable="${wrongCable}"]`).click();
+  await firstSocket.click();
+  await expect(board).not.toHaveAttribute("data-connections", "-1,-1,-1");
+  await firstSocket.click();
+  await expect(board).toHaveAttribute("data-connections", "-1,-1,-1");
+  await firstSocket.click();
+  await page
+    .getByRole("button", { name: "Valider les circuits", exact: true })
+    .click();
+  await expect(board).toHaveAttribute("data-connections", "-1,-1,-1");
+  await expect(board).toHaveAttribute("data-panel", "1");
+});
+
+test("a failed model request can be retried by reopening training", async ({
+  page,
+}) => {
+  let requests = 0;
+  await page.route("**/electrical-box.glb", async (route) => {
+    requests++;
+    if (requests <= 2) await route.abort();
+    else await route.continue();
+  });
+  await page.goto(process.env.PF_TEST_URL || "/");
+  await expect.poll(() => requests).toBe(1);
+  await page.getByRole("button", { name: "Essayer les épreuves" }).click();
+  await page.locator('[data-practice="secure"]').click();
+  await expect(page.locator(".electrical-board")).toHaveAttribute(
+    "data-model-ready",
+    "error",
+  );
+  await page.getByRole("button", { name: "Retour", exact: true }).click();
+  await page.locator('[data-practice="secure"]').click();
+  await expect(page.locator(".electrical-board")).toHaveAttribute(
+    "data-model-ready",
+    "true",
+    { timeout: 30000 },
+  );
+  expect(requests).toBe(3);
+});

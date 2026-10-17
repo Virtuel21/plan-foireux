@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { postShare } from "../../src/engine";
 test("four WebRTC browsers hosted locally: secret choices, guest reload, synchronized reveal", async ({
   browser,
 }) => {
@@ -56,14 +57,18 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
       "promise",
       { timeout: 10000 },
     );
-    await expect(pages[0].locator('[data-post="painting"]')).toBeVisible();
+    await expect(
+      pages[0].locator('[data-mobile-post="painting"]'),
+    ).toBeVisible();
     await expect(pages[0].locator("#phase-announcement")).toContainText(
       "Annoncez votre poste",
     );
     await Promise.all(
       pages.map((p, i) =>
         p
-          .locator(`[data-post="${["drill", "secure", "loot", "secure"][i]}"]`)
+          .locator(
+            `[data-mobile-post="${["drill", "secure", "loot", "secure"][i]}"]`,
+          )
           .click(),
       ),
     );
@@ -76,14 +81,14 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
       "Choisissez votre vrai poste",
     );
     await pages[0].screenshot({ path: "test-results/secret-announcement.png" });
-    await pages[3].locator('[data-post="loot"]').click();
-    await expect(pages[3].locator('[data-post="loot"]')).toHaveAttribute(
+    await pages[3].locator('[data-mobile-post="loot"]').click();
+    await expect(pages[3].locator('[data-mobile-post="loot"]')).toHaveAttribute(
       "aria-pressed",
       "true",
     );
     await expect(
-      pages[0].locator(".actor-marker").filter({ hasText: "Max" }),
-    ).toContainText("Promis : Désactiver les caméras");
+      pages[0].locator(".mobile-player").filter({ hasText: "Max" }),
+    ).toContainText("Désactiver les caméras");
     await expect(pages[1].locator("body")).toHaveAttribute(
       "data-phase",
       "minigame",
@@ -110,7 +115,7 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
     await expect(pages[0].locator("#pause-root")).toBeHidden({
       timeout: 15000,
     });
-    await expect(p.locator('[data-cable="0"]')).toHaveCSS("left", /px/);
+    await expect(p.locator("[data-terminal].occupied")).toHaveCount(1);
     for (let i = 1; i < 3; i++) {
       await p.locator(`[data-cable="${i}"]`).tap();
       await p
@@ -139,8 +144,14 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
       { timeout: 25000 },
     );
     await expect(
-      pages[0].locator(".actor-marker").filter({ hasText: "Léa" }),
-    ).toContainText("+12");
+      pages[0]
+        .locator(".mobile-player")
+        .filter({ hasText: "Léa" })
+        .locator(".coin-amount"),
+    ).toHaveText(String(postShare("secure", 1)));
+    await expect(
+      pages[0].locator(".vote-card").filter({ hasText: "Léa" }),
+    ).toContainText(`Gain +${postShare("secure", 1)}`);
     await pages[0].screenshot({ path: "test-results/network-reveal.png" });
     const rolesBefore = await pages[0].evaluate(
       () =>
@@ -159,7 +170,15 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
         JSON.parse(JSON.parse(sessionStorage.getItem("pf-v3-host")!).data).game,
     );
     expect(restored.roles).toEqual(rolesBefore);
-    expect(restored.report.findings.some((f: any) => f.gain === 12)).toBe(true);
+    expect(
+      restored.report.findings.find(
+        (f: { id: string }) => f.id === restored.players[1].id,
+      ),
+    ).toMatchObject({
+      choice: { action: "secure" },
+      success: true,
+      gain: postShare("secure", 1),
+    });
     await expect(pages[0].locator("body")).toHaveAttribute(
       "data-phase",
       "debate",
@@ -192,7 +211,7 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
       { timeout: 3000 },
     );
     await Promise.all(
-      pages.map((p) => p.locator('[data-post="secure"]').tap()),
+      pages.map((p) => p.locator('[data-mobile-post="secure"]').tap()),
     );
     await expect(pages[0].locator("body")).toHaveAttribute(
       "data-phase",

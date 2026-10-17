@@ -16,8 +16,8 @@ try {
       const heading = await page.locator('#phase').innerText(); phases.push({ phase, heading, seconds: (Date.now() - started) / 1000 }); console.log(phase, heading.replaceAll('\n', ' ')); lastPhase = phase; held = false; attempts = 0;
       await page.screenshot({ path: `${output}/${phases.length}-${phase}.png` });
       if (phase === 'promise' || phase === 'secret') {
-        const vaultDone = await page.locator('[data-post="drill"]').isDisabled(); action = vaultDone ? 'secure' : 'drill';
-        await page.locator(`[data-post="${action}"]`).tap();
+        const vaultDone = await page.locator('[data-mobile-post="drill"]').isDisabled(); action = vaultDone ? 'secure' : 'drill';
+        await page.locator(`[data-mobile-post="${action}"]`).tap();
       }
       if (phase === 'ended') break;
       if (phase === 'debate') await page.getByRole('button', { name: /^(Passer|Continuer)/ }).tap();

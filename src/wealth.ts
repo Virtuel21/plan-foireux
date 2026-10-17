@@ -2,7 +2,8 @@ import * as T from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { Player } from "./engine";
 const MAX_UNITS = 12;
-type Batch = { mesh: T.InstancedMesh; kind: "note" | "gold" };
+type Kind = "note" | "gold";
+type Batch = { mesh: T.InstancedMesh; kind: Kind };
 /** Shared Money Tour units, batched across all four purses. No per-note draw calls. */
 export class WealthPiles {
   batches: Batch[] = [];
@@ -12,6 +13,8 @@ export class WealthPiles {
   anchors: (T.Object3D | undefined)[] = [];
   selected: string | undefined;
   counts: number[] = [];
+  unitSize = new T.Vector3();
+  unitHeights: Record<Kind, number> = { note: 0, gold: 0 };
   constructor(
     public scene: T.Scene,
     root: T.Object3D,
@@ -37,7 +40,21 @@ export class WealthPiles {
         list.push(g);
         groups.set(o.material, list);
       });
+      // The authoring origin is not the support surface. Measure the complete
+      // unit (including straps/stamps), then put its lower face at local y=0.
+      const bounds = new T.Box3();
+      for (const parts of groups.values())
+        for (const part of parts) {
+          part.computeBoundingBox();
+          bounds.union(part.boundingBox!);
+        }
+      const center = bounds.getCenter(new T.Vector3());
+      this.unitSize.max(bounds.getSize(new T.Vector3()));
+      this.unitHeights[kind] = bounds.max.y - bounds.min.y;
       for (const [material, parts] of groups) {
+        parts.forEach((part) =>
+          part.translate(-center.x, -bounds.min.y, -center.z),
+        );
         const geometry = mergeGeometries(parts);
         parts.forEach((p) => p.dispose());
         if (!geometry) continue;
@@ -84,30 +101,31 @@ export class WealthPiles {
         count = Math.min(MAX_UNITS, Math.ceil(amount / 3));
       this.counts[i] = count;
       for (let k = 0; k < count; k++) {
+        const kind: Kind = k % 3 === 2 ? "gold" : "note";
         const fraction =
           k === count - 1 && amount < MAX_UNITS * 3
             ? T.MathUtils.clamp((amount - k * 3) / 3, 0.04, 1)
             : 1;
         const scale = 0.56 * (owner === this.selected ? 1.12 : 1),
-          height = 1 + Math.max(0, amount - 36) / 65;
+          height = 1 + Math.min(2, Math.max(0, amount - 36) / 65);
+        // Six supported units per layer; the measured footprint leaves a gap
+        // between neighbours even when the selected pile grows slightly.
         const position = base
           .clone()
           .add(
             new T.Vector3(
-              ((k % 3) - 1) * 0.41,
-              0.29 + Math.floor(k / 6) * 0.14 * height,
-              Math.floor((k % 6) / 3) * 0.26 - 0.13,
+              ((k % 2) - 0.5) * (this.unitSize.x * scale + 0.035),
+              0.008 +
+                Math.floor(k / 6) * this.unitHeights[kind] * scale * height,
+              (Math.floor((k % 6) / 2) - 1) * (this.unitSize.z * scale + 0.035),
             ),
           );
         const matrix = new T.Matrix4().compose(
           position,
-          new T.Quaternion().setFromAxisAngle(
-            new T.Vector3(0, 1, 0),
-            k % 2 ? 0.07 : -0.04,
-          ),
+          new T.Quaternion(),
           new T.Vector3(scale, scale * height * fraction, scale),
         );
-        units.push({ kind: k % 3 === 2 ? "gold" : "note", matrix, owner });
+        units.push({ kind, matrix, owner });
       }
     });
     for (const { mesh, kind } of this.batches) {

@@ -3,7 +3,7 @@
   "zones": { "vault": ["drill", "loot"], "entry": ["secure", "bags"] },
   "offsets": {
     "drill": [-0.1, 0.6],
-    "loot": [1.1, -0.35],
+    "loot": [0.25, -0.35],
     "secure": [-0.3, 0.3]
   }
 }

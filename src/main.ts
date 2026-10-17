@@ -4,7 +4,15 @@ import { Museum, LABELS } from "./scene";
 import { Minigame } from "./minigame";
 import { newTrial } from "./trial";
 import { legal, type Action, type Choice } from "./engine";
-import { esc, footer, hud, PHASES, report, rules } from "./views";
+import {
+  esc,
+  footer,
+  hud,
+  mobileControls,
+  PHASES,
+  report,
+  rules,
+} from "./views";
 import { icon } from "./icons";
 import { soundBank } from "./audio";
 
@@ -19,6 +27,7 @@ let minigame: Minigame | null = null,
   modal = "",
   previousFocus: HTMLElement | null = null;
 let practiceTimer: ReturnType<typeof setInterval> | undefined;
+let mobileMarkup = "";
 let muted = localStorage.getItem("pf-muted") === "1";
 const session = new Session(
   localStorage.getItem("pf-name") || "Julien",
@@ -37,7 +46,7 @@ function announcePhase(phase: string) {
   clearTimeout(phaseAnnouncementTimer);
   el.hidden = true;
   if (!["promise", "secret"].includes(phase)) return;
-  el.innerHTML = `<span class="eyebrow">${phase === "promise" ? "À TOUS LES COMPLICES · PUBLIC" : "À VOUS DE DÉCIDER · PRIVÉ"}</span><strong>${phase === "promise" ? "Annoncez votre poste" : "Choisissez votre vrai poste"}</strong><p>${phase === "promise" ? "Touchez un poste dans le musée pour annoncer votre plan." : "Respectez votre promesse… ou volez le gain d’un rival."}</p>`;
+  el.innerHTML = `<span class="eyebrow">${phase === "promise" ? "À TOUS LES COMPLICES · PUBLIC" : "À VOUS DE DÉCIDER · PRIVÉ"}</span><strong>${phase === "promise" ? "Annoncez votre poste" : "Choisissez votre vrai poste"}</strong><p>${phase === "promise" ? "Choisissez un poste pour annoncer votre plan." : "Respectez votre promesse… ou volez le gain d’un rival."}</p>`;
   el.hidden = false;
   phaseAnnouncementTimer = setTimeout(() => (el.hidden = true), 2800);
 }
@@ -101,6 +110,21 @@ function render(s: Snapshot) {
   if (!v) lobby(s);
   else $("#lobby").innerHTML = "";
   museum?.update(v, s.players, selected);
+  const nextMobileMarkup = v ? mobileControls(v, selected) : "";
+  if (nextMobileMarkup !== mobileMarkup) {
+    const controlFocus = document.activeElement?.closest<HTMLElement>(
+      "#mobile-controls [data-select]",
+    )?.dataset.select;
+    mobileMarkup = nextMobileMarkup;
+    $("#mobile-controls").innerHTML = mobileMarkup;
+    if (controlFocus) {
+      Array.from(
+        $("#mobile-controls").querySelectorAll<HTMLElement>("[data-select]"),
+      )
+        .find((el) => el.dataset.select === controlFocus)
+        ?.focus({ preventScroll: true });
+    }
+  }
   if (
     !practice &&
     v &&
@@ -294,7 +318,7 @@ function startPractice(action: Parameters<typeof newTrial>[0]) {
   $("#trial-root").hidden = false;
   $("#trial-root").innerHTML =
     '<div class="trial-shell"><div class="trial-meta"><span>ENTRAÎNEMENT</span><time class="trial-clock">00:18</time><button data-action="end-practice" class="subtle">Retour</button></div><div id="trial"></div></div>';
-  const started = performance.now();
+  let started: number | null = null;
   minigame = new Minigame(
     $("#trial"),
     newTrial(action, crypto.getRandomValues(new Uint32Array(1))[0]),
@@ -307,8 +331,13 @@ function startPractice(action: Parameters<typeof newTrial>[0]) {
       clearInterval(timer);
       return;
     }
-    const left = Math.max(0, 18 - (performance.now() - started) / 1000);
     const el = document.querySelector(".trial-clock");
+    if (!minigame?.ready) {
+      if (el) el.textContent = "00:18";
+      return;
+    }
+    started ??= performance.now();
+    const left = Math.max(0, 18 - (performance.now() - started) / 1000);
     if (el) el.textContent = `00:${String(Math.ceil(left)).padStart(2, "0")}`;
     if (!left && minigame) {
       minigame.paused = true;
@@ -344,9 +373,13 @@ document.addEventListener("pointerup", (e) => {
 });
 document.addEventListener("click", async (e) => {
   const button = (e.target as HTMLElement).closest<HTMLElement>(
-    "[data-action],[data-practice],[data-vote],[data-jam-target]",
+    "[data-action],[data-practice],[data-vote],[data-jam-target],[data-select]",
   );
   if (!button || (button as HTMLButtonElement).disabled) return;
+  if (button.dataset.select) {
+    select(button.dataset.select);
+    return;
+  }
   if (button.dataset.practice) {
     startPractice(button.dataset.practice as Parameters<typeof newTrial>[0]);
     return;
