@@ -3,6 +3,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import {
   legal,
   recommended,
+  postReward,
+  postShare,
+  type PostAction,
   type Choice,
   type Player,
   type View,
@@ -78,7 +81,7 @@ export class Museum {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = T.PCFSoftShadowMap;
     this.renderer.toneMapping = T.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.35;
+    this.renderer.toneMappingExposure = 1.15;
     this.renderer.setClearColor("#111f27");
     this.renderer.domElement.setAttribute(
       "aria-label",
@@ -89,8 +92,8 @@ export class Museum {
     this.labels.className = "world-labels";
     this.camera.position.set(8.2, 11, 15.5);
     this.camera.lookAt(0, 0.6, 0);
-    this.scene.add(new T.HemisphereLight("#d5eaff", "#6b4334", 2.5));
-    const sun = new T.DirectionalLight("#ffe1a3", 4.5);
+    this.scene.add(new T.HemisphereLight("#fff1d8", "#71503a", 1.8));
+    const sun = new T.DirectionalLight("#ffdda0", 3.8);
     sun.position.set(-4, 12, 7);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1536, 1536);
@@ -105,9 +108,18 @@ export class Museum {
     sun.shadow.normalBias = 0.035;
     sun.shadow.bias = -0.0002;
     this.scene.add(sun);
-    const fill = new T.DirectionalLight("#90c9dc", 1.7);
+    const fill = new T.DirectionalLight("#ffedcf", 1.05);
     fill.position.set(7, 5, -6);
     this.scene.add(fill);
+    for (const [x, y, z] of [
+      [-4.7, 1.9, 0.4],
+      [-4.55, 2.25, -2.3],
+      [0.5, 2.25, -2.85],
+    ]) {
+      const lamp = new T.PointLight("#ffb544", 7, 5, 2);
+      lamp.position.set(x, y, z);
+      this.scene.add(lamp);
+    }
     const loader = new GLTFLoader();
     loadMeshyMuseum(loader)
       .then((gltf) => {
@@ -136,7 +148,7 @@ export class Museum {
         this.addMarker("drill", "POST_Vault", new T.Vector3(0, 1.75, 0.15));
         this.addMarker("loot", "POST_Loot", new T.Vector3(0, 2.15, 0.1));
         this.addMarker("secure", "POST_Security", new T.Vector3(0, 3.05, 0.1));
-        this.addMarker("painting", "POST_Painting", new T.Vector3(0, 2.9, 0.1));
+        this.addMarker("painting", "POST_Painting", new T.Vector3(0, 1.8, 0));
         this.ready = true;
         this.update(this.view, this.roster, this.selection);
       })
@@ -315,8 +327,8 @@ export class Museum {
           ["drill", "secure"].includes(action) && promises.length >= need,
         finished = action === "drill" && (v?.vault ?? 0) >= 8;
       const isSelected = selected?.action === action;
-      const share = Math.floor(12 / Math.max(1, promises.length));
-      const gain = `${action === "drill" ? "Coffre +2 · " : action === "secure" ? "Alarme −2 · " : ""}${promises.length ? share + " / personne" : "12 à partager"}`;
+      const share = postShare(action as PostAction, promises.length);
+      const gain = `${action === "drill" ? "Coffre +2 · " : action === "secure" ? "Alarme −2 · " : ""}<span class="post-reward">${icon("coin")}${promises.length ? share + " / personne" : postReward(action as PostAction) + " à partager"}</span>`;
       m.button.innerHTML = `${icon(isSelected ? "check" : action === "drill" ? "wrench" : action === "secure" ? "laser" : action === "painting" ? "grid" : "lock")}<span><strong>${LABELS[action as keyof typeof LABELS]}${finished ? " · Ouvert" : ""}</strong><small>${gain}</small>${v ? `<em>${["drill", "secure"].includes(action) ? `${covered ? "✓ " : ""}${promises.length}/${need} conseillé` : `${promises.length} annoncé${promises.length > 1 ? "s" : ""}`}</em><span class="post-complices">${promises.length ? promises.map((p) => `<span style="--player:${p.color}"><img src="${import.meta.env.BASE_URL}portraits/${players.indexOf(p)}.png" alt="">${esc(p.name)}</span>`).join("") : "<span>Personne d’annoncé</span>"}</span>` : ""}</span>`;
       m.button.classList.toggle("covered", covered && !finished);
       m.button.classList.toggle("selected", isSelected);

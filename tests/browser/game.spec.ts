@@ -75,8 +75,15 @@ for (const [width, height] of [
       "promise",
       { timeout: 10000 },
     );
-    const buttons = page.locator(".world-labels button:visible");
-    await expect(buttons).toHaveCount(8);
+    const mobile = width <= 900 || height <= 500;
+    const buttons = page.locator(
+      mobile ? ".mobile-post-card:visible" : ".world-labels button:visible",
+    );
+    await expect(buttons).toHaveCount(mobile ? 4 : 8);
+    if (mobile) {
+      await expect(page.locator(".world-labels")).toBeHidden();
+      await expect(page.locator(".mobile-player")).toHaveCount(4);
+    }
     const boxes = await buttons.evaluateAll((es) =>
       es.map((e) => {
         const r = e.getBoundingClientRect();
@@ -99,12 +106,17 @@ for (const [width, height] of [
           `${a.name} overlaps ${b.name}`,
         ).toBe(false);
     }
-    await page.locator('[data-post="secure"]').click();
-    await expect(page.locator("#footer")).toContainText("Alarme −2");
-    await expect(page.locator('[data-post="secure"]')).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    const secure = page.locator(
+      mobile ? '[data-mobile-post="secure"]' : '[data-post="secure"]',
     );
+    await secure.click();
+    await expect(page.locator("#footer")).toContainText("Alarme −2");
+    await expect(secure).toHaveAttribute("aria-pressed", "true");
+    await expect(secure).toContainText("6");
+    await expect(
+      secure.locator(mobile ? ".coin-amount .icon" : ".post-reward .icon"),
+    ).toBeVisible();
+    await expect(page.locator("#phase-announcement")).toBeHidden();
     await page.screenshot({
       path: `${evidence}/promise-${width}x${height}.png`,
     });

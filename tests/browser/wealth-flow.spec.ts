@@ -1,6 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { HostRoom } from "../../src/host";
-import { player, createGame, resolve } from "../../src/engine";
+import {
+  player,
+  createGame,
+  resolve,
+  CONFIG,
+  postReward,
+} from "../../src/engine";
 import { newTrial } from "../../src/trial";
 import { writeFile } from "node:fs/promises";
 
@@ -60,7 +66,12 @@ test("restored host: money piles grow and shrink and a silent alarm has no expla
   });
   await expect(page.locator("#scene")).toHaveAttribute(
     "data-wealth-coins",
-    "[7,8,36,60]",
+    JSON.stringify([
+      players[0].money + CONFIG.theft,
+      players[1].money - CONFIG.theft,
+      players[2].money + postReward("secure"),
+      players[3].money + postReward("painting"),
+    ]),
     { timeout: 7000 },
   );
   await expect(page.locator(".alarm-explanation")).toHaveCount(0);
@@ -117,8 +128,12 @@ test("restored secret choice warns of repeat theft, central announcement stays c
     },
     { data: host.serialize(), room },
   );
-  await page.goto(process.env.PF_TEST_URL || "/");
+  // Observe the transient announcement before unrelated 3D asset loads finish.
+  await page.goto(process.env.PF_TEST_URL || "/", {
+    waitUntil: "domcontentloaded",
+  });
   const banner = page.locator("#phase-announcement");
+  await expect(banner).toBeVisible();
   await expect(banner).toContainText("Choisissez votre vrai poste");
   await page.waitForTimeout(350);
   const r = (await banner.boundingBox())!;
@@ -131,11 +146,11 @@ test("restored secret choice warns of repeat theft, central announcement stays c
     timeout: 13000,
   });
   await expect(page.locator("#trial")).toContainText("une prise perdue");
-  await page.reload();
+  await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.locator("#trial")).toContainText("une prise perdue");
 });
 
-test("same-round theft report shows 11 stolen out of a successful reward of 12", async ({
+test("same-round theft report shows the stolen share of a successful drill reward", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 844, height: 390 });
@@ -170,8 +185,13 @@ test("same-round theft report shows 11 stolen out of a successful reward of 12",
   await page.goto(process.env.PF_TEST_URL || "/");
   const victim = page.locator(".vote-card").nth(1);
   await expect(victim).toContainText("Forer · Réussi");
-  await expect(victim).toContainText("Gain +12 · Volé −11 · Solde du tour +1");
-  await expect(victim).toContainText("1 pièces");
+  const reward = postReward("drill"),
+    stolen = Math.min(reward - 1, Math.ceil(reward * CONFIG.theftIncomeRate)),
+    retained = reward - stolen;
+  await expect(victim).toContainText(
+    `Gain +${reward} · Volé −${stolen} · Solde du tour +${retained}`,
+  );
+  await expect(victim).toContainText(`${retained} pièces`);
   await expect(page.locator(".alarm-explanation")).toHaveCount(0);
-  await page.screenshot({ path: "test-results/eleven-stolen.png" });
+  await page.screenshot({ path: "test-results/same-round-stolen.png" });
 });

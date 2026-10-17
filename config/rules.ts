@@ -3,9 +3,13 @@ export const CONFIG = {
   rounds: 5,
   vault: 8,
   alarm: 5,
-  cooperation: 12,
-  loot: 12,
-  painting: 12,
+  // Low-paid collective duties compete with lucrative, crowded loot posts.
+  postRewards: {
+    drill: 10,
+    secure: 6,
+    loot: 16,
+    painting: 24,
+  },
   theft: 4,
   theftIncomeRate: 0.9,
   bonus: 8,

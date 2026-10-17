@@ -26,6 +26,32 @@
   --space: 8px;
   color-scheme: dark;
 }
+#mobile-controls {
+  display: none;
+}
+.coin-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--gold);
+  white-space: nowrap;
+}
+.coin-amount .icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.post-marker small .icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -3px;
+  color: var(--gold);
+}
+.post-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
 * {
   box-sizing: border-box;
 }
@@ -2723,6 +2749,233 @@ nav {
   to {
     opacity: 1;
     transform: translate(-50%, -50%);
+  }
+}
+/* Small screens choose from a readable panel; the museum stays unobstructed. */
+@media (max-width: 900px), (max-height: 500px) and (orientation: landscape) {
+  .in-game #playfield {
+    display: grid;
+    grid-template-rows: minmax(110px, 1fr) minmax(0, max-content);
+  }
+  .in-game #scene {
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .in-game .world-labels {
+    display: none;
+  }
+  .in-game #mobile-controls {
+    display: block;
+    padding: 10px;
+    background: #142b34;
+    border-top: 1px solid var(--line);
+    overflow: auto;
+    max-height: 360px;
+    overscroll-behavior: contain;
+  }
+  .mobile-section-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  .mobile-section-title > span {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .mobile-posts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .mobile-post-card {
+    min-width: 0;
+    text-align: left;
+    padding: 8px;
+    border-color: #75847a;
+    display: grid;
+    gap: 5px;
+  }
+  .mobile-post-heading {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+  .mobile-post-heading > .icon {
+    color: var(--gold);
+    width: 16px;
+    height: 16px;
+  }
+  .mobile-post-heading > strong {
+    font-size: 12px;
+    line-height: 1.15;
+    flex: 1;
+    overflow-wrap: anywhere;
+  }
+  .mobile-post-heading > b {
+    font-size: 14px;
+  }
+  .mobile-post-detail {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .mobile-post-detail > small {
+    font-size: 10px;
+  }
+  .mobile-promises {
+    font-size: 10px;
+    line-height: 1.4;
+    color: #ead9b2;
+    overflow-wrap: anywhere;
+  }
+  .mobile-promises i {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--player);
+    margin-right: 3px;
+  }
+  .mobile-players {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .mobile-player {
+    display: flex;
+    align-items: center;
+    position: relative;
+    gap: 5px;
+    padding: 6px;
+    min-width: 0;
+    min-height: 48px;
+    border: 1px solid var(--player);
+    border-radius: 7px;
+    background: #1a343e;
+    text-align: left;
+  }
+  .mobile-player img {
+    width: 25px;
+    height: 30px;
+    object-fit: cover;
+    border-radius: 5px;
+    flex-shrink: 0;
+  }
+  .mobile-player > span {
+    min-width: 0;
+    flex: 1;
+  }
+  .mobile-player strong {
+    display: block;
+    font-size: 11px;
+    overflow-wrap: anywhere;
+  }
+  .mobile-player small {
+    display: block;
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1.3;
+  }
+  .mobile-player > b {
+    font-size: 12px;
+  }
+  .mobile-player em {
+    position: absolute;
+    right: 5px;
+    bottom: 2px;
+    font-size: 8px;
+    color: var(--gold);
+    font-style: normal;
+  }
+  .mobile-player .coin-amount .icon {
+    width: 12px;
+    height: 12px;
+  }
+  .in-game #footer {
+    gap: 8px;
+  }
+  .in-game .selection-info strong {
+    line-height: 1.35;
+  }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .in-game #app {
+    grid-template-rows: 92px 48px minmax(0, 1fr) 90px;
+    padding: 0 8px env(safe-area-inset-bottom);
+  }
+  .in-game #top {
+    height: 92px;
+  }
+  .in-game #mobile-controls {
+    max-height: 390px;
+    padding: 8px;
+  }
+  .in-game .phase-copy h1 {
+    font-size: 20px;
+  }
+  .in-game #footer {
+    padding-block: 8px;
+  }
+  .in-game .selection-info small {
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .in-game .selection-info .eyebrow {
+    font-size: 9px;
+  }
+  .in-game .transmitter {
+    padding: 6px;
+    max-width: 100px;
+    font-size: 10px;
+  }
+  .in-game #phase-announcement {
+    width: calc(100% - 32px);
+  }
+}
+@media (max-width: 350px) and (orientation: portrait) {
+  .mobile-post-heading > .icon {
+    display: none;
+  }
+  .mobile-post-detail {
+    font-size: 10px;
+  }
+  .mobile-post-detail > small {
+    font-size: 9px;
+  }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .in-game #playfield {
+    grid-template-columns: minmax(0, 1fr) minmax(310px, 43%);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .in-game #mobile-controls {
+    max-height: none;
+    border-top: 0;
+    border-left: 1px solid var(--line);
+    padding: 8px;
+  }
+  .mobile-post-card {
+    padding: 6px;
+    gap: 3px;
+  }
+  .mobile-post-heading > .icon {
+    display: none;
+  }
+  .mobile-posts {
+    margin-bottom: 8px;
+  }
+  .mobile-section-title {
+    margin-bottom: 5px;
   }
 }
 @media (max-height: 500px) and (orientation: landscape) {

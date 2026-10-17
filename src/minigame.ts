@@ -1,25 +1,22 @@
 import {
-  connect,
   cutAt,
   cutPath,
   cutAccuracy,
   radioSignal,
   gaze,
-  lever,
   pin,
   pinBand,
   stepTrial,
   targetBand,
-  terminalId,
   type Trial,
 } from "./trial";
-import { icon } from "./icons";
 import { LABELS } from "./scene";
 import { soundBank } from "./audio";
-import { COLORS } from "./engine";
+import { COLORS, postReward } from "./engine";
+import { ElectricalBoard, electricalMarkup } from "./electrical-board";
 export const INSTRUCTIONS = {
   secure:
-    "Rebranche les bons câbles dans le boîtier pour désactiver les caméras. Deux panneaux à terminer.",
+    "Branche les câbles dans les prises du boîtier, puis actionne son interrupteur. Deux panneaux à terminer.",
   drill:
     "Maintiens pour accélérer, relâche pour refroidir. Stabilise trois points dans la zone verte étroite.",
   loot: "Arrête le curseur dans les trois encoches.",
@@ -30,8 +27,6 @@ export const INSTRUCTIONS = {
   pocket:
     "Avance quand la cible regarde ailleurs. Relâche quand elle se retourne.",
 };
-const SYMBOLS = ["1 △", "2 ○", "3 ╳"],
-  WIRE_COLORS = ["#edb844", "#47d8ca", "#ed9472"];
 export class Minigame {
   state: Trial;
   held = false;
@@ -49,6 +44,10 @@ export class Minigame {
   knobY = 0;
   knobValue = 0;
   lastDots = "";
+  electrical?: ElectricalBoard;
+  get ready() {
+    return !this.electrical || this.electrical.isReady;
+  }
   constructor(
     public root: HTMLElement,
     trial: Trial,
@@ -60,7 +59,7 @@ export class Minigame {
     const t = this.state,
       hints = {
         secure:
-          "1. Choisis un embout · 2. Touche sa borne. Le glisser fonctionne aussi.",
+          "Relie chaque embout à la prise portant son symbole, puis touche l’interrupteur en bas à droite. Glisser, toucher ou Tab + Entrée.",
         drill:
           "1. Maintiens le bouton · 2. Relâche avant le rouge. Espace fonctionne aussi.",
         loot: "1. Observe le passage · 2. Touche quand le curseur est dans l’encoche. Ou Espace.",
@@ -76,23 +75,22 @@ export class Minigame {
         ? "La cible échoue si tu réussis"
         : t.action === "pocket"
           ? "Presque tout le gain du tour"
-          : "12 pièces à partager";
-    root.innerHTML = `<div class="trial-head"><div><span class="eyebrow">${practice ? "ENTRAÎNEMENT · SANS ENJEU" : "ÉPREUVE PRIVÉE"}</span><h2>${LABELS[t.action]} <small class="trial-reward">${reward}</small></h2></div><div class="trial-dots" aria-label="Progression"></div></div><p class="trial-instruction">${INSTRUCTIONS[t.action]}${t.action === "pocket" && t.difficulty === 2 ? " Cible très vigilante : ouvertures courtes, une prise perdue si tu es repéré." : ""}</p><div class="trial-stage ${t.action}">${t.action === "secure" ? this.wires() : t.action === "radio" ? this.radio() : t.action === "painting" ? this.painting() : this.mechanism()}</div><div class="trial-bottom"><span class="trial-status" role="status">À toi de jouer</span>${t.action === "secure" ? '<button class="primary lever">Valider les circuits</button>' : t.action === "painting" ? '<button class="subtle restart-cut">Recommencer la découpe</button>' : t.action === "radio" ? '<span class="radio-private">Transmission privée · 3 fréquences</span>' : `<button class="primary operate">${t.action === "loot" ? "Arrêter le curseur" : t.action === "drill" ? "Maintenir pour forer" : "Maintenir pour avancer"}</button>`}</div><p class="gesture-example"><span class="demo-dot"></span>${hints[t.action]}</p>`;
+          : `${postReward(t.action)} pièces à partager`;
+    root.innerHTML = `<div class="trial-head"><div><span class="eyebrow">${practice ? "ENTRAÎNEMENT · SANS ENJEU" : "ÉPREUVE PRIVÉE"}</span><h2>${LABELS[t.action]} <small class="trial-reward">${reward}</small></h2></div><div class="trial-dots" aria-label="Progression"></div></div><p class="trial-instruction">${INSTRUCTIONS[t.action]}${t.action === "pocket" && t.difficulty === 2 ? " Cible très vigilante : ouvertures courtes, une prise perdue si tu es repéré." : ""}</p><div class="trial-stage ${t.action}">${t.action === "secure" ? this.wires() : t.action === "radio" ? this.radio() : t.action === "painting" ? this.painting() : this.mechanism()}</div><div class="trial-bottom"><span class="trial-status" role="status">À toi de jouer</span>${t.action === "secure" ? '<span class="electrical-switch-hint">Actionne l’interrupteur du boîtier pour valider.</span>' : t.action === "painting" ? '<button class="subtle restart-cut">Recommencer la découpe</button>' : t.action === "radio" ? '<span class="radio-private">Transmission privée · 3 fréquences</span>' : `<button class="primary operate">${t.action === "loot" ? "Arrêter le curseur" : t.action === "drill" ? "Maintenir pour forer" : "Maintenir pour avancer"}</button>`}</div><p class="gesture-example"><span class="demo-dot"></span>${hints[t.action]}</p>`;
     this.bindSpecial();
-    root.querySelector(".lever")?.addEventListener("click", () => {
-      if (this.paused || t.done) return;
-      lever(t);
-      soundBank.play(t.done ? "current" : "lever");
-      this.feedback(
-        t.done
-          ? "Circuits rebranchés : caméras désactivées."
-          : t.panel
-            ? "Panneau 2 : les bornes ont changé."
-            : "Corrige les prises libérées.",
+    if (t.action === "secure") {
+      this.electrical = new ElectricalBoard(
+        root.querySelector<HTMLElement>(".electrical-board")!,
+        t,
+        (kind) => {
+          soundBank.play(
+            kind === "plug" ? "plug" : t.done ? "current" : "lever",
+          );
+          this.publish();
+          this.draw();
+        },
       );
-      this.publish();
-      this.draw();
-    });
+    }
     const operate = root.querySelector<HTMLButtonElement>(".operate");
     operate?.addEventListener("pointerdown", (e) => {
       e.preventDefault();
@@ -115,54 +113,6 @@ export class Minigame {
     operate?.addEventListener("pointerup", () => (this.held = false));
     operate?.addEventListener("pointercancel", () => (this.held = false));
     operate?.addEventListener("lostpointercapture", () => (this.held = false));
-    root
-      .querySelectorAll<HTMLButtonElement>("[data-cable]")
-      .forEach((button) => {
-        button.addEventListener("pointerdown", (e) => {
-          if (this.paused) return;
-          this.selected = Number(button.dataset.cable);
-          button.setPointerCapture(e.pointerId);
-          this.draw();
-        });
-        button.addEventListener("pointerup", (e) => {
-          const target = document
-            .elementFromPoint(e.clientX, e.clientY)
-            ?.closest<HTMLElement>("[data-terminal]");
-          if (target && this.selected >= 0 && !this.paused) {
-            connect(t, this.selected, Number(target.dataset.terminal));
-            soundBank.play("plug");
-            this.selected = -1;
-            this.suppressClick = true;
-            this.publish();
-            this.draw();
-          }
-        });
-        button.addEventListener("click", () => {
-          if (this.suppressClick) {
-            this.suppressClick = false;
-            return;
-          }
-          if (!this.paused) {
-            this.selected = Number(button.dataset.cable);
-            if (t.connections[this.selected] >= 0 && !t.correct[this.selected])
-              connect(t, this.selected, -1);
-            this.draw();
-          }
-        });
-      });
-    root
-      .querySelectorAll<HTMLButtonElement>("[data-terminal]")
-      .forEach((button) =>
-        button.addEventListener("click", () => {
-          if (this.selected >= 0 && !this.paused) {
-            connect(t, this.selected, Number(button.dataset.terminal));
-            soundBank.play("plug");
-            this.selected = -1;
-            this.publish();
-            this.draw();
-          }
-        }),
-      );
     window.addEventListener("keydown", this.keyDown);
     window.addEventListener("keyup", this.keyUp);
     window.addEventListener("blur", this.release);
@@ -279,8 +229,7 @@ export class Minigame {
     });
   }
   wires() {
-    const t = this.state;
-    return `<div class="wire-board"><img class="junction-box-art" src="${import.meta.env.BASE_URL}images/electrical-board.png" alt="" aria-hidden="true"><svg viewBox="0 0 600 300" preserveAspectRatio="none" aria-hidden="true">${[0, 1, 2].map((i) => `<path class="cable-shadow" data-shadow="${i}"/><path class="cable-line" data-wire="${i}" stroke="${WIRE_COLORS[i]}"/>`).join("")}</svg>${[0, 1, 2].map((i) => `<span class="circuit-label" style="top:${20 + i * 30}%;--wire:${WIRE_COLORS[i]}">${SYMBOLS[i]}</span><button class="plug" data-cable="${i}" aria-label="Sélectionner l’embout du circuit ${SYMBOLS[i]}" style="--wire:${WIRE_COLORS[i]}">${icon("plus")}</button><button class="terminal" data-terminal="${i}" aria-label="Borne ${SYMBOLS[terminalId(t, i)]}" style="top:${20 + i * 30}%">${SYMBOLS[terminalId(t, i)]}</button>`).join("")}<span class="board-label">CIRCUITS</span><span class="board-label right">BORNES CAMÉRAS</span></div>`;
+    return electricalMarkup();
   }
   mechanism() {
     const t = this.state;
@@ -326,43 +275,18 @@ export class Minigame {
     const dots = String(t.stage);
     if (this.lastDots !== dots) {
       this.lastDots = dots;
-      this.root.querySelector(".trial-dots")!.innerHTML = [0, 1, 2]
+      const progress = t.action === "secure" ? t.panel : t.stage;
+      this.root.querySelector(".trial-dots")!.innerHTML = (
+        t.action === "secure" ? [0, 1] : [0, 1, 2]
+      )
         .map(
           (i) =>
-            `<span class="${i < t.stage ? "on" : ""}">${i < t.stage ? "✓" : i + 1}</span>`,
+            `<span class="${i < progress ? "on" : ""}">${i < progress ? "✓" : i + 1}</span>`,
         )
         .join("");
     }
     if (t.action === "secure") {
-      [0, 1, 2].forEach((i) => {
-        const terminal = this.root.querySelector<HTMLButtonElement>(
-          `[data-terminal="${i}"]`,
-        )!;
-        terminal.textContent = SYMBOLS[terminalId(t, i)];
-        terminal.setAttribute(
-          "aria-label",
-          `Borne ${SYMBOLS[terminalId(t, i)]}`,
-        );
-        const freeY = 60 + ((i + 1 + (t.seed % 2)) % 3) * 90,
-          endY = t.connections[i] >= 0 ? 60 + t.connections[i] * 90 : freeY,
-          endX = t.connections[i] >= 0 ? 528 : 300;
-        const d = `M48 ${60 + i * 90} C 175 ${60 + i * 90 + 110}, 150 ${freeY - 110}, 300 ${freeY}${t.connections[i] >= 0 ? ` Q 390 ${endY + 50}, ${endX} ${endY}` : ""}`;
-        this.root.querySelector(`[data-wire="${i}"]`)!.setAttribute("d", d);
-        this.root.querySelector(`[data-shadow="${i}"]`)!.setAttribute("d", d);
-        const path = this.root.querySelector<SVGElement>(`[data-wire="${i}"]`)!;
-        path.style.strokeWidth = this.selected === i ? "11" : "7";
-        path.style.opacity =
-          this.selected < 0 || this.selected === i ? "1" : ".55";
-        const plug = this.root.querySelector<HTMLButtonElement>(
-          `[data-cable="${i}"]`,
-        )!;
-        plug.style.left =
-          t.connections[i] >= 0 ? "calc(88% - 54px)" : `${endX / 6}%`;
-        plug.style.top = `${endY / 3}%`;
-        plug.classList.toggle("selected", this.selected === i);
-        plug.classList.toggle("correct", t.correct[i]);
-        plug.disabled = t.correct[i] || this.paused || t.done;
-      });
+      this.electrical?.update(this.paused);
     } else if (t.action === "radio") {
       const signal = radioSignal(t);
       this.root.querySelector(".radio-screen")!.className =
@@ -479,7 +403,7 @@ export class Minigame {
       );
     else if (t.action === "secure")
       this.feedback(
-        `Panneau ${Math.min(2, t.panel + 1)} / 2 · Relie puis valide les trois circuits.`,
+        `Panneau ${Math.min(2, t.panel + 1)} / 2 · Relie les trois câbles, puis actionne l’interrupteur.`,
       );
     else
       this.feedback(
@@ -523,6 +447,7 @@ export class Minigame {
   };
   dispose() {
     this.disposed = true;
+    this.electrical?.dispose();
     soundBank.loop("drill", false);
     soundBank.loop("cloth", false);
     cancelAnimationFrame(this.raf);

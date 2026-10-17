@@ -7,6 +7,8 @@ import {
   createGame,
   legal,
   player,
+  postReward,
+  postShare,
   publicView,
   recommended,
   resolve,
@@ -167,18 +169,27 @@ test("alarm adds time and each effective failure, then subtracts all security si
   );
   assert.equal(h.alarm, 3);
 });
-test("simultaneous drillers share twelve even at the cap; completed vault never recedes", () => {
+test("simultaneous drillers share their pool even at the cap; completed vault never recedes", () => {
   const g = game();
   g.vault = 6;
   round(g, ["drill", "drill", "drill", "drill"]);
   assert.equal(g.vault, 8);
   assert.deepEqual(
     g.players.map((p) => p.money),
-    [3, 3, 3, 3],
+    [2, 2, 2, 2],
   );
   assert.equal(legal(g, "0", { action: "drill" }), false);
 });
-test("each of the four posts pays 12, 6, 4, 3 based on attendance; failed shares are lost", () => {
+test("critical posts pay less than loot; all four pools split by real attendance with failed shares lost", () => {
+  assert.deepEqual(CONFIG.postRewards, {
+    drill: 10,
+    secure: 6,
+    loot: 16,
+    painting: 24,
+  });
+  assert.ok(postReward("secure") < postReward("drill"));
+  assert.ok(postReward("drill") < postReward("loot"));
+  assert.ok(postReward("loot") < postReward("painting"));
   for (const action of ["drill", "secure", "loot", "painting"] as const) {
     for (let n = 1; n <= 4; n++) {
       const g = game();
@@ -190,7 +201,15 @@ test("each of the four posts pays 12, 6, 4, 3 based on attendance; failed shares
         [true, true, true, true],
         false,
       );
-      assert.equal(g.players[0].money, 12 / n);
+      assert.equal(
+        g.players[0].money,
+        Math.floor(CONFIG.postRewards[action] / n),
+      );
+      assert.equal(postShare(action, n), g.players[0].money);
+      assert.equal(
+        g.players.filter((_, i) => i < n).reduce((sum, p) => sum + p.money, 0),
+        n * postShare(action, n),
+      );
     }
     const h = game();
     round(
@@ -199,9 +218,48 @@ test("each of the four posts pays 12, 6, 4, 3 based on attendance; failed shares
       [true, false, false, false],
       false,
     );
-    assert.equal(h.players[0].money, 3);
+    assert.equal(
+      h.players[0].money,
+      Math.floor(CONFIG.postRewards[action] / 4),
+    );
+    assert.deepEqual(
+      h.players.slice(1).map((p) => p.money),
+      [0, 0, 0],
+    );
     assert.equal(h.report?.failures, 3);
   }
+});
+test("last-minute switches stay secret and lucrative posts split by real choices, never promises", () => {
+  const g = game();
+  phase(g, "secret");
+  ["secure", "painting", "loot", "drill"].forEach((action, i) => {
+    g.players[i].promise = { action: action as Action };
+  });
+  const before = publicView(g, "3", 0);
+  for (const id of ["0", "1"])
+    assert.ok(
+      apply(
+        g,
+        id,
+        { type: "choose", turn: g.turn, choice: { action: "painting" } },
+        99999,
+      ),
+    );
+  assert.deepEqual(publicView(g, "3", 0), before);
+  const r = round(
+    g,
+    ["painting", "painting", "secure", "drill"],
+    undefined,
+    false,
+  );
+  assert.deepEqual(
+    g.players.map((p) => p.money),
+    [12, 12, 6, 10],
+  );
+  assert.equal(r.findings[0].betrayed, true);
+  assert.equal(r.findings[1].betrayed, false);
+  assert.equal(r.security, 1);
+  assert.equal(r.vaultAdded, 2);
 });
 test("four failed challenges give zero money and five alarms including time", () => {
   const g = game();
@@ -225,7 +283,7 @@ test("three thieves share the current reward; remainder and at least one coin st
   ]);
   assert.deepEqual(
     g.players.map((p) => p.money),
-    [13, 3, 3, 3],
+    [13, 1, 1, 1],
   );
 });
 test("theft takes almost the whole reward even when the victim started with little or no money", () => {
@@ -239,12 +297,33 @@ test("theft takes almost the whole reward even when the victim started with litt
   ]);
   assert.deepEqual(
     g.players.map((p) => p.money),
-    [5, 5, 5, 12],
+    [5, 2, 2, 16],
   );
   const h = game();
   round(h, ["secure", { action: "pocket", target: "0" }, "loot", "drill"]);
-  assert.equal(h.players[1].money, 11);
+  assert.equal(h.players[1].money, 5);
   assert.equal(h.players[0].money, 1);
+});
+test("theft follows each post's actual income and makes lucrative targets worth more", () => {
+  const stolen: number[] = [];
+  for (const action of ["secure", "drill", "loot", "painting"] as const) {
+    const g = game(),
+      other = action === "secure" ? "drill" : "secure",
+      pool = postReward(action),
+      take = Math.min(pool - 1, Math.ceil(pool * CONFIG.theftIncomeRate));
+    round(
+      g,
+      [action, { action: "pocket", target: "0" }, other, other],
+      undefined,
+      false,
+    );
+    assert.equal(g.players[0].money, pool - take);
+    assert.equal(g.players[1].money, take);
+    assert.ok(g.players[0].money >= 1);
+    assert.equal(g.players[0].money + g.players[1].money, pool);
+    stolen.push(take);
+  }
+  assert.deepEqual(stolen, [5, 9, 15, 22]);
 });
 test("cross theft and result arrival order do not change the common snapshot", () => {
   const a = game(),
@@ -326,7 +405,7 @@ test("surveillance restricts one turn and blocks jam; expiry permits another vot
   round(g, ["loot", "drill", "secure", "secure"]);
   assert.equal(g.report?.jam, 0);
   assert.equal(g.watched, null);
-  assert.equal(g.players[3].money, 6);
+  assert.equal(g.players[3].money, 3);
   g.watched = "3";
   g.vault = 8;
   assert.equal(legal(g, "3", { action: "drill" }), false);
@@ -455,7 +534,7 @@ test("three cooperative rounds escape early, rewards split and theft competes wi
   assert.equal(g.vault, 8);
   assert.deepEqual(
     g.players.map((p) => p.money),
-    [27, 44, 37, 36],
+    [24, 26, 38, 72],
   );
 });
 test("disconnect freezes all phases, resumes exact remaining time, expires without ranking", () => {
@@ -573,6 +652,6 @@ test("failed targets expose only their reserve; simultaneous proceeds are not st
   );
   assert.deepEqual(
     h.players.map((p) => p.money),
-    [1, 11, 0, 12],
+    [1, 15, 0, 6],
   );
 });

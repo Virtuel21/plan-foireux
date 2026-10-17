@@ -10,6 +10,11 @@ export const ACTIONS = [
   "pocket",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
+export type PostAction = Exclude<Action, "pocket">;
+export const postReward = (action: PostAction): number =>
+  CONFIG.postRewards[action];
+export const postShare = (action: PostAction, participants: number): number =>
+  Math.floor(postReward(action) / Math.max(1, participants));
 export type Role = "burglar" | "agent";
 export type Phase = keyof typeof CONFIG.durations | "ended";
 export type Choice = { action: Action; target?: string };
@@ -448,12 +453,6 @@ export function resolve(g: Game): Report {
   }
   let drills = 0,
     secure = 0;
-  const pools = {
-    drill: CONFIG.cooperation,
-    secure: CONFIG.cooperation,
-    loot: CONFIG.loot,
-    painting: CONFIG.painting,
-  };
   for (const p of g.players) {
     gains[p.id] = 0;
     losses[p.id] = 0;
@@ -466,7 +465,7 @@ export function resolve(g: Game): Report {
       const count = g.players.filter(
         (x) => g.choices[x.id]?.action === c.action,
       ).length;
-      gains[p.id] = Math.floor(pools[c.action] / count);
+      gains[p.id] = postShare(c.action, count);
     }
   }
   const earned = { ...gains };
