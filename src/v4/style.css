@@ -13,12 +13,14 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 276px;grid-template-rows:m
 @media(min-width:1051px) and (min-height:651px){main{grid-template-rows:minmax(0,1fr) 300px}.quick-signals .subtle{min-height:44px}}
 @media(max-height:420px) and (orientation:landscape){.choice-heading .eyebrow{display:none}.choice-heading h2{font-size:25px}.target-tip{display:none}.quick-signals .subtle{min-height:44px}.action-card{min-height:71px}}
 @media(max-height:420px) and (orientation:landscape){.card-top .coin{font-size:18px;line-height:1}.action-card{padding:5px 9px}.action-card>strong{font-size:23px}.timer{line-height:1}.lobby-heading h1{font-size:29px;margin:5px 0}.lobby-start .button{min-height:44px}.lobby-heading .eyebrow{line-height:1.1}}
-@media(max-height:420px) and (orientation:landscape){.reveal-hint{display:none}.name-tag .scene-betrayal{display:none}.name-tag .scene-reward{margin-top:2px}.name-tag .scene-reward strong{font-size:18px}.name-tag .scene-reward svg{width:16px;height:16px}}
+@media(max-height:420px) and (orientation:landscape){.reveal-hint{display:none}.name-tag.is-revealing .scene-betrayal{display:none}.name-tag .scene-reward{margin-top:2px}.name-tag .scene-reward strong{font-size:18px}.name-tag .scene-reward svg{width:16px;height:16px}}
 .vote-memory{font-size:10px;font-weight:900;color:#ffd199}.confirmed{color:#92d7c6}
 .name-tag:not(.is-betrayer) .scene-betrayal{background:#1b6650}.name-tag.is-victim .scene-betrayal{background:#a35d19}.scene-reward.negative{color:#a42f29;background:#ffe2cd}
 #chat-history{max-height:36px;overflow-y:auto;flex:1;line-height:18px;scrollbar-width:thin;overflow-wrap:anywhere}#chat-history p{margin:0}#chat-history b{color:var(--gold);margin-right:5px}
 .name-tag.is-revealing .scene-betrayal{display:none}
 @media(max-height:420px) and (orientation:landscape){.lobby-start>small{display:none}}
 @media(min-width:1051px) and (min-height:651px){.quick-signals{margin-top:7px}}
+.public-signal{display:none}
+@media(max-width:1050px),(max-height:650px){.public-signal{display:block;position:absolute;top:2px;left:2px;right:2px;padding:1px;background:#fff0cf;color:#18473e;border-radius:3px;font-size:8px;line-height:10px;font-weight:900;white-space:nowrap}.player:has(.public-signal){padding-top:13px}.player:has(.public-signal) .avatar{width:25px;height:25px}}
 @media(max-height:420px) and (orientation:landscape){#chat-history{max-height:30px;line-height:15px}}
 @media(max-width:1050px),(max-height:650px){.vote-memory{font-size:8px;position:absolute;top:2px;right:3px;background:#102737d9;padding:1px 3px;border-radius:3px}.player:has(.vote-memory) .avatar{width:25px;height:28px}}
