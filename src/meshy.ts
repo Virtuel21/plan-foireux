@@ -49,6 +49,7 @@ export async function loadMeshyMuseum(loader: GLTFLoader) {
   };
   // The stone step inside the native arch is at y=0.317 (ray checked).
   const safe = station("POST_Vault", -5.22, 0.325, -1.85);
+  safe.rotation.y = Math.PI / 2;
   safe.add(mountSafe(vault.scene));
   station("POST_Loot", 0.8, 0.15, -2.2).add(fit(lockers.scene, 1.6).root);
   const cameras = station("POST_Security", 5.2, 0.15, -3.3);

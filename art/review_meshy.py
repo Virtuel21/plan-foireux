@@ -86,6 +86,7 @@ decor.scale = (sx, sy, sx)
 decor.location = (-(low.x + high.x) * sx / 2, -(low.y + high.y) * sy / 2, .14 - -.244910535 * sx)
 safe, imported = load(OUT / 'sources/safe-hinged.glb', 'POST_Vault')
 safe.location = (-5.22, 1.85, .325)
+safe.rotation_euler.z = math.pi / 2
 fit(OUT / 'raw/lockers.glb', 'POST_Loot', (.8, 2.2, .15), 1.6)
 camera_box, imported = load(OUT / 'models/camera-box.glb', 'CameraClosedBox')
 camera_box.location = (5.2, 3.3, 1.65)
