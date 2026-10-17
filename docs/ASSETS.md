@@ -11,11 +11,12 @@ Le musée et les personnages du jeu utilisent les sorties Meshy originales. Les 
 | `museum.glb` | 97 487 | Copie exacte du décor Meshy complet |
 | `safe-box.glb` | 3 026 | Meshy-T2.5 Smart Topology, cible 3 000, textures 2K ; fichier natif intact |
 | `camera-box.glb` | 1 218 | Petite boîte fermée créée localement, zéro crédit |
-| `lockers.glb` | 7 577 | Copie exacte des casiers |
+| `lockers.glb` | 7 577 | Archive des casiers, non chargée dans le jeu |
 | `art/source/electrical-box.glb` | 16 186 | Source native du rendu du mini-jeu uniquement ; absent du diorama |
 | `male.glb` | 16 608 | Rig Meshy natif, trois clips regroupés sans rééchantillonnage |
 | `female.glb` | 16 656 | Rig Meshy natif, trois clips regroupés sans rééchantillonnage |
-| `guard.glb` | 14 442 | Rig Meshy natif, attente de fond |
+| `guard.glb` | 14 442 | Ancien gardien debout, archivé et non chargé |
+| `guard-sleeping.glb` | 13 429 | Nouveau gardien assis et sa chaise, copie exacte du paquet fourni |
 
 Les PNG PBR intégrés conservent leur résolution d'origine, jusqu'à 4K. Aucun maillage n'est réexporté par Blender pour alimenter le jeu. `art/assemble_meshy.py` copie les décors à l'identique et ajoute les buffers d'animation aux rigs natifs. Le script vérifie l'identité de chaque bufferView original, de la hiérarchie, des matériaux, des images et de tous les buffers de clips copiés. Les translations de racine sont également intactes.
 
@@ -25,7 +26,7 @@ Les PNG PBR intégrés conservent leur résolution d'origine, jusqu'à 4K. Aucun
 
 Deux bases partagées fournissent quatre joueurs avec des squelettes indépendants de 24 articulations. Julien et Léa utilisent leurs matériaux natifs. Max et Sarah appliquent uniquement une teinte de vêtement au shader : les cartes 4K et la géométrie restent partagées. Les portraits PNG transparents de 512 px proviennent du même rendu via `scripts/preview-meshy.mjs`.
 
-Les trois clips visibles sont `idle`, `walk`, `drill`. Ils tournent respectivement en attente, pendant les déplacements et au bilan du forage. Les autres postes restent en attente ; aucun geste spécifique n'est ajouté pendant les mini-jeux 2D où le personnage est invisible. Le gardien possède seulement une attente de fond. `src/animation.ts` gère les transitions et le mouvement réduit.
+Les trois clips des joueurs sont `idle`, `walk`, `drill`. Ils tournent respectivement en attente, pendant les déplacements et au bilan du forage. Les autres postes restent en attente ; aucun geste spécifique n'est ajouté pendant les mini-jeux 2D où le personnage est invisible. `src/animation.ts` gère les transitions et le mouvement réduit. Le nouveau gardien reste assis, yeux fermés, avec une respiration en boucle ; son clip de réveil est conservé sans être joué.
 
 ## Écarts encore présents
 
@@ -57,4 +58,12 @@ Le poste `secure` conserve l’effet Alarme −2 ; sa cagnotte est de 6 pièces 
 
 Le grand boîtier ouvert est réservé à l’épreuve électrique. `src/electrical-board.ts` précharge l’original intact `art/source/electrical-box.glb` (30,19 Mo), publié par Vite avec un nom versionné. Le PNG historique et son script de rendu restent archivés ; ils ne servent plus de fond au mini-jeu. Les câbles sont des géométries 3D dont les extrémités rejoignent les prises du modèle. L’interrupteur natif est séparé à l’exécution pour pivoter : 16 099 triangles de corps et 87 d’interrupteur conservent les 16 186 triangles d’origine. Chaque cible accessible de 44 pixels contient son point physique, avec des zones séparées sur petit écran. Tap, glisser et clavier utilisent le même état d’épreuve. L’entraînement attend le chargement avant de démarrer ses 18 secondes ; en partie, le délai reste celui de l’hôte.
 
-Les GLB sources du musée, du coffre et des personnages restent intacts. Les placements des casiers et du butin sont corrigés dans `meshy.ts` et les dispositions ; le sol est mesuré par rayon et les unités de richesse sont recentrées sur leur face inférieure à l’exécution. La trace rouge de la plinthe gauche est corrigée par un shader limité aux texels rouges de cette zone. Les matériaux et éclairages chauds se règlent dans `scene.ts`. Ces corrections ne consomment aucun crédit de génération.
+Les GLB sources du musée, du coffre et des personnages restent intacts. Les casiers sont retirés de la scène ; leur poste est désormais attaché à la statue déjà présente dans le musée. Le sol est mesuré par rayon et les unités de richesse sont recentrées sur leur face inférieure à l’exécution. La trace rouge de la plinthe gauche est corrigée par un shader limité aux texels rouges de cette zone. Les matériaux et éclairages chauds se règlent dans `scene.ts`. Ces corrections ne consomment aucun crédit de génération.
+
+## Gardien endormi et accessoires — 18 octobre 2026
+
+Le paquet fourni `gardien-endormi` comprend déjà la chaise. Le GLB public est identique à l’original : 3 334 852 octets, SHA-256 `0ae2f3c0d9882033446de40fd43a112aee19751192131e59cbc9fed6f6ea33f2`. Le fichier Blender, les relevés de provenance et la méthode d’intégration sont conservés dans `art/sleeping-guard/`. Le seul clip fourni est un réveil ; `src/sleeping-guard.ts` fige sa première pose et ajoute une respiration de 3,6 secondes sans modifier le clip source. Le gardien est placé à gauche du banc sous le tableau central, près de la plante. Aucune condition de réveil n’est activée.
+
+Les plaques natives du boîtier électrique sont teintées par le shader selon le câble attendu, y compris après permutation du second panneau. Les chiffres et signes sont projetés au centre de leurs plaques ; les embouts libres portent un grand « + » contrasté sur la couleur du câble. Le talkie reste un objet HTML/CSS : son antenne et ses boutons sont assemblés dans le boîtier par `src/radio.css`.
+
+Le nouveau mini-jeu de statue utilise un dessin SVG local et les mêmes contrôles à la souris, au toucher et au clavier. L’ancien mini-jeu des casiers, son moteur et ses styles sont conservés dans `src/archive/`, indépendamment du jeu actif et sans être chargés par celui-ci.

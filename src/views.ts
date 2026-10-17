@@ -29,20 +29,20 @@ export const PHASES = {
 export function gain(c: Choice | null, v: View) {
   if (!c) return "Choisissez votre poste.";
   if (c.action === "pocket")
-    return `${v.myLastTheft === c.target ? "CIBLE TRÈS VIGILANTE · " : ""}Volez 90 % du gain du tour de ${v.players.find((p) => p.id === c.target)?.name}, en lui laissant au moins 1 pièce`;
+    return `${v.myLastTheft !== null ? "TOUT LE GROUPE EST VIGILANT · " : ""}Volez 90 % du gain du tour de ${v.players.find((p) => p.id === c.target)?.name}, en lui laissant au moins 1 pièce`;
   const count = v.players.filter((p) => p.promise?.action === c.action).length;
   return `${LABELS[c.action]} · ${c.action === "drill" ? "Coffre +2 · " : c.action === "secure" ? "Alarme −2 · " : ""}${postReward(c.action)} pièces à partager (${postShare(c.action, count)} selon les annonces)`;
 }
 const POST_ICONS = {
   drill: "wrench",
   secure: "laser",
-  loot: "lock",
+  loot: "statue",
   painting: "museum",
 };
 const POST_EFFECTS = {
   drill: "Coffre +2",
   secure: "Alarme −2",
-  loot: "Butin discret",
+  loot: "Statue à porter",
   painting: "Gros butin",
 };
 export function mobileControls(v: View, selected: Choice | null) {
@@ -106,4 +106,4 @@ export function report(v: View) {
       "",
     )}</div>${voting ? `<div class="vote-footer"><p>${v.charges ? `<b>3 voix pour la même personne.</b> ${v.charges}/2 surveillances restantes.<br>Au prochain tour : coffre ou caméras, brouilleur bloqué. Aucun rôle révélé.` : "Plus de surveillance. Prêts pour la suite ?"}</p><button data-action="pass" class="${v.myVote === "pass" ? "selected" : "subtle"}">${v.charges ? "Passer" : "Continuer"} · ${v.voteCounts.pass ?? 0}/4</button></div><p class="vote-live" role="status" aria-atomic="true">${v.players.map((p) => `${esc(p.name)} : ${v.voteCounts[p.id] ?? 0} voix`).join(" · ")}. La manche suivante commence dès les quatre réponses. Le vote reste modifiable en attendant.</p>` : '<p class="quiet">Les quatre vrais postes et résultats sont révélés ensemble. Le vote suit si le casse continue.</p>'}`;
 }
-export const rules = `<span class="eyebrow">LE PLAN</span><h2>Ouvrez. Enrichissez-vous. Fuyez.</h2><p>Le coffre à 8/8 lance la fuite immédiatement après le bilan, si l’alarme reste sous 5. Vous avez cinq manches maximum. À 5 alarmes ou si le temps manque, le FBI gagne.</p><div class="rule-grid"><p><b>Forer</b>Chaque réussite ouvre le coffre de 2 points.</p><p><b>Désactiver les caméras</b>Chaque réussite retire 2 alarmes.</p><p><b>Casiers & toile</b>Deux autres façons de gagner des pièces.</p><p><b>Des butins inégaux à partager</b>Caméras : ${postReward("secure")} pièces. Forer : ${postReward("drill")}. Casiers : ${postReward("loot")}. Toile : ${postReward("painting")}. La cagnotte est partagée entre les participants réels, arrondie vers le bas. Une part ratée est perdue. Les postes critiques rapportent moins : à vous de résister à la tentation.</p><p><b>Faire les poches · Secret uniquement</b>Volez presque tout le gain du tour de votre cible (90 %, arrondi vers le haut, en lui laissant au moins 1 pièce). Sans gain, jusqu’à 4 pièces de sa réserve. Plusieurs voleurs partagent ce montant. La même cible à la manche suivante devient très vigilante : défi bien plus difficile.</p><p><b>Alarme</b>+1 par manche, +1 pour chaque défi raté, −2 par joueur qui désactive les alarmes. Tout est calculé ensemble.</p></div><p>Le FBI choisit une cible privée et remplace son défi par un talkie-walkie à régler sur trois fréquences. S’il réussit, son poste de couverture réussit aussi et la cible apparaît comme ayant raté son défi. Aucun nom de brouilleur n’est dévoilé.</p><p>Le vote se termine dès les quatre réponses. Votez après chaque manche qui continue : 3 voix sur 4 imposent coffre ou caméras et bloquent le brouilleur un tour. Deux surveillances communes. Tous les braqueurs gagnent la fuite et 8 pièces de bonus ; le plus riche devient Roi des Voleurs.</p>`;
+export const rules = `<span class="eyebrow">LE PLAN</span><h2>Ouvrez. Enrichissez-vous. Fuyez.</h2><p>Le coffre à 8/8 lance la fuite immédiatement après le bilan, si l’alarme reste sous 5. Vous avez cinq manches maximum. À 5 alarmes ou si le temps manque, le FBI gagne.</p><div class="rule-grid"><p><b>Forer</b>Chaque réussite ouvre le coffre de 2 points.</p><p><b>Désactiver les caméras</b>Chaque réussite retire 2 alarmes.</p><p><b>Statue & toile</b>Deux autres façons de gagner des pièces.</p><p><b>Des butins inégaux à partager</b>Caméras : ${postReward("secure")} pièces. Forer : ${postReward("drill")}. Statue : ${postReward("loot")}. Toile : ${postReward("painting")}. La cagnotte est partagée entre les participants réels, arrondie vers le bas. Une part ratée est perdue. Les postes critiques rapportent moins : à vous de résister à la tentation.</p><p><b>Faire les poches · Secret uniquement</b>Volez presque tout le gain du tour de votre cible (90 %, arrondi vers le haut, en lui laissant au moins 1 pièce). Sans gain, jusqu’à 4 pièces de sa réserve. Plusieurs voleurs partagent ce montant. Après un vol, toutes les cibles sont vigilantes à la manche suivante : changer de victime ne réduit pas la difficulté. Une manche sans faire les poches rétablit la difficulté normale.</p><p><b>Alarme</b>+1 par manche, +1 pour chaque défi raté, −2 par joueur qui désactive les alarmes. Tout est calculé ensemble.</p></div><p>Le FBI choisit une cible privée et remplace son défi par un talkie-walkie à régler sur trois fréquences. S’il réussit, son poste de couverture réussit aussi et la cible apparaît comme ayant raté son défi. Aucun nom de brouilleur n’est dévoilé.</p><p>Le vote se termine dès les quatre réponses. Votez après chaque manche qui continue : 3 voix sur 4 imposent coffre ou caméras et bloquent le brouilleur un tour. Deux surveillances communes. Tous les braqueurs gagnent la fuite et 8 pièces de bonus ; le plus riche devient Roi des Voleurs.</p>`;

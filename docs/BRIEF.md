@@ -1,4 +1,4 @@
-# Plan Foireux — règles v3, corrections de Julien du 17 octobre 2026
+# Plan Foireux — règles v3, corrections de Julien des 17 et 18 octobre 2026
 
 Ce document intègre les dernières demandes et remplace les règles contradictoires de `BRIEF-v1-archive.md`, conservé comme archive du document initial.
 
@@ -16,12 +16,12 @@ Coffre : 8 points. Alarme : défaite à 5 ou plus, après calcul complet. Cinq m
 - Choix secrets, 12 secondes : un des quatre postes, ou Faire les poches en touchant un rival ou sa pile de butin. Les autres voient encore la promesse, jamais le vrai choix ni la cible. Une grande annonce centrale distingue les promesses publiques des vrais postes privés.
 - Forer : chaque réussite ajoute 2 au coffre.
 - Désactiver les caméras : chaque réussite retire 2 alarmes. Le poste est attaché à la caméra du mur droit et à sa petite boîte fermée. Le grand boîtier ouvert est réservé au mini-jeu de connexion des câbles.
-- Casiers : défi de goupilles.
+- Voler la statue : détacher, transporter puis déposer la statue en trois crans. Le point d’appui doit suivre son équilibre pendant qu’on la soulève ; un mauvais appui fait monter le bruit. Trop de bruit fait perdre le cran en cours et impose une courte pause, sans retirer les crans terminés. Un geste maintenu et glissé permet de soutenir et porter ensemble ; un appui réglable, Espace et les flèches offrent des alternatives.
 - Voler la toile : découper un contour fermé dans le délai, avec au moins 70 % de précision. Tolérance spatiale doublée, interpolation entre les positions du doigt et petits retours sur le contour acceptés ; les sauts au bout du parcours restent interdits.
-- Cagnottes différenciées par manche : **Forer 10 pièces, Désactiver les caméras 6, Casiers 16, Voler la toile 24**. Les postes indispensables au groupe rapportent moins ; les postes lucratifs attirent les changements de dernière minute et les voleurs. Ces valeurs remplacent la cagnotte uniforme de 12 pièces à la demande de Julien.
+- Cagnottes différenciées par manche : **Forer 10 pièces, Désactiver les caméras 6, Voler la statue 16, Voler la toile 24**. Les postes indispensables au groupe rapportent moins ; les postes lucratifs attirent les changements de dernière minute et les voleurs. Ces valeurs remplacent la cagnotte uniforme de 12 pièces à la demande de Julien.
 - Part déterminée par TOUS les participants réels, indépendamment des annonces, puis arrondie à l’entier inférieur. Exemple : la toile rapporte 24 seul, 12 à deux, 8 à trois, 6 à quatre ; les caméras rapportent 6, 3, 2 ou 1. Une personne qui rate perd sa part ; elle n’augmente pas les parts des autres. Le reliquat d’une cagnotte n’est pas attribué. Le progrès collectif des réussites reste individuel et cumulable.
 - Faire les poches : après les récompenses de poste, prendre 90 % arrondis au supérieur du gain de la manche, en laissant au moins une pièce. Un gain de 24 peut perdre 22 ; 16 peut perdre 15 ; 10 peut perdre 9 ; 6 peut perdre 5. Si la cible ne gagne rien, jusqu’à 4 pièces de sa réserve initiale. Partage entier entre les voleurs réussis ; reliquat conservé par la victime. Les produits des autres vols ne sont pas revolés en cascade.
-- Retenter la même cible à la manche suivante déclenche sa vigilance : fenêtres de vol de 0,8 s au lieu de 1,65 s, trois prises de 1,35 s et perte d’une prise complète si repéré. Changer de cible ou passer un tour sans vol rétablit la difficulté normale. L’hôte conserve cet historique privé, chaque joueur ne reçoit que le sien.
+- Enchaîner deux manches de vol déclenche la vigilance de tous les complices, même en changeant de cible : fenêtres de vol de 0,8 s au lieu de 1,65 s, trois prises de 1,35 s et perte d’une prise complète si repéré. Une tentative ratée compte aussi. Il faut passer une manche entière sans Faire les poches pour rétablir la difficulté normale. L’hôte conserve cet historique privé, chaque joueur ne reçoit que le sien ; les anciennes sauvegardes gardent le même historique.
 
 Ces valeurs sont une nouvelle base de prototype. Les tests automatisés vérifient le calcul, pas l’équilibrage ou le plaisir entre amis.
 
@@ -31,7 +31,9 @@ En secret, Profil bas conserve l’épreuve normale. Le brouilleur demande une c
 
 Si le radio-défi réussit, le poste de couverture du FBI réussit normalement et le défi de la cible échoue à la résolution, même si celle-ci l’avait terminé. Le bilan montre seulement un défi raté. Aucun émetteur, cible de brouillage ou trace de zone n’est révélé. Un radio-défi raté échoue comme une tâche normale et ne brouille personne. Une surveillance bloque le brouilleur.
 
-Les épreuves durent 18 secondes. Perceuse : bande de pression réduite à 13 %, trois points de 1,45 s ; goupilles : fenêtre de 15 % et vitesse croissante ; sac : retournements plus fréquents, trois prises de 1,3 s ; sécurité : deux panneaux de trois circuits, bornes réordonnées après le premier panneau. La découpe a un chemin ordonné et interdit les sauts au bout du contour. Gestes, clavier et états sont sérialisables et se mettent en pause en cas de coupure.
+Les épreuves durent 18 secondes. Perceuse : bande de pression réduite à 13 %, trois points de 1,45 s ; statue : trois appuis successifs de 1,5 s, équilibre mobile dans une bande de 20 %, bruit et pause de 0,5 s en cas de choc ; sac : retournements plus fréquents, trois prises de 1,3 s ; sécurité : deux panneaux de trois circuits, bornes réordonnées après le premier panneau. La découpe a un chemin ordonné et interdit les sauts au bout du contour. Gestes, clavier et états sont sérialisables et se mettent en pause en cas de coupure.
+
+Le poste statue conserve l’identifiant interne `loot` et sa cagnotte de 16 pièces pour les sauvegardes. La reprise conserve ses crans et initialise à zéro le bruit absent des anciennes sauvegardes. L’ancien défi de goupilles est retiré du jeu courant et conservé dans `src/archive/pin-trial.ts`, avec tests de préservation et interface archivée séparée, pour une réutilisation ultérieure.
 
 ## Alarmes, bilan et vote
 

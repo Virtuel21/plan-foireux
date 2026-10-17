@@ -9,6 +9,7 @@ import {
   type Game,
   type Player,
 } from "./engine";
+import { normalizeTrial } from "./trial";
 const secretRandom = () =>
   crypto.getRandomValues(new Uint32Array(1))[0] / 0x100000000;
 export class HostRoom {
@@ -109,7 +110,10 @@ export class HostRoom {
     const room = new HostRoom(data.owner, "");
     room.players = data.players;
     room.game = data.game;
-    if (room.game) room.players = room.game.players;
+    if (room.game) {
+      room.players = room.game.players;
+      Object.values(room.game.trials).forEach(normalizeTrial);
+    }
     room.tokens = new Map(data.tokens);
     room.players
       .filter((p) => p.id !== room.owner)

@@ -18,6 +18,8 @@ export type Trial = {
   cutSamples: number;
   cutX: number;
   cutY: number;
+  /** Optional in pre-statue host saves; normalised to zero when restored. */
+  statueNoise?: number;
   done: boolean;
 };
 export function newTrial(
@@ -31,7 +33,7 @@ export function newTrial(
     difficulty,
     elapsed: 0,
     stage: 0,
-    needle: 0.12,
+    needle: action === "loot" ? 0.5 : 0.12,
     progress: 0,
     cooldown: 0,
     cursor: 0,
@@ -43,12 +45,31 @@ export function newTrial(
     cutSamples: 0,
     cutX: 0.5,
     cutY: 0.15,
+    statueNoise: 0,
     done: false,
   };
 }
 export const targetBand = (t: Trial) =>
   0.24 + ((t.seed + t.stage * 7) % 17) / 40;
-export const pinBand = (t: Trial) => 0.2 + ((t.seed + t.stage * 13) % 23) / 40;
+/** Old host saves retain the loot action ID and completed checkpoints. */
+export function normalizeTrial(t: Trial): Trial {
+  if (t.statueNoise === undefined) t.statueNoise = 0;
+  return t;
+}
+export const statueTarget = (t: Pick<Trial, "seed" | "stage" | "elapsed">) =>
+  [0.3, 0.7, 0.44][Math.min(2, t.stage)] +
+  ((t.seed % 7) - 3) * 0.02 +
+  Math.sin(t.elapsed * 2.1 + (t.seed % 11)) * 0.055;
+/** Total width of the safe support region, in normalised coordinates. */
+export const statueBand = (_t: Trial) => 0.2;
+export const statueNoise = (t: Trial) => t.statueNoise ?? 0;
+export const statueBalanced = (t: Trial) =>
+  Math.abs(t.needle - statueTarget(t)) <= statueBand(t) / 2;
+export function supportStatue(t: Trial, position: number): boolean {
+  if (t.action !== "loot" || t.done || !Number.isFinite(position)) return false;
+  t.needle = Math.max(0, Math.min(1, position));
+  return true;
+}
 export const radioTarget = (t: Trial) =>
   0.18 + ((t.seed + t.stage * 19) % 29) / 45;
 export const radioSignal = (t: Trial) =>
@@ -88,8 +109,30 @@ export function stepTrial(t: Trial, dt: number, held: boolean): void {
     }
   }
   if (t.action === "loot") {
-    const pos = (t.elapsed * (0.76 + t.stage * 0.12)) % 2;
-    t.cursor = pos <= 1 ? pos : 2 - pos;
+    t.statueNoise = statueNoise(t);
+    if (!held || t.cooldown) {
+      t.statueNoise = Math.max(0, t.statueNoise - dt * 1.2);
+      if (!held) t.progress = Math.max(0, t.progress - dt * 0.12);
+    } else if (statueBalanced(t)) {
+      t.statueNoise = Math.max(0, t.statueNoise - dt * 1.4);
+      t.progress += dt / 1.5;
+      if (t.progress >= 1) {
+        t.stage++;
+        t.progress = 0;
+        t.statueNoise = 0;
+      }
+    } else {
+      t.progress = Math.max(0, t.progress - dt * 0.2);
+      t.statueNoise = Math.min(
+        1,
+        t.statueNoise + dt * (0.7 + Math.abs(t.needle - statueTarget(t)) * 2),
+      );
+      if (t.statueNoise >= 1) {
+        t.progress = 0;
+        t.cooldown = 0.5;
+        t.statueNoise = 0.25;
+      }
+    }
   }
   if (t.action === "pocket" && held && !t.cooldown) {
     if (gaze(t) === "front") {
@@ -112,16 +155,6 @@ export function stepTrial(t: Trial, dt: number, held: boolean): void {
     }
   }
   if (t.action !== "painting" && t.action !== "secure") t.done = t.stage >= 3;
-}
-export function pin(t: Trial): boolean {
-  if (t.done || t.cooldown || t.action !== "loot") return false;
-  if (Math.abs(t.cursor - pinBand(t)) <= 0.075) {
-    t.stage++;
-    t.done = t.stage >= 3;
-    return true;
-  }
-  t.cooldown = 0.5;
-  return false;
 }
 export function connect(t: Trial, cable: number, terminal: number) {
   if (t.done || t.correct[cable]) return;

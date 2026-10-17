@@ -1,0 +1,22 @@
+{
+  "file": "gardien-endormi.glb",
+  "bytes": 3334852,
+  "megabytes_decimal": 3.33,
+  "triangles": 13429,
+  "animation_count": 1,
+  "animation_name": "Reveil_Sursaut_Debout",
+  "duration_seconds": 4.033333333333333,
+  "joints": 24,
+  "embedded_color_texture": "2048 x 2048",
+  "sha256": "0ae2f3c0d9882033446de40fd43a112aee19751192131e59cbc9fed6f6ea33f2",
+  "external_dependencies": false,
+  "credits": {
+    "image_preparation": 3,
+    "textured_model": 15,
+    "rigging": 5,
+    "swift_motion_inspected_and_rejected": 3,
+    "chair": 0,
+    "final_animation": 0,
+    "total": 26
+  }
+}

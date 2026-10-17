@@ -4,8 +4,6 @@ import {
   cutAccuracy,
   radioSignal,
   gaze,
-  pin,
-  pinBand,
   stepTrial,
   targetBand,
   type Trial,
@@ -14,12 +12,14 @@ import { LABELS } from "./scene";
 import { soundBank } from "./audio";
 import { COLORS, postReward } from "./engine";
 import { ElectricalBoard, electricalMarkup } from "./electrical-board";
+import { StatueBoard, statueMarkup } from "./statue";
+import "./radio.css";
 export const INSTRUCTIONS = {
   secure:
     "Branche les câbles dans les prises du boîtier, puis actionne son interrupteur. Deux panneaux à terminer.",
   drill:
     "Maintiens pour accélérer, relâche pour refroidir. Stabilise trois points dans la zone verte étroite.",
-  loot: "Arrête le curseur dans les trois encoches.",
+  loot: "Soulève la statue, porte-la et dépose-la sans bruit. Garde ton appui dans la zone verte.",
   radio:
     "Tourne les boutons. Stabilise le signal VERT trois fois pour brouiller ta cible.",
   painting:
@@ -45,6 +45,7 @@ export class Minigame {
   knobValue = 0;
   lastDots = "";
   electrical?: ElectricalBoard;
+  statue?: StatueBoard;
   get ready() {
     return !this.electrical || this.electrical.isReady;
   }
@@ -62,7 +63,7 @@ export class Minigame {
           "Relie chaque embout à la prise portant son symbole, puis touche l’interrupteur en bas à droite. Glisser, toucher ou Tab + Entrée.",
         drill:
           "1. Maintiens le bouton · 2. Relâche avant le rouge. Espace fonctionne aussi.",
-        loot: "1. Observe le passage · 2. Touche quand le curseur est dans l’encoche. Ou Espace.",
+        loot: "Maintiens la statue et glisse de gauche à droite pour équilibrer son poids. Relâche si le socle grince. Au clavier : flèches + Espace sur la statue.",
         radio:
           "Glisse un bouton vers le haut/bas, ou utilise les flèches sur le bouton. Rouge : loin · orange : proche · vert : reste stable.",
         painting:
@@ -76,7 +77,7 @@ export class Minigame {
         : t.action === "pocket"
           ? "Presque tout le gain du tour"
           : `${postReward(t.action)} pièces à partager`;
-    root.innerHTML = `<div class="trial-head"><div><span class="eyebrow">${practice ? "ENTRAÎNEMENT · SANS ENJEU" : "ÉPREUVE PRIVÉE"}</span><h2>${LABELS[t.action]} <small class="trial-reward">${reward}</small></h2></div><div class="trial-dots" aria-label="Progression"></div></div><p class="trial-instruction">${INSTRUCTIONS[t.action]}${t.action === "pocket" && t.difficulty === 2 ? " Cible très vigilante : ouvertures courtes, une prise perdue si tu es repéré." : ""}</p><div class="trial-stage ${t.action}">${t.action === "secure" ? this.wires() : t.action === "radio" ? this.radio() : t.action === "painting" ? this.painting() : this.mechanism()}</div><div class="trial-bottom"><span class="trial-status" role="status">À toi de jouer</span>${t.action === "secure" ? '<span class="electrical-switch-hint">Actionne l’interrupteur du boîtier pour valider.</span>' : t.action === "painting" ? '<button class="subtle restart-cut">Recommencer la découpe</button>' : t.action === "radio" ? '<span class="radio-private">Transmission privée · 3 fréquences</span>' : `<button class="primary operate">${t.action === "loot" ? "Arrêter le curseur" : t.action === "drill" ? "Maintenir pour forer" : "Maintenir pour avancer"}</button>`}</div><p class="gesture-example"><span class="demo-dot"></span>${hints[t.action]}</p>`;
+    root.innerHTML = `<div class="trial-head"><div><span class="eyebrow">${practice ? "ENTRAÎNEMENT · SANS ENJEU" : "ÉPREUVE PRIVÉE"}</span><h2>${LABELS[t.action]} <small class="trial-reward">${reward}</small></h2></div><div class="trial-dots" aria-label="Progression"></div></div><p class="trial-instruction">${INSTRUCTIONS[t.action]}${t.action === "pocket" && t.difficulty === 2 ? " Tout le groupe est vigilant après ton dernier vol : ouvertures courtes, une prise perdue si tu es repéré." : ""}</p><div class="trial-stage ${t.action}">${t.action === "secure" ? this.wires() : t.action === "radio" ? this.radio() : t.action === "painting" ? this.painting() : t.action === "loot" ? statueMarkup() : this.mechanism()}</div><div class="trial-bottom"><span class="trial-status" role="status">À toi de jouer</span>${t.action === "secure" ? '<span class="electrical-switch-hint">Actionne l’interrupteur du boîtier pour valider.</span>' : t.action === "painting" ? '<button class="subtle restart-cut">Recommencer la découpe</button>' : t.action === "radio" ? '<span class="radio-private">Transmission privée · 3 fréquences</span>' : `<button class="primary operate">${t.action === "loot" ? "Maintenir pour soulever" : t.action === "drill" ? "Maintenir pour forer" : "Maintenir pour avancer"}</button>`}</div><p class="gesture-example"><span class="demo-dot"></span>${hints[t.action]}</p>`;
     this.bindSpecial();
     if (t.action === "secure") {
       this.electrical = new ElectricalBoard(
@@ -91,24 +92,27 @@ export class Minigame {
         },
       );
     }
+    if (t.action === "loot") {
+      this.statue = new StatueBoard(
+        root.querySelector<HTMLElement>(".statue-workbench")!,
+        t,
+        {
+          paused: () => this.paused,
+          held: () => this.held,
+          hold: (held) => (this.held = held),
+          change: () => {
+            // Pointer moves only redraw; frame() publishes progress every 250 ms.
+            this.draw();
+          },
+        },
+      );
+    }
     const operate = root.querySelector<HTMLButtonElement>(".operate");
     operate?.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       if (this.paused || t.done) return;
       operate.setPointerCapture(e.pointerId);
-      if (t.action === "loot") {
-        pin(t);
-        soundBank.play("lock");
-        this.publish();
-      } else this.held = true;
-    });
-    operate?.addEventListener("click", (e) => {
-      if (this.paused || t.done) return;
-      if (e.detail === 0 && t.action === "loot") {
-        pin(t);
-        soundBank.play("lock");
-        this.publish();
-      }
+      this.held = true;
     });
     operate?.addEventListener("pointerup", () => (this.held = false));
     operate?.addEventListener("pointercancel", () => (this.held = false));
@@ -121,7 +125,7 @@ export class Minigame {
     this.raf = requestAnimationFrame(this.frame);
   }
   radio() {
-    return `<div class="walkie"><div class="walkie-antenna"></div><div class="walkie-knobs">${["Canal", "Réglage fin"].map((label, i) => `<div><button class="radio-knob" data-knob="${i}" role="slider" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="12"><span></span></button><small>${label}</small></div>`).join("")}</div><div class="walkie-body"><div class="walkie-brand">FIELDLINK <small>FBI · RX / TX</small></div><div class="radio-screen"><span class="radio-channel">FRÉQUENCE 1 / 3</span><strong class="frequency">117.2 <small>MHz</small></strong><div class="signal-bars">${Array.from({ length: 8 }, (_, i) => `<i style="height:${5 + i * 2}px"></i>`).join("")}</div><span class="signal-label">SIGNAL FAIBLE</span><div class="radio-lock-progress"><i></i></div></div><div class="walkie-speaker">${Array.from({ length: 5 }, () => "<i></i>").join("")}</div></div></div>`;
+    return `<div class="walkie walkie-v2"><div class="walkie-body"><div class="walkie-antenna" aria-hidden="true"></div><div class="walkie-brand">FIELDLINK <small>FBI · RX / TX</small></div><div class="walkie-knobs">${["Canal", "Réglage fin"].map((label, i) => `<div class="radio-control"><button class="radio-knob" data-knob="${i}" role="slider" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="12"><span></span></button><small>${label}</small></div>`).join("")}</div><div class="radio-screen"><span class="radio-channel">FRÉQUENCE 1 / 3</span><strong class="frequency">117.2 <small>MHz</small></strong><div class="signal-bars">${Array.from({ length: 8 }, (_, i) => `<i style="height:${5 + i * 2}px"></i>`).join("")}</div><span class="signal-label">SIGNAL FAIBLE</span><div class="radio-lock-progress"><i></i></div></div><div class="walkie-speaker" aria-hidden="true">${Array.from({ length: 5 }, () => "<i></i>").join("")}</div></div></div>`;
   }
   painting() {
     const points = cutPath(this.state)
@@ -236,10 +240,8 @@ export class Minigame {
     const art =
       t.action === "drill"
         ? `<svg class="machine-art" viewBox="0 0 500 160" aria-hidden="true"><defs><linearGradient id="steel"><stop stop-color="#d1d6d5"/><stop offset=".45" stop-color="#727f83"/><stop offset="1" stop-color="#293940"/></linearGradient><linearGradient id="brass"><stop stop-color="#ffe0a1"/><stop offset="1" stop-color="#9f641e"/></linearGradient></defs><rect x="340" y="12" width="130" height="136" rx="16" fill="url(#steel)" stroke="#d9b86d" stroke-width="5"/><circle cx="400" cy="80" r="43" fill="#1a3036" stroke="url(#brass)" stroke-width="9"/><g class="drill-bit"><path d="M245 73h143v14H245" fill="url(#steel)" stroke="#111e24" stroke-width="3"/>${Array.from({ length: 9 }, (_, i) => `<path d="m${273 + i * 12} 72-9 17" stroke="#1d2a2e" stroke-width="3"/>`).join("")}</g><path d="M90 43h145l29 25v39H90Z" fill="#d99d35" stroke="#f5d38c" stroke-width="4"/><path d="m120 108 10 42h43l12-42" fill="#16373d" stroke="#627b7e" stroke-width="4"/><rect x="72" y="54" width="42" height="48" rx="10" fill="#1d3037"/>${[0, 1, 2, 3].map((i) => `<path d="M${145 + i * 16} 57v28" stroke="#473b22" stroke-width="5"/>`).join("")}<circle cx="104" cy="76" r="8" fill="#fce5b1"/></svg>`
-        : t.action === "loot"
-          ? `<svg class="machine-art" viewBox="0 0 500 160" aria-hidden="true"><rect x="38" y="15" width="424" height="130" rx="22" fill="#68492c" stroke="#d7b16a" stroke-width="5"/><rect x="57" y="35" width="386" height="90" rx="12" fill="#152c32" stroke="#b58947" stroke-width="3"/>${[0, 1, 2].map((i) => `<g class="pin-art" data-pin="${i}"><path d="M${160 + i * 88} 35v58" stroke="#e1ba72" stroke-width="24"/><circle cx="${160 + i * 88}" cy="97" r="13" fill="#f6d58e" stroke="#836133" stroke-width="3"/><path d="M${150 + i * 88} 48h20m-20 8h20m-20 8h20" stroke="#997642" stroke-width="3"/></g>`).join("")}<path d="M90 118h300" stroke="#d9e0d8" stroke-width="8"/><circle cx="93" cy="118" r="8" fill="#b67f39"/></svg>`
-          : `<div class="pocket-art"><div class="target-face"><img src="${import.meta.env.BASE_URL}portraits/${this.targetPortrait}.png" alt="Portrait de la cible"><span class="gaze-label">Regarde ailleurs</span></div><svg viewBox="0 0 420 160" aria-hidden="true"><defs><linearGradient id="cash-gold"><stop stop-color="#ffe4a2"/><stop offset=".5" stop-color="#d9a039"/><stop offset="1" stop-color="#956125"/></linearGradient></defs><rect x="126" y="133" width="236" height="15" rx="5" fill="${COLORS[this.targetPortrait % 4]}"/>${[0, 1, 2].map((i) => `<g transform="translate(${i * 7},${-i * 12})"><rect x="160" y="78" width="145" height="40" rx="5" fill="#42765b" stroke="#bbd09b" stroke-width="3"/><path d="M172 88h119v20H172Z" fill="none" stroke="#81a573" stroke-width="2"/><ellipse cx="232" cy="98" rx="22" ry="8" fill="#abc88e"/><path d="M220 79h19v39h-19Z" fill="#e8cb85"/></g>`).join("")}<path d="m247 133 13-30h65l17 30Z" fill="url(#cash-gold)" stroke="#f0ce73" stroke-width="2"/><path d="M275 112h29m-27 5h23" stroke="#9a662c" stroke-width="3"/><g class="thief-hand"><path d="M15 85h62l36-15q19-5 19 7l-16 12 25-6q12 0 12 12l-34 19H15Z" fill="#253640" stroke="#829296" stroke-width="3"/><rect x="9" y="83" width="31" height="34" rx="5" fill="#d2a64a"/></g></svg></div>`;
-    return `${art}<div class="meter"><div class="target-band"></div><div class="meter-needle"></div><span class="meter-start">0</span><span class="meter-end">${t.action === "drill" ? "SURCHAUFFE" : t.action === "loot" ? "ENCOCHE" : "LIASSE"}</span></div><div class="point-progress"><span></span></div>`;
+        : `<div class="pocket-art"><div class="target-face"><img src="${import.meta.env.BASE_URL}portraits/${this.targetPortrait}.png" alt="Portrait de la cible"><span class="gaze-label">Regarde ailleurs</span></div><svg viewBox="0 0 420 160" aria-hidden="true"><defs><linearGradient id="cash-gold"><stop stop-color="#ffe4a2"/><stop offset=".5" stop-color="#d9a039"/><stop offset="1" stop-color="#956125"/></linearGradient></defs><rect x="126" y="133" width="236" height="15" rx="5" fill="${COLORS[this.targetPortrait % 4]}"/>${[0, 1, 2].map((i) => `<g transform="translate(${i * 7},${-i * 12})"><rect x="160" y="78" width="145" height="40" rx="5" fill="#42765b" stroke="#bbd09b" stroke-width="3"/><path d="M172 88h119v20H172Z" fill="none" stroke="#81a573" stroke-width="2"/><ellipse cx="232" cy="98" rx="22" ry="8" fill="#abc88e"/><path d="M220 79h19v39h-19Z" fill="#e8cb85"/></g>`).join("")}<path d="m247 133 13-30h65l17 30Z" fill="url(#cash-gold)" stroke="#f0ce73" stroke-width="2"/><path d="M275 112h29m-27 5h23" stroke="#9a662c" stroke-width="3"/><g class="thief-hand"><path d="M15 85h62l36-15q19-5 19 7l-16 12 25-6q12 0 12 12l-34 19H15Z" fill="#253640" stroke="#829296" stroke-width="3"/><rect x="9" y="83" width="31" height="34" rx="5" fill="#d2a64a"/></g></svg></div>`;
+    return `${art}<div class="meter"><div class="target-band"></div><div class="meter-needle"></div><span class="meter-start">0</span><span class="meter-end">${t.action === "drill" ? "SURCHAUFFE" : "LIASSE"}</span></div><div class="point-progress"><span></span></div>`;
   }
   feedback(text: string) {
     const el = this.root.querySelector(".trial-status");
@@ -261,11 +263,7 @@ export class Minigame {
       return;
     e.preventDefault();
     if (e.repeat) return;
-    if (this.state.action === "loot") {
-      pin(this.state);
-      soundBank.play("lock");
-      this.publish();
-    } else this.held = true;
+    this.held = true;
   };
   keyUp = (e: KeyboardEvent) => {
     if (e.code === "Space") this.held = false;
@@ -312,6 +310,8 @@ export class Minigame {
           `${(110 + t.needle * 60).toFixed(1)} MHz, signal ${signal}`,
         );
       });
+    } else if (t.action === "loot") {
+      this.statue?.update();
     } else if (t.action === "painting") {
       const path = cutPath(t);
       this.root.querySelector(".cut-complete")!.setAttribute(
@@ -341,16 +341,10 @@ export class Minigame {
     } else {
       const band = this.root.querySelector<HTMLElement>(".target-band")!,
         needle = this.root.querySelector<HTMLElement>(".meter-needle")!;
-      const start =
-          t.action === "drill"
-            ? targetBand(t)
-            : t.action === "loot"
-              ? pinBand(t) - 0.075
-              : 0,
-        width = t.action === "drill" ? 0.13 : t.action === "loot" ? 0.15 : 1;
+      const start = t.action === "drill" ? targetBand(t) : 0;
       band.style.left = `${start * 100}%`;
-      band.style.width = `${width * 100}%`;
-      needle.style.left = `${(t.action === "drill" ? t.needle : t.action === "loot" ? t.cursor : (t.stage + t.progress) / 3) * 100}%`;
+      band.style.width = `${(t.action === "drill" ? 0.13 : 1) * 100}%`;
+      needle.style.left = `${(t.action === "drill" ? t.needle : (t.stage + t.progress) / 3) * 100}%`;
       (
         this.root.querySelector(".point-progress span") as HTMLElement
       ).style.width = `${t.progress * 100}%`;
@@ -367,12 +361,6 @@ export class Minigame {
         (this.root.querySelector(".thief-hand") as SVGElement).style.transform =
           `translateX(${(t.stage + t.progress) * 26}px)`;
       }
-      this.root
-        .querySelectorAll<SVGElement>("[data-pin]")
-        .forEach(
-          (p) =>
-            (p.style.transform = `translateY(${Number(p.dataset.pin) < t.stage ? -20 : 0}px)`),
-        );
     }
     this.root.classList.toggle("trial-done", t.done);
     this.root.classList.toggle("overheat", t.cooldown > 0);
@@ -393,7 +381,7 @@ export class Minigame {
           ? "Refroidissement… Ce point repart à zéro."
           : t.action === "pocket"
             ? "Repéré ! Reprends au dernier point."
-            : "Clac… Réessaie cette goupille.",
+            : "Le socle a grincé ! Relâche et retrouve l’équilibre.",
       );
     else if (t.action === "painting")
       this.feedback(
@@ -405,10 +393,11 @@ export class Minigame {
       this.feedback(
         `Panneau ${Math.min(2, t.panel + 1)} / 2 · Relie les trois câbles, puis actionne l’interrupteur.`,
       );
-    else
+    else if (t.action === "loot")
       this.feedback(
-        `${t.stage} / 3 ${t.action === "loot" ? "goupilles" : "points"} validés`,
+        `${["Décolle la statue du socle", "Porte-la vers le sac", "Dépose-la sur le rembourrage"][Math.min(2, t.stage)]} · ${t.stage} / 3 étapes`,
       );
+    else this.feedback(`${t.stage} / 3 points validés`);
   }
   frame = (now: number) => {
     if (this.disposed) return;

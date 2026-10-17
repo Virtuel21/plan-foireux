@@ -37,6 +37,8 @@ export class ElectricalBoard {
   private wires = new T.Group();
   private nativeSwitch?: T.Mesh;
   private ownedGeometry = new Set<T.BufferGeometry>();
+  private ownedMaterials = new Set<T.Material>();
+  private panelColors = ELECTRICAL.colors.map((color) => new T.Color(color));
   private selected = -1;
   private paused = false;
   private disposed = false;
@@ -93,6 +95,7 @@ export class ElectricalBoard {
       this.root.prepend(this.renderer.domElement);
       const original = asset.scene.clone(true);
       original.name = "InteractiveOriginalJunctionBox";
+      this.colorNativePlates(original);
       this.extractSwitch(original);
       this.scene.add(original);
       this.ready = true;
@@ -107,6 +110,63 @@ export class ElectricalBoard {
       this.root.dataset.modelReady = "error";
       this.root.setAttribute("aria-busy", "false");
     }
+  }
+
+  /** Tint the actual enamel faces, retaining their native texture and shading.
+   * Each destination follows its circuit identity after the panel is reordered.
+   */
+  private colorNativePlates(root: T.Object3D) {
+    const copies = new Map<T.Material, T.Material>();
+    root.traverse((object) => {
+      if (!(object instanceof T.Mesh)) return;
+      const clone = (source: T.Material) => {
+        const existing = copies.get(source);
+        if (existing) return existing;
+        const material = source.clone();
+        material.onBeforeCompile = (shader) => {
+          shader.uniforms.uCircuitColors = { value: this.panelColors };
+          shader.vertexShader =
+            "varying vec3 vElectricalPosition;\n" + shader.vertexShader;
+          shader.vertexShader = shader.vertexShader.replace(
+            "#include <begin_vertex>",
+            "#include <begin_vertex>\nvElectricalPosition = position;",
+          );
+          shader.fragmentShader =
+            "varying vec3 vElectricalPosition;\nuniform vec3 uCircuitColors[3];\n" +
+            shader.fragmentShader;
+          shader.fragmentShader = shader.fragmentShader.replace(
+            "#include <map_fragment>",
+            `#include <map_fragment>
+            float plateColumn = step(0.586, vElectricalPosition.x) * step(vElectricalPosition.x, 0.712)
+              * step(-0.165, vElectricalPosition.z) * step(vElectricalPosition.z, -0.125);
+            float high = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b));
+            float low = min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b));
+            // The native ivory albedo is warm (254,226,189 in sRGB),
+            // so select its brightness rather than mistaking it for saturated metal.
+            float enamel = smoothstep(0.28, 0.45, low) * smoothstep(0.55, 0.75, high);
+            vec3 tint = vec3(1.0);
+            float plateRow = 0.0;
+            ${ELECTRICAL.plates
+              .map(
+                (point, i) => `{
+              float row = 1.0 - step(0.081, abs(vElectricalPosition.y - ${point[1].toFixed(3)}));
+              tint = mix(tint, uCircuitColors[${i}], row);
+              plateRow = max(plateRow, row);
+            }`,
+              )
+              .join("\n")}
+            diffuseColor.rgb = mix(diffuseColor.rgb, tint * high, plateColumn * plateRow * enamel);`,
+          );
+        };
+        material.customProgramCacheKey = () => "electrical-native-enamel-v1";
+        copies.set(source, material);
+        this.ownedMaterials.add(material);
+        return material;
+      };
+      object.material = Array.isArray(object.material)
+        ? object.material.map(clone)
+        : clone(object.material);
+    });
   }
 
   /** Meshy supplied one textured mesh. Separate only the native rocker triangles
@@ -285,6 +345,7 @@ export class ElectricalBoard {
     this.camera.top = worldHeight / 2;
     this.camera.bottom = -worldHeight / 2;
     this.camera.updateProjectionMatrix();
+    this.root.style.setProperty("--model-unit", `${width / worldWidth}px`);
     this.lastSignature = "";
     this.lastDrawSignature = "";
     this.update(this.paused);
@@ -407,17 +468,38 @@ export class ElectricalBoard {
     });
     this.terminals.forEach((button, i) => {
       const cable = t.connections.indexOf(i);
-      button.querySelector("span")!.textContent =
-        ELECTRICAL.symbols[terminalId(t, i)];
+      const circuit = terminalId(t, i);
+      const [number, symbol] = ELECTRICAL.symbols[circuit].split(" ");
+      button.querySelector("span")!.innerHTML =
+        `<b>${number}</b><i>${symbol}</i>`;
+      button.dataset.circuit = String(circuit);
+      this.panelColors[i].set(ELECTRICAL.colors[circuit]);
       button.setAttribute(
         "aria-label",
         `Borne ${ELECTRICAL.symbols[terminalId(t, i)]}`,
       );
       button.classList.toggle("occupied", cable >= 0);
       button.classList.toggle("correct", cable >= 0 && t.correct[cable]);
+      button.style.setProperty("--wire", ELECTRICAL.colors[circuit]);
+      const scale =
+        this.root.clientWidth / (this.camera.right - this.camera.left);
       button.style.setProperty(
-        "--wire",
-        cable >= 0 ? ELECTRICAL.colors[cable] : "#efd18d",
+        "--plate-x",
+        `${(ELECTRICAL.plates[i][0] - ELECTRICAL.sockets[i][0]) * scale}px`,
+      );
+      button.style.setProperty(
+        "--plate-y",
+        `${-(ELECTRICAL.plates[i][1] - ELECTRICAL.sockets[i][1]) * scale}px`,
+      );
+      button.dataset.plateX = String(
+        ((this.point(ELECTRICAL.plates[i]).project(this.camera).x + 1) *
+          this.root.clientWidth) /
+          2,
+      );
+      button.dataset.plateY = String(
+        ((1 - this.point(ELECTRICAL.plates[i]).project(this.camera).y) *
+          this.root.clientHeight) /
+          2,
       );
       button.disabled = !this.allowed() || (cable >= 0 && t.correct[cable]);
     });
@@ -466,6 +548,7 @@ export class ElectricalBoard {
       materials.forEach((material) => material.dispose());
     });
     this.ownedGeometry.forEach((geometry) => geometry.dispose());
+    this.ownedMaterials.forEach((material) => material.dispose());
     this.renderer?.dispose();
     this.renderer?.forceContextLoss();
   }

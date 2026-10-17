@@ -96,7 +96,7 @@ test("restored host: money piles grow and shrink and a silent alarm has no expla
   expect(errors).toEqual([]);
 });
 
-test("restored secret choice warns of repeat theft, central announcement stays centered and hard trial survives reload", async ({
+test("restored secret choice warns of repeated theft against a different target, central announcement stays centered and hard trial survives reload", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 844, height: 390 });
@@ -115,7 +115,7 @@ test("restored secret choice warns of repeat theft, central announcement stays c
   g.turn = 3;
   g.deadline = Date.now() + 8500;
   g.lastThefts = { "0": "1" };
-  g.choices = { "0": { action: "pocket", target: "1" } };
+  g.choices = { "0": { action: "pocket", target: "2" } };
   g.players.forEach((p, i) => {
     p.money = [36, 12, 24, 48][i];
     p.promise = { action: "secure" };
@@ -140,7 +140,9 @@ test("restored secret choice warns of repeat theft, central announcement stays c
   expect(Math.abs(r.x + r.width / 2 - 422)).toBeLessThan(3);
   expect(Math.abs(r.y + r.height / 2 - 390 * 0.48)).toBeLessThan(3);
   expect(r.width).toBeGreaterThan(700);
-  await expect(page.locator("#footer")).toContainText("CIBLE TRÈS VIGILANTE");
+  await expect(page.locator("#footer")).toContainText(
+    "TOUT LE GROUPE EST VIGILANT",
+  );
   await page.screenshot({ path: "test-results/wealth-vigilance.png" });
   await expect(page.locator("body")).toHaveAttribute("data-phase", "minigame", {
     timeout: 13000,

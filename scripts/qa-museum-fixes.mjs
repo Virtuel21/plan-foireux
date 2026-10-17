@@ -124,18 +124,162 @@ try {
       qa.game.layout = layout;
       m.update(qa.engine.publicView(qa.game, "p0"), qa.players, null);
       m.scene.updateMatrixWorld(true);
-      const box = new T.Box3().setFromObject(m.objects.POST_Loot);
-      box.min.y += 0.025; // The cabinet is deliberately supported by the marble.
       layouts.push({
         layout,
+        statuePosition: m.objects.POST_Loot.getWorldPosition(
+          new T.Vector3(),
+        ).toArray(),
+      });
+    }
+    const guard = m.room.getObjectByName("Guard"),
+      chair = guard.getObjectByName("Chaise"),
+      hips = guard.getObjectByName("Hips"),
+      eyelids = [];
+    guard.traverse((o) => {
+      if (o.morphTargetInfluences) eyelids.push(o);
+    });
+    const sleeping = [];
+    for (const time of [0, 0.9, 1.8, 2.7, 3.6, 7.2, 21.6]) {
+      m.roomMixer.setTime(time);
+      m.scene.updateMatrixWorld(true);
+      const box = new T.Box3().setFromObject(guard, true);
+      box.min.y += 0.06; // Ignore the supplied soles' tiny native floor overlap.
+      sleeping.push({
+        time,
+        hips: hips.position.toArray(),
+        eyelids: eyelids.map((o) => [...o.morphTargetInfluences]),
+        chair: chair.matrixWorld.toArray(),
         decorCollisions: triangles.filter((t) => box.intersectsTriangle(t))
           .length,
-        min: box.min.toArray(),
-        max: box.max.toArray(),
+      });
+    }
+    const {
+      securityPosition,
+      statuePosition,
+      stationPath,
+      returnPath,
+      ACTOR_BODY_RADIUS: r,
+    } = await import("/src/station-paths.ts");
+    const corridor = new T.Box3(
+      new T.Vector3(-2.3, 0.2, -1.2),
+      new T.Vector3(4.5, 1.8, 1.1),
+    );
+    const corridorTriangles = triangles.filter((t) =>
+      corridor.intersectsTriangle(t),
+    );
+    qa.navTriangles = corridorTriangles;
+    const body = (p) =>
+      new T.Box3(
+        new T.Vector3(p.x - r, 0.2, p.z - r),
+        new T.Vector3(p.x + r, 1.8, p.z + r),
+      );
+    const cameraPaths = [];
+    const homes = [0, 1, 2, 3].map(
+      (i) => new T.Vector3(-1.8 + i * 1.4, 0.15, 0.7),
+    );
+    for (let mask = 1; mask < 16; mask++) {
+      const participants = homes
+        .map((_, i) => i)
+        .filter((i) => mask & (1 << i));
+      const paths = participants.map((id, i) =>
+        stationPath(homes[id], securityPosition(i, participants.length)),
+      );
+      let collisions = 0,
+        bodyOverlaps = 0;
+      for (const leg of [0, 1, 2, 3])
+        for (let step = 0; step <= 30; step++) {
+          const positions = homes.map((home, id) => {
+            const rank = participants.indexOf(id);
+            if (rank < 0) return home;
+            if (leg < 2)
+              return (leg ? paths[rank][0] : home)
+                .clone()
+                .lerp(paths[rank][leg], step / 30);
+            const back = returnPath(paths[rank][1], home, "secure"),
+              segment = leg - 2;
+            return (segment ? back[0] : paths[rank][1])
+              .clone()
+              .lerp(back[segment], step / 30);
+          });
+          const boxes = positions.map(body);
+          for (const id of participants)
+            collisions += corridorTriangles.filter((t) =>
+              boxes[id].intersectsTriangle(t),
+            ).length;
+          for (let i = 0; i < 4; i++)
+            for (let j = i + 1; j < 4; j++)
+              if (boxes[i].intersectsBox(boxes[j])) bodyOverlaps++;
+        }
+      cameraPaths.push({
+        mask,
+        participants: participants.length,
+        targets: paths.map((p) => p[1].toArray()),
+        collisions,
+        bodyOverlaps,
+      });
+    }
+    const statueWork = [];
+    for (let participants = 1; participants <= 4; participants++)
+      for (let i = 0; i < participants; i++) {
+        const position = statuePosition(i, participants);
+        statueWork.push({
+          participants,
+          index: i,
+          position: position.toArray(),
+          collisions: triangles.filter((t) =>
+            body(position).intersectsTriangle(t),
+          ).length,
+        });
+      }
+    const statueRoutes = [];
+    const leftAisle = new T.Box3(
+      new T.Vector3(-4.5, 0.2, -0.75),
+      new T.Vector3(2.9, 1.8, 2.1),
+    );
+    const leftTriangles = triangles.filter((t) =>
+      leftAisle.intersectsTriangle(t),
+    );
+    for (let mask = 1; mask < 16; mask++) {
+      const participants = homes
+        .map((_, i) => i)
+        .filter((i) => mask & (1 << i));
+      let collisions = 0;
+      participants.forEach((id, rank) => {
+        const target = statuePosition(rank, participants.length);
+        for (const points of [
+          [homes[id], ...stationPath(homes[id], target, "loot")],
+          [target, ...returnPath(target, homes[id], "loot")],
+        ])
+          for (let leg = 1; leg < points.length; leg++)
+            for (let step = 0; step <= 30; step++) {
+              const box = body(
+                points[leg - 1].clone().lerp(points[leg], step / 30),
+              );
+              collisions += leftTriangles.filter((t) =>
+                box.intersectsTriangle(t),
+              ).length;
+            }
+      });
+      statueRoutes.push({
+        mask,
+        participants: participants.length,
+        collisions,
       });
     }
     qa.game.layout = 0;
     m.update(qa.engine.publicView(qa.game, "p0"), qa.players, null);
+    m.wealth.animate(1, true);
+    m.wealth.update(
+      qa.players.map((p) => ({ ...p, money: 0 })),
+      qa.players.map((_, i) => m.objects["PROP_Wealth_" + i]),
+    );
+    m.wealth.animate(1, true);
+    m.renderer.render(m.scene, m.camera);
+    const baseTriangles = m.renderer.info.render.triangles;
+    m.wealth.update(
+      qa.players,
+      qa.players.map((_, i) => m.objects["PROP_Wealth_" + i]),
+    );
     m.wealth.animate(1, true);
     m.renderer.render(m.scene, m.camera);
     const point = m.objects.POST_Painting.localToWorld(
@@ -144,11 +288,22 @@ try {
     return {
       piles,
       layouts,
+      sleeping,
+      cameraPaths,
+      statueWork,
+      statueRoutes,
+      activeRoomClips: m.roomMixer._actions.map((a) => a.getClip().name),
+      statue: m.objects.POST_Loot.localToWorld(new T.Vector3(0, 1.65, 0.3))
+        .project(m.camera)
+        .toArray(),
       painting: {
         x: (point.x * 0.5 + 0.5) * innerWidth,
         y: (0.5 - point.y * 0.5) * innerHeight,
       },
       triangleCount: triangles.length,
+      renderedTriangles: m.renderer.info.render.triangles,
+      baseTriangles,
+      renderedCalls: m.renderer.info.render.calls,
     };
   });
   await page.screenshot({ path: out + "/desktop.png" });
@@ -157,6 +312,14 @@ try {
   assert.ok(
     picks.includes("painting"),
     "The actual framed canvas must be selectable",
+  );
+  await page.mouse.click(
+    (report.statue[0] * 0.5 + 0.5) * 1440,
+    (0.5 - report.statue[1] * 0.5) * 960,
+  );
+  assert.ok(
+    (await page.evaluate(() => qa.picks)).includes("loot"),
+    "The original statue must be directly selectable",
   );
   await page.evaluate(() => {
     qa.museum.labels.style.display = "";
@@ -179,11 +342,142 @@ try {
     );
   }
   for (const layout of report.layouts)
-    assert.equal(
-      layout.decorCollisions,
-      0,
-      `Lockers intersect plant/decor in layout ${layout.layout}`,
+    assert.deepEqual(
+      layout.statuePosition,
+      [-2.05, 0.15, 3.4],
+      "Existing statue must remain fixed across layouts",
     );
+  assert.deepEqual(report.activeRoomClips, ["GuardSleepLoop"]);
+  for (const frame of report.sleeping) {
+    assert.ok(
+      frame.hips.every(
+        (n, i) => Math.abs(n - report.sleeping[0].hips[i]) < 1e-8,
+      ),
+      "Guard remains seated",
+    );
+    assert.deepEqual(
+      frame.eyelids,
+      report.sleeping[0].eyelids,
+      "Guard's eyes remain closed",
+    );
+    assert.deepEqual(
+      frame.chair,
+      report.sleeping[0].chair,
+      "Included chair remains still",
+    );
+    assert.equal(
+      frame.decorCollisions,
+      0,
+      "Seated guard clears the plant and bench",
+    );
+  }
+  for (const path of report.cameraPaths) {
+    assert.equal(
+      path.collisions,
+      0,
+      `Camera path intersects decor: ${path.mask}`,
+    );
+    assert.equal(
+      path.bodyOverlaps,
+      0,
+      `Camera participants intersect other bodies: ${path.mask}`,
+    );
+  }
+  for (const place of report.statueWork)
+    assert.equal(
+      place.collisions,
+      0,
+      `Statue participant intersects decor: ${place.participants}/${place.index}`,
+    );
+  for (const route of report.statueRoutes)
+    assert.equal(
+      route.collisions,
+      0,
+      `Statue outward/return route crosses decor: ${route.mask}`,
+    );
+  report.runtimeCamera = [];
+  for (const participants of [1, 2, 3, 4]) {
+    await page.evaluate((count) => {
+      const m = qa.museum;
+      m.actors.forEach((a, i) => {
+        a.root.position.set(-1.8 + i * 1.4, 0.16, 0.7);
+        a.target.copy(a.root.position);
+        a.route = [];
+      });
+      const view = qa.engine.publicView(qa.game, "p0");
+      view.phase = "reveal";
+      view.report = {
+        findings: qa.players.slice(0, count).map((p) => ({
+          id: p.id,
+          choice: { action: "secure" },
+          success: true,
+          gain: 6,
+          loss: 0,
+        })),
+      };
+      m.update(view, qa.players, null);
+      m.suspended = false;
+    }, participants);
+    await page.waitForFunction(
+      () =>
+        qa.museum.actors.every(
+          (a) => a.root.position.distanceTo(a.target) < 0.045,
+        ),
+      null,
+      { timeout: 20000 },
+    );
+    await page.waitForTimeout(350);
+    const snapshot = await page.evaluate(async () => {
+      const T = await import("/node_modules/three/build/three.module.js"),
+        m = qa.museum;
+      m.suspended = true;
+      m.scene.updateMatrixWorld(true);
+      const boxes = m.actors.map((a) => {
+        const box = new T.Box3();
+        a.root.traverse((o) => {
+          if (o.isSkinnedMesh) box.union(new T.Box3().setFromObject(o, true));
+        });
+        return box;
+      });
+      return {
+        positions: m.actors.map((a) => a.root.position.toArray()),
+        targets: m.actors.map((a) => a.target.toArray()),
+        bodyBounds: boxes.map((b) => ({
+          min: b.min.toArray(),
+          max: b.max.toArray(),
+        })),
+        decorCollisions: boxes.map(
+          (b) => qa.navTriangles.filter((t) => b.intersectsTriangle(t)).length,
+        ),
+        bodyOverlaps: boxes.some((a, i) =>
+          boxes.some((b, j) => i < j && a.intersectsBox(b)),
+        ),
+      };
+    });
+    assert.deepEqual(
+      snapshot.decorCollisions,
+      [0, 0, 0, 0],
+      `Rendered camera bodies intersect decor (${participants})`,
+    );
+    assert.equal(
+      snapshot.bodyOverlaps,
+      false,
+      `Rendered camera bodies overlap (${participants})`,
+    );
+    report.runtimeCamera.push({ participants, ...snapshot });
+    await page.screenshot({
+      path: `${out}/camera-${participants}-participants.png`,
+    });
+  }
+  await page.evaluate(() => {
+    const m = qa.museum;
+    m.update(qa.engine.publicView(qa.game, "p0"), qa.players, null);
+    m.actors.forEach((a, i) => {
+      a.root.position.set(-1.8 + i * 1.4, 0.16, 0.7);
+      a.route = [];
+    });
+    m.renderer.render(m.scene, m.camera);
+  });
   for (const [width, height] of [
     [390, 844],
     [844, 390],
@@ -202,7 +496,7 @@ try {
     JSON.stringify({ ...report, picks, errors }, null, 2),
   );
   console.log(
-    `Museum geometry, direct painting click and 4 viewports passed: ${out}`,
+    `Museum geometry, guard sleep, camera paths and 4 viewports passed: ${out}; ${report.renderedTriangles} triangles / ${report.renderedCalls} calls`,
   );
 } finally {
   await browser.close();

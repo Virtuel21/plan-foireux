@@ -17,6 +17,7 @@ import {
   type Choice,
   type Game,
 } from "../src/engine";
+import { newTrial } from "../src/trial";
 const players = () =>
   ["Julien", "Léa", "Sarah", "Max"].map((n, i) => player(String(i), n, i));
 const game = () => createGame(players(), 143, 0, () => 0.99);
@@ -606,7 +607,7 @@ test("four answers including abstentions end the vote immediately and start a fu
   assert.equal(h.phase, "promise");
   assert.equal(h.charges, 0);
 });
-test("repeating a theft on the next round is private and hard, switching or waiting resets vigilance", () => {
+test("consecutive thefts stay private and hard across targets; only a round without theft resets vigilance", () => {
   const g = game();
   g.lastThefts = { "0": "1" };
   phase(g, "secret");
@@ -621,11 +622,51 @@ test("repeating a theft on the next round is private and hard, switching or wait
   phase(h, "secret");
   h.choices = { "0": { action: "pocket", target: "2" } };
   advance(h, h.deadline);
-  assert.equal(h.trials["0"].difficulty, 1);
+  assert.equal(h.trials["0"].difficulty, 2);
   const k = game();
   k.lastThefts = { "0": "1" };
   round(k, ["secure", "drill", "loot", "painting"], undefined, false);
   assert.deepEqual(k.lastThefts, {});
+  next(k);
+  phase(k, "secret");
+  k.choices = { "0": { action: "pocket", target: "2" } };
+  advance(k, k.deadline);
+  assert.equal(k.trials["0"].difficulty, 1);
+  const attempted = game();
+  round(
+    attempted,
+    [{ action: "pocket", target: "1" }, "secure", "drill", "painting"],
+    [false, true, true, true],
+    false,
+  );
+  next(attempted);
+  phase(attempted, "secret");
+  attempted.choices = { "0": { action: "pocket", target: "2" } };
+  advance(attempted, attempted.deadline);
+  assert.equal(
+    attempted.trials["0"].difficulty,
+    2,
+    "even a failed attempt raises vigilance next round",
+  );
+});
+test("statue progress accepts bounded noise and normalises the missing legacy field", () => {
+  const g = game();
+  phase(g, "minigame");
+  g.trials["0"] = newTrial("loot", 7);
+  for (const noise of [-0.1, 1.1, NaN, Infinity]) {
+    const t = structuredClone(g.trials["0"]);
+    t.statueNoise = noise;
+    assert.equal(
+      apply(g, "0", { type: "progress", turn: g.turn, trial: t }, 1),
+      false,
+    );
+  }
+  const legacy = structuredClone(g.trials["0"]);
+  delete legacy.statueNoise;
+  assert.ok(
+    apply(g, "0", { type: "progress", turn: g.turn, trial: legacy }, 1),
+  );
+  assert.equal(g.trials["0"].statueNoise, 0);
 });
 test("failed targets expose only their reserve; simultaneous proceeds are not stolen recursively", () => {
   const g = game();

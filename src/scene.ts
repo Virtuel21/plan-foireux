@@ -14,16 +14,19 @@ import { icon } from "./icons";
 import { CharacterAnimation, type Clip } from "./animation";
 import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
 import { clothingVariant, loadMeshyCharacters, loadMeshyMuseum } from "./meshy";
-import gallery from "../scenes/layouts/grande-galerie.json";
-import cabinet from "../scenes/layouts/cabinet-curiosites.json";
-import reserve from "../scenes/layouts/reserve-royale.json";
+import {
+  securityPosition,
+  statuePosition,
+  stationPath,
+  returnPath,
+} from "./station-paths";
 import { WealthPiles } from "./wealth";
 import { escapeHTML as esc } from "./html";
 
 export const LABELS = {
   drill: "Forer",
   secure: "Désactiver les caméras",
-  loot: "Casiers",
+  loot: "Voler la statue",
   pocket: "Faire les poches",
   painting: "Voler la toile",
   radio: "Brouilleur FBI",
@@ -32,6 +35,8 @@ type Actor = {
   id: string;
   root: T.Object3D;
   target: T.Vector3;
+  route: T.Vector3[];
+  work: Choice["action"] | null;
   button: HTMLButtonElement;
   parts: Record<string, T.Object3D>;
   animation: CharacterAnimation;
@@ -41,7 +46,6 @@ type Marker = {
   anchor: T.Vector3;
   object?: T.Object3D;
 };
-const OFFSETS = [gallery.offsets, cabinet.offsets, reserve.offsets];
 export class Museum {
   scene = new T.Scene();
   camera = new T.OrthographicCamera(-9, 9, 6, -6, 0.1, 70);
@@ -146,7 +150,7 @@ export class Museum {
           }
         }
         this.addMarker("drill", "POST_Vault", new T.Vector3(0, 1.75, 0.15));
-        this.addMarker("loot", "POST_Loot", new T.Vector3(0, 2.15, 0.1));
+        this.addMarker("loot", "POST_Loot", new T.Vector3(0, 2.45, 0));
         this.addMarker("secure", "POST_Security", new T.Vector3(0, 3.05, 0.1));
         this.addMarker("painting", "POST_Painting", new T.Vector3(0, 1.8, 0));
         this.ready = true;
@@ -272,6 +276,8 @@ export class Museum {
         id: p.id,
         root,
         target: root.position.clone(),
+        route: [],
+        work: null,
         button,
         parts,
         animation,
@@ -308,15 +314,7 @@ export class Museum {
     this.roster = players;
     if (this.layoutIndex !== (v?.layout ?? 0) && this.room) {
       this.layoutIndex = v?.layout ?? 0;
-      const layout = OFFSETS[this.layoutIndex];
-      for (const [key, name] of [["loot", "POST_Loot"]] as const) {
-        const obj = this.objects[name];
-        if (obj) {
-          obj.position.copy(obj.userData.home);
-          obj.position.x += layout[key][0];
-          obj.position.z += layout[key][1];
-        }
-      }
+      // The loot station is the existing statue, fixed in the museum backdrop.
     }
     const choosing = !!v && ["promise", "secret"].includes(v.phase),
       reveal = !!v && ["reveal", "debate", "ended"].includes(v.phase);
@@ -329,7 +327,7 @@ export class Museum {
       const isSelected = selected?.action === action;
       const share = postShare(action as PostAction, promises.length);
       const gain = `${action === "drill" ? "Coffre +2 · " : action === "secure" ? "Alarme −2 · " : ""}<span class="post-reward">${icon("coin")}${promises.length ? share + " / personne" : postReward(action as PostAction) + " à partager"}</span>`;
-      m.button.innerHTML = `${icon(isSelected ? "check" : action === "drill" ? "wrench" : action === "secure" ? "laser" : action === "painting" ? "grid" : "lock")}<span><strong>${LABELS[action as keyof typeof LABELS]}${finished ? " · Ouvert" : ""}</strong><small>${gain}</small>${v ? `<em>${["drill", "secure"].includes(action) ? `${covered ? "✓ " : ""}${promises.length}/${need} conseillé` : `${promises.length} annoncé${promises.length > 1 ? "s" : ""}`}</em><span class="post-complices">${promises.length ? promises.map((p) => `<span style="--player:${p.color}"><img src="${import.meta.env.BASE_URL}portraits/${players.indexOf(p)}.png" alt="">${esc(p.name)}</span>`).join("") : "<span>Personne d’annoncé</span>"}</span>` : ""}</span>`;
+      m.button.innerHTML = `${icon(isSelected ? "check" : action === "drill" ? "wrench" : action === "secure" ? "laser" : action === "painting" ? "grid" : "statue")}<span><strong>${LABELS[action as keyof typeof LABELS]}${finished ? " · Ouvert" : ""}</strong><small>${gain}</small>${v ? `<em>${["drill", "secure"].includes(action) ? `${covered ? "✓ " : ""}${promises.length}/${need} conseillé` : `${promises.length} annoncé${promises.length > 1 ? "s" : ""}`}</em><span class="post-complices">${promises.length ? promises.map((p) => `<span style="--player:${p.color}"><img src="${import.meta.env.BASE_URL}portraits/${players.indexOf(p)}.png" alt="">${esc(p.name)}</span>`).join("") : "<span>Personne d’annoncé</span>"}</span>` : ""}</span>`;
       m.button.classList.toggle("covered", covered && !finished);
       m.button.classList.toggle("selected", isSelected);
       m.button.classList.toggle("finished", finished);
@@ -363,6 +361,7 @@ export class Museum {
       a.button.hidden =
         !v || ["role", "transition", "minigame", "ended"].includes(v.phase);
       const home = new T.Vector3(-1.8 + i * 1.4, 0.16, 0.7);
+      const previous = a.target.clone();
       a.target.copy(home);
       if (finding) {
         const key =
@@ -390,10 +389,25 @@ export class Museum {
                 new T.Vector3((n - (peers.length - 1) / 2) * 0.7, 0, 1.5),
               ),
             );
-          if (finding.choice.action === "secure") a.target.x -= 1.1;
+          if (finding.choice.action === "secure")
+            a.target.copy(securityPosition(n, peers.length));
+          if (finding.choice.action === "loot")
+            a.target.copy(statuePosition(n, peers.length));
           a.target.y = 0.15;
         }
       }
+      if (previous.distanceToSquared(a.target) > 0.0001)
+        a.route =
+          finding && ["secure", "loot"].includes(finding.choice.action)
+            ? stationPath(
+                a.root.position,
+                a.target,
+                finding.choice.action === "loot" ? "loot" : "secure",
+              )
+            : !finding && (a.work === "secure" || a.work === "loot")
+              ? returnPath(a.root.position, a.target, a.work)
+              : [];
+      a.work = finding?.choice.action ?? null;
       const bag = this.objects[`PROP_Wealth_${i}`];
       if (bag) {
         bag.userData.pick = `player:${p.id}`;
@@ -527,10 +541,17 @@ export class Museum {
       t = this.clock.elapsedTime;
     this.actors.forEach((a, i) => {
       const walking = a.root.position.distanceTo(a.target) > 0.15;
-      a.root.position.lerp(
-        a.target,
-        this.reduced.matches ? 1 : Math.min(1, dt * 4),
-      );
+      const waypoint = a.route[0] ?? a.target;
+      if (this.reduced.matches) {
+        a.root.position.copy(a.target);
+        a.route = [];
+      } else {
+        a.root.position.lerp(waypoint, Math.min(1, dt * 4));
+        if (a.route.length && a.root.position.distanceTo(waypoint) < 0.04) {
+          a.root.position.copy(waypoint);
+          a.route.shift();
+        }
+      }
       const finding = this.view?.report?.findings.find((f) => f.id === a.id);
       const clip: Clip = walking
         ? "walk"
@@ -552,8 +573,8 @@ export class Museum {
       let yaw = 0;
       if (walking)
         yaw = Math.atan2(
-          a.target.x - a.root.position.x,
-          a.target.z - a.root.position.z,
+          waypoint.x - a.root.position.x,
+          waypoint.z - a.root.position.z,
         );
       else if (this.view?.phase === "reveal" && finding?.success) {
         const key =
