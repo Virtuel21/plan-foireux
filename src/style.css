@@ -1063,6 +1063,15 @@ nav {
   position: relative;
   height: 310px;
 }
+.junction-box-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  opacity: 0.72;
+  pointer-events: none;
+}
 .wire-board > svg {
   position: absolute;
   inset: 0;

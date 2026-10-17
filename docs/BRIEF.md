@@ -15,7 +15,7 @@ Coffre : 8 points. Alarme : défaite à 5 ou plus, après calcul complet. Cinq m
 - Promesses publiques, 20 secondes : seuls les quatre postes sont annonçables. On ne peut pas annoncer Faire les poches, même via une commande réseau. Noms et portraits sont associés au poste promis.
 - Choix secrets, 12 secondes : un des quatre postes, ou Faire les poches en touchant un rival ou sa pile de butin. Les autres voient encore la promesse, jamais le vrai choix ni la cible. Une grande annonce centrale distingue les promesses publiques des vrais postes privés.
 - Forer : chaque réussite ajoute 2 au coffre.
-- Sécuriser : chaque réussite retire 2 alarmes.
+- Désactiver les caméras : chaque réussite retire 2 alarmes. Le poste est attaché à la caméra du mur droit et à sa petite boîte fermée. Le grand boîtier ouvert est réservé au mini-jeu de connexion des câbles.
 - Casiers : défi de goupilles.
 - Voler la toile : découper un contour fermé dans le délai, avec au moins 70 % de précision. Tolérance spatiale doublée, interpolation entre les positions du doigt et petits retours sur le contour acceptés ; les sauts au bout du parcours restent interdits.
 - Chaque poste possède une cagnotte de 12 pièces par manche. Part déterminée par TOUS ses participants réels : seul 12, à deux 6, à trois 4, à quatre 3. Une personne qui rate perd sa part ; elle n’augmente pas les parts des autres. Le progrès collectif des réussites reste individuel et cumulable.
@@ -41,6 +41,8 @@ Alarme finale = max(0, précédente +1 temps +nombre de défis ratés −2 × s�
 Trois voix sur quatre imposent une surveillance d’une manche : coffre ou sécurité et brouilleur bloqué, rôle non révélé. Deux charges communes, pas d’élimination. Aucun vote sans effet après la manche qui termine la partie.
 
 ## Visuel et musique
+
+Le coffre est un véritable coffre rectangulaire pierre crème, acier anthracite et volant doré, placé sous l’arche gauche du décor. La façade cintrée précédente est retirée. Les nouveaux modèles doivent être générés à leur budget de polygones directement dans Meshy, sans décimation Blender ultérieure.
 
 Voiture décorative retirée des sources Blender et du GLB. Quatrième poste de tableau identifiable et cliquable. Visages et noms sur les postes, sélection publique/privée explicite, zones tactiles de 44 pixels minimum, téléphone paysage prioritaire.
 

@@ -207,12 +207,6 @@
       "source": "art/wealth_units.py; Money Tour authored wealth units reused and optimized for Plan Foireux at Julien request"
     },
     {
-      "path": "public/models/electrical-box.glb",
-      "bytes": 30194656,
-      "sha256": "96ed6159f9a34944fea46457b4bcb971e9e7508b6cc14f2f47796dfb4213014e",
-      "source": "Meshy native GLB; art/assemble_meshy.py; original geometry, native PBR maps and rig; art/meshy-provenance.json"
-    },
-    {
       "path": "public/models/female.glb",
       "bytes": 26638280,
       "sha256": "543157d0a121c1a9971c67df0b95949dcb84632ae53ad1a0b7a65064e2b7271b",
@@ -237,10 +231,28 @@
       "source": "Meshy native GLB; art/assemble_meshy.py; original geometry, native PBR maps and rig; art/meshy-provenance.json"
     },
     {
-      "path": "public/models/vault.glb",
-      "bytes": 17926892,
-      "sha256": "7fad57390501cea1ab76fe17c4bedcdff71c8bbb8f0ea8b6292c60e3bab7671e",
-      "source": "Meshy native GLB; art/assemble_meshy.py; original geometry, native PBR maps and rig; art/meshy-provenance.json"
+      "path": "public/models/camera-box.glb",
+      "bytes": 85924,
+      "sha256": "d6527ff37926f723645c3cffd47ba7999d0ab0c9069a4c95b4218623aa28f649",
+      "source": "Original local model; art/build_camera_box.py; 1218 triangles directly authored; zero Meshy credits"
+    },
+    {
+      "path": "public/models/safe-box.glb",
+      "bytes": 6514972,
+      "sha256": "6b0b8ab7f3cf86abe3f890ae500e987995fd4a0b614317be20e46afc91178ba8",
+      "source": "Native Meshy-T2.5 task 01a14b42-b599-7523-ac3f-5750a26f8139; 3026 triangles, 2K PBR, 15 credits; binary unchanged"
+    },
+    {
+      "path": "public/images/electrical-board.png",
+      "bytes": 1018364,
+      "sha256": "4ceace77ca9929de5deddfe25158ec787c3f8cd3fa1db0e668ab7bbfe03e707a",
+      "source": "Direct render of native Meshy electrical-box.glb; art/render_electrical_minigame.py; cable mini-game only"
+    },
+    {
+      "path": "art/source/electrical-box.glb",
+      "bytes": 30194656,
+      "sha256": "96ed6159f9a34944fea46457b4bcb971e9e7508b6cc14f2f47796dfb4213014e",
+      "source": "Native Meshy electrical box; moved out of public/models; source of mini-game artwork; original SHA-256 unchanged"
     }
   ]
 }

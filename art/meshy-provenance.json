@@ -1,11 +1,11 @@
 {
   "production": {
-    "status": "original Meshy geometry and full-resolution textures restored",
-    "meshyModel": "meshy-7.1 standard",
-    "paidCredits": 250,
+    "status": "real safe under left arch; camera challenge; open electrical box in mini-game only",
+    "meshyModel": "meshy-7.1 native assets; safe meshy-t2.5 smart-topology",
+    "paidCredits": 265,
     "initialCredits": 2110,
-    "balanceAfterProduction": 1860,
-    "additionalCreditsForCorrection": 0,
+    "balanceAfterProduction": 1845,
+    "additionalCreditsForCorrection": 15,
     "approvedCharacterAnimations": [
       "idle",
       "walk",
@@ -15,20 +15,53 @@
       "character-male",
       "character-female",
       "museum-complete",
-      "vault",
+      "safe-box",
       "lockers",
       "electrical-box",
-      "guard"
+      "guard",
+      "camera-box-local"
     ],
     "packaging": "native GLBs; lossless clip bundling; Blender scenes use parent transforms only",
     "qualityProof": "quality-preservation.json",
     "limitations": [
       "Max and Sarah share the two native body/head models; only clothing hue differs in the game.",
       "Sarah retains the female source bun, not the beanie and hair of the concept.",
-      "Meshy generated an arched vault facade, rather than the square safe in the concept.",
       "Native Meshy rigging and animations are retained; no skin weights were repaired.",
       "No physical-device or Safari/iOS performance validation; no claim of exact concept identity."
-    ]
+    ],
+    "integration": {
+      "branch": "codex/meshy-assets",
+      "pullRequest": "https://github.com/Virtuel21/plan-foireux/pull/4",
+      "draft": true,
+      "deployed": false
+    },
+    "latestRevisionCredits": 15,
+    "cameraBoxCredits": 0,
+    "safe": {
+      "taskId": "01a14b42-b599-7523-ac3f-5750a26f8139",
+      "triangles": 3026,
+      "targetTriangles": 3000,
+      "textureResolution": "2k",
+      "credits": 15,
+      "bytes": 6514972,
+      "position": [
+        -5.22,
+        0.325,
+        -1.85
+      ],
+      "door": "native disconnected pieces; parent transforms only; every triangle retained"
+    },
+    "camera": {
+      "label": "Désactiver les caméras",
+      "position": [
+        5.2,
+        0.15,
+        -3.3
+      ],
+      "closedBoxTriangles": 1218,
+      "closedBoxCredits": 0,
+      "openElectricalBox": "mini-game render only; GLB kept in art/source, not loaded in the diorama"
+    }
   },
   "paidJobs": [
     {
@@ -174,6 +207,18 @@
       "task_id": "01a14b0b-1de5-766d-a221-0d02a809d950",
       "parent_task_id": "01a14b0a-2039-7452-b188-d946a294ed52",
       "authorized_credits": 3
+    },
+    {
+      "asset": "safe-box",
+      "stage": "model",
+      "type": "image-to-3d",
+      "task_id": "01a14b42-b599-7523-ac3f-5750a26f8139",
+      "ai_model": "meshy-t2.5",
+      "model_type": "smart-topology",
+      "authorized_credits": 15,
+      "target_polycount": 3000,
+      "texture_resolution": "2k",
+      "approval": "User confirmed 15 credits on 2026-10-17"
     }
   ],
   "preservation": [
@@ -247,11 +292,11 @@
       "bytes": 39109756
     },
     {
-      "file": "vault.glb",
-      "source": "vault.glb",
+      "file": "safe-box.glb",
+      "source": "safe-box.glb",
       "entireFileIdentical": true,
-      "sha256": "7fad57390501cea1ab76fe17c4bedcdff71c8bbb8f0ea8b6292c60e3bab7671e",
-      "bytes": 17926892
+      "sha256": "6b0b8ab7f3cf86abe3f890ae500e987995fd4a0b614317be20e46afc91178ba8",
+      "bytes": 6514972
     },
     {
       "file": "lockers.glb",
@@ -266,6 +311,14 @@
       "entireFileIdentical": true,
       "sha256": "96ed6159f9a34944fea46457b4bcb971e9e7508b6cc14f2f47796dfb4213014e",
       "bytes": 30194656
+    },
+    {
+      "file": "camera-box.glb",
+      "source": "art/build_camera_box.py",
+      "generatedLocally": true,
+      "credits": 0,
+      "bytes": 85924,
+      "sha256": "d6527ff37926f723645c3cffd47ba7999d0ab0c9069a4c95b4218623aa28f649"
     }
   ]
 }

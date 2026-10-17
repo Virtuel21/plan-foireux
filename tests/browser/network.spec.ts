@@ -83,7 +83,7 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
     );
     await expect(
       pages[0].locator(".actor-marker").filter({ hasText: "Max" }),
-    ).toContainText("Promis : Sécuriser");
+    ).toContainText("Promis : Désactiver les caméras");
     await expect(pages[1].locator("body")).toHaveAttribute(
       "data-phase",
       "minigame",
@@ -264,7 +264,7 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
         "Raté",
       );
       await expect(p.locator(".vote-card").nth(agentIndex)).toContainText(
-        "Sécuriser · Réussi",
+        "Désactiver les caméras · Réussi",
       );
       await expect(p.locator(".vote-card")).toHaveCount(4);
       await expect(p.locator(".alarm-explanation")).toHaveCount(0);

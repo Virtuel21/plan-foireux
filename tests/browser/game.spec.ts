@@ -115,10 +115,10 @@ for (const [width, height] of [
     const triangles = Number(
       await page.locator("#scene").getAttribute("data-triangles"),
     );
-    // Native Meshy models retain 213,261 base triangles. The previous 100k
-    // target required the destructive simplification rejected by the artist.
-    expect(triangles).toBeGreaterThan(200000);
-    expect(triangles).toBeLessThan(240000);
+    // The native backdrop and characters are intact; the open junction box
+    // belongs to the mini-game, and the safe is generated at its budget in Meshy.
+    expect(triangles).toBeGreaterThan(180000);
+    expect(triangles).toBeLessThan(215000);
   });
 }
 test("landscape cables playable by taps, mouse drag, and keyboard", async ({

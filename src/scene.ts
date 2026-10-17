@@ -19,7 +19,7 @@ import { escapeHTML as esc } from "./html";
 
 export const LABELS = {
   drill: "Forer",
-  secure: "Sécuriser",
+  secure: "Désactiver les caméras",
   loot: "Casiers",
   pocket: "Faire les poches",
   painting: "Voler la toile",
@@ -133,9 +133,9 @@ export class Museum {
             o.userData.home = o.position.clone();
           }
         }
-        this.addMarker("drill", "POST_Vault", new T.Vector3(0, 2.75, 0.15));
+        this.addMarker("drill", "POST_Vault", new T.Vector3(0, 1.75, 0.15));
         this.addMarker("loot", "POST_Loot", new T.Vector3(0, 2.15, 0.1));
-        this.addMarker("secure", "POST_Security", new T.Vector3(0, 2.9, 0.1));
+        this.addMarker("secure", "POST_Security", new T.Vector3(0, 3.05, 0.1));
         this.addMarker("painting", "POST_Painting", new T.Vector3(0, 2.9, 0.1));
         this.ready = true;
         this.update(this.view, this.roster, this.selection);
@@ -297,11 +297,7 @@ export class Museum {
     if (this.layoutIndex !== (v?.layout ?? 0) && this.room) {
       this.layoutIndex = v?.layout ?? 0;
       const layout = OFFSETS[this.layoutIndex];
-      for (const [key, name] of [
-        ["drill", "POST_Vault"],
-        ["loot", "POST_Loot"],
-        ["secure", "POST_Security"],
-      ] as const) {
+      for (const [key, name] of [["loot", "POST_Loot"]] as const) {
         const obj = this.objects[name];
         if (obj) {
           obj.position.copy(obj.userData.home);
@@ -376,6 +372,12 @@ export class Museum {
           const n = peers.findIndex((f) => f.id === a.id);
           a.target.x += (n - (peers.length - 1) / 2) * 0.7;
           a.target.z += finding.choice.action === "painting" ? 2.6 : 1.1;
+          if (finding.choice.action === "drill")
+            a.target.copy(
+              obj.localToWorld(
+                new T.Vector3((n - (peers.length - 1) / 2) * 0.7, 0, 1.5),
+              ),
+            );
           if (finding.choice.action === "secure") a.target.x -= 1.1;
           a.target.y = 0.15;
         }
@@ -569,7 +571,7 @@ export class Museum {
     if (door)
       door.rotation.y = T.MathUtils.lerp(
         door.rotation.y,
-        (this.view?.vault ?? 0) >= 8 ? -1.9 : 0,
+        (this.view?.vault ?? 0) >= 8 ? (door.userData.openAngle ?? -1.9) : 0,
         this.reduced.matches ? 1 : dt * 3,
       );
     const cam = this.objects.CameraPivot;

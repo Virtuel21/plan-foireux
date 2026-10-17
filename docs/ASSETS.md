@@ -4,14 +4,15 @@ Le musée et les personnages du jeu utilisent les sorties Meshy originales. Les 
 
 ## Sources et conservation
 
-`art/meshy-provenance.json` conserve les identifiants des travaux Meshy, les coûts et les empreintes des sept fichiers de jeu. Les concepts ont été fournis par Julien ; quatre images de préparation ont servi aux générations. Les sorties proviennent de son compte Meshy 7.1 standard. Aucune nouvelle licence globale ou qualification CC0 n'est attribuée à ces fichiers.
+`art/meshy-provenance.json` conserve les identifiants des travaux Meshy, les coûts et les empreintes des modèles natifs et du petit boîtier local. Les concepts ont été fournis par Julien ; quatre images de préparation ont servi aux générations. Les sorties proviennent de son compte Meshy 7.1 standard. Aucune nouvelle licence globale ou qualification CC0 n'est attribuée à ces fichiers.
 
 | Fichier | Triangles | Traitement |
 | --- | ---: | --- |
 | `museum.glb` | 97 487 | Copie exacte du décor Meshy complet |
-| `vault.glb` | 11 041 | Copie exacte de la façade cintrée Meshy |
+| `safe-box.glb` | 3 026 | Meshy-T2.5 Smart Topology, cible 3 000, textures 2K ; fichier natif intact |
+| `camera-box.glb` | 1 218 | Petite boîte fermée créée localement, zéro crédit |
 | `lockers.glb` | 7 577 | Copie exacte des casiers |
-| `electrical-box.glb` | 16 186 | Copie exacte du boîtier et de sa porte ouverte |
+| `art/source/electrical-box.glb` | 16 186 | Source native du rendu du mini-jeu uniquement ; absent du diorama |
 | `male.glb` | 16 608 | Rig Meshy natif, trois clips regroupés sans rééchantillonnage |
 | `female.glb` | 16 656 | Rig Meshy natif, trois clips regroupés sans rééchantillonnage |
 | `guard.glb` | 14 442 | Rig Meshy natif, attente de fond |
@@ -20,7 +21,7 @@ Les PNG PBR intégrés conservent leur résolution d'origine, jusqu'à 4K. Aucun
 
 ## Assemblage et personnages partagés
 
-`src/meshy.ts` place les modèles dans des groupes Three.js : seules les transformations des parents changent. Les quatre postes et les quatre ancres de butin conservent leurs interactions. La porte est un pivot parent de la façade native entière : aucune face n'est découpée. Le décor comprend déjà la statue, les tableaux, plantes, bancs, vitrine, cordons et caméra ; ils n'ont pas été régénérés individuellement.
+`src/meshy.ts` place les modèles dans des groupes Three.js : seules les transformations des parents changent. Les quatre postes et les quatre ancres de butin conservent leurs interactions. Le vrai coffre rectangulaire est posé sur le seuil de l'arche gauche. `src/safe.ts` distribue les triangles des pièces nativement disjointes entre caisson fixe et porte mobile. Les attributs POSITION, NORMAL et UV sont partagés sans modification ; chaque triangle original apparaît une fois. La charnière est un groupe parent. Le GLB téléchargé de Meshy demeure identique, sans export Blender ni décimation. Le décor comprend déjà la statue, les tableaux, plantes, bancs, vitrine, cordons et caméra ; ils n'ont pas été régénérés individuellement.
 
 Deux bases partagées fournissent quatre joueurs avec des squelettes indépendants de 24 articulations. Julien et Léa utilisent leurs matériaux natifs. Max et Sarah appliquent uniquement une teinte de vêtement au shader : les cartes 4K et la géométrie restent partagées. Les portraits PNG transparents de 512 px proviennent du même rendu via `scripts/preview-meshy.mjs`.
 
@@ -28,7 +29,7 @@ Les trois clips visibles sont `idle`, `walk`, `drill`. Ils tournent respectiveme
 
 ## Écarts encore présents
 
-Sarah conserve le chignon de la base féminine, au lieu des cheveux et du bonnet de son concept. Max partage la tête de Julien. La sortie Meshy du coffre est une façade cintrée plutôt que le coffre carré du concept ; elle est utilisée intacte. Le rig et ses déformations proviennent de Meshy. Le rendu n'est donc pas présenté comme une reproduction identique de chaque concept.
+Sarah conserve le chignon de la base féminine, au lieu des cheveux et du bonnet de son concept. Max partage la tête de Julien. Le coffre cintré précédent est retiré du jeu et archivé dans le paquet de production. Le rig et ses déformations proviennent de Meshy. Le rendu n'est donc pas présenté comme une reproduction identique de chaque concept.
 
 ## Reproduction
 
@@ -36,13 +37,22 @@ Le paquet de production local contient `raw/`, `rigs/`, `sources/`, les référe
 
 ```sh
 python art/assemble_meshy.py --sources CHEMIN_DU_PAQUET
+blender --background --factory-startup --python art/build_camera_box.py
+python art/prepare_safe.py --preview CHEMIN_DU_PAQUET/sources/safe-hinged.glb
+blender --background --factory-startup --python art/render_electrical_minigame.py
 blender --background --factory-startup --python art/review_meshy.py -- CHEMIN_DU_PAQUET
 ```
 
 Le second script importe les fichiers sans décimation, réduction d'image ou retouche de poids, puis enregistre les scènes de revue Blender. Il n'exporte jamais les GLB du jeu. Les anciens scripts `build_museum.py`, `build_character.py` et `finish_assets.py` concernent les modèles historiques et ne doivent pas écraser les nouveaux fichiers.
 
-Coût effectivement journalisé : **250 crédits** pour sept modèles, trois rigs, la préparation du mouvement de forage et les applications des clips. Aucun crédit supplémentaire pour la restauration et l'assemblage Blender. La proposition initiale de 21 modèles et 14 animations est abandonnée.
+Coût effectivement journalisé : **265 crédits** pour huit générations de modèles Meshy, dont la façade précédente archivée, trois rigs, la préparation du mouvement de forage et les applications des clips. La première production et sa restauration ont coûté 250 crédits. Le nouveau coffre a coûté les 15 crédits confirmés, sans remesh supplémentaire. Le petit boîtier et les assemblages locaux ne consomment aucun crédit. La proposition initiale de 21 modèles et 14 animations est abandonnée.
 
 ## Ressources conservées
 
-Les unités de lingots et liasses Money Tour, la perceuse existante, les six mini-jeux 2D, les icônes, les sons synthétisés, les trois musiques fournies par Julien et les polices locales sont conservés. Leur provenance et les sources procédurales restent documentées dans `ASSETS-v3-procedural.md`. `art/inventory.json` donne les tailles et SHA-256 actuels des 40 ressources. Les règles et les échanges de secrets ne changent pas.
+Les unités de lingots et liasses Money Tour, la perceuse existante, les six mini-jeux 2D, les icônes, les sons synthétisés, les trois musiques fournies par Julien et les polices locales sont conservés. Leur provenance et les sources procédurales restent documentées dans `ASSETS-v3-procedural.md`. `art/inventory.json` donne les tailles et SHA-256 actuels des 42 ressources. Les règles et les échanges de secrets ne changent pas.
+
+## Poste caméras
+
+Le poste `secure` garde ses règles et son partage de gains. Son libellé devient « Désactiver les caméras ». Sa cible 3D et son repère sont attachés à la caméra du mur droit, fixes dans les trois dispositions. Le petit boîtier fermé sous la caméra suit la seconde référence fournie par Julien ; sa création à 1 218 triangles est locale, sans réduction après coup.
+
+Le grand boîtier ouvert est retiré du diorama et du chargement des modèles publics. Son original intact est conservé dans `art/source/electrical-box.glb` et rendu par `art/render_electrical_minigame.py` dans `public/images/electrical-board.png`. Les câbles et bornes du mini-jeu restent interactifs par taps, glisser et clavier. Le caisson du coffre reste fixe lors de l’ouverture de sa porte. Les sources du décor et des personnages ne sont pas retouchées.

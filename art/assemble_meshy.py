@@ -105,15 +105,20 @@ def main():
         target = packaged / filename
         report.append(merge_clips(sources / 'rigs', asset, target))
         shutil.copy2(target, destination / filename)
-    for asset, filename in [('museum-complete', 'museum.glb'), ('vault', 'vault.glb'),
+    for asset, filename in [('museum-complete', 'museum.glb'), ('safe-box', 'safe-box.glb'),
                             ('lockers', 'lockers.glb'), ('electrical-box', 'electrical-box.glb')]:
         source = sources / 'raw' / f'{asset}.glb'
         target = packaged / filename
         shutil.copy2(source, target)
-        shutil.copy2(source, destination / filename)
+        runtime_target = destination / filename if asset != 'electrical-box' else Path(__file__).resolve().parent / 'source/electrical-box.glb'
+        shutil.copy2(source, runtime_target)
         digest = hashlib.sha256(source.read_bytes()).hexdigest()
-        assert digest == hashlib.sha256((destination / filename).read_bytes()).hexdigest()
+        assert digest == hashlib.sha256(runtime_target.read_bytes()).hexdigest()
         report.append({'file': filename, 'source': source.name, 'entireFileIdentical': True, 'sha256': digest})
+    camera_box = Path(__file__).resolve().parents[1] / 'public/models/camera-box.glb'
+    if camera_box.exists():
+        shutil.copy2(camera_box, packaged / camera_box.name)
+        report.append({'file': camera_box.name, 'source': 'art/build_camera_box.py', 'generatedLocally': True, 'credits': 0})
     for entry in report:
         entry['bytes'] = (packaged / entry['file']).stat().st_size
         entry['sha256'] = hashlib.sha256((packaged / entry['file']).read_bytes()).hexdigest()

@@ -1,13 +1,14 @@
 import * as T from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { mountSafe } from "./safe";
 
 const url = (name: string) =>
   `${import.meta.env.BASE_URL}models/${name}.glb?v=meshy-originals-20261017`;
 
 /** Original Meshy objects, placed with parent transforms only. */
 export async function loadMeshyMuseum(loader: GLTFLoader) {
-  const [backdrop, vault, lockers, electrical, guard] = await Promise.all(
-    ["museum", "vault", "lockers", "electrical-box", "guard"].map((name) =>
+  const [backdrop, vault, lockers, cameraBox, guard] = await Promise.all(
+    ["museum", "safe-box", "lockers", "camera-box", "guard"].map((name) =>
       loader.loadAsync(url(name)),
     ),
   );
@@ -46,22 +47,32 @@ export async function loadMeshyMuseum(loader: GLTFLoader) {
     root.add(object);
     return { root, width: dimensions.x * scale };
   };
-  const safe = station("POST_Vault", -3.6, 0.15, -1.5);
-  const fittedVault = fit(vault.scene, 2.45);
-  const door = new T.Group();
-  door.name = "VaultDoorPivot";
-  door.position.x = -fittedVault.width / 2;
-  fittedVault.root.position.x = fittedVault.width / 2;
-  door.add(fittedVault.root);
-  safe.add(door);
+  // The stone step inside the native arch is at y=0.317 (ray checked).
+  const safe = station("POST_Vault", -5.22, 0.325, -1.85);
+  safe.add(mountSafe(vault.scene));
   station("POST_Loot", 0.8, 0.15, -2.2).add(fit(lockers.scene, 1.6).root);
-  const panel = station("POST_Security", 3.9, 1.0, -2.7);
-  panel.add(fit(electrical.scene, 1.25).root);
+  const cameras = station("POST_Security", 5.2, 0.15, -3.3);
+  cameraBox.scene.position.y = 1.5;
+  cameras.add(cameraBox.scene);
+  const cameraPick = new T.Mesh(
+    new T.BoxGeometry(0.7, 0.55, 0.7),
+    new T.MeshBasicMaterial({ visible: false }),
+  );
+  cameraPick.name = "SecurityCameraPick";
+  cameraPick.position.y = 2.85;
+  cameras.add(cameraPick);
+  const boxPick = new T.Mesh(
+    new T.BoxGeometry(0.55, 0.76, 0.32),
+    new T.MeshBasicMaterial({ visible: false }),
+  );
+  boxPick.name = "SecurityBoxPick";
+  boxPick.position.set(0, 1.86, 0);
+  cameras.add(boxPick);
   station("POST_Painting", -1, 0.15, -3.7);
   for (let i = 0; i < 4; i++)
     station(`PROP_Wealth_${i}`, -3.1 + i * 1.85, 0.22, 2.8);
   // Native Meshy rig, native idle animation. No weight or topology changes.
-  const watchman = station("Guard", -5.0, 0.15, -2.5);
+  const watchman = station("Guard", -2.4, 0.15, -1.75);
   watchman.add(guard.scene);
   return { scene: room, animations: guard.animations };
 }
