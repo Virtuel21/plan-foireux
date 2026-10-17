@@ -20,6 +20,10 @@ Le vrai chiffre est privé. Chaque détenteur peut publier un chiffre de son cho
 
 À la salle 4, `a` demande une vraie saisie de trois chiffres. Une mauvaise saisie n'ouvre pas et laisse les postes incomplets. `code: 'FORCE'` permet une issue de secours coûteuse : +2 alarme et −18 au sac (plancher 0). Le trésor n'accorde sa récompense de 48 qu'une fois.
 
+Un coffre resté fermé donne une seconde tentative après les accusations : `vaultRetries` passe de 0 à 1, puis le groupe doit fuir, avec ou sans trésor. Sortir les mains vides donne la victoire à l'agent encore infiltré ; sans agent actif, personne ne gagne. Cela permet de réagir à un faux chiffre plutôt que de perdre sans pouvoir renégocier.
+
+Les bots réagissent aussi à un voleur qui s'enrichit à répétition, même s'il annonce ses vols. Leur soupçon utilise les trois dernières actions et baisse lorsqu'il reprend un poste ou aide le groupe. Un bot distancé peut réclamer sa part en concurrençant le leader sur le butin.
+
 Chaque résolution passe par une révélation visible, y compris la manche qui termine la partie. Gros portraits, promesse → action réelle, gain personnel, conséquence du poste, alarme avant/après, sac avant/après. La révélation attend la validation des joueurs (avec délai de secours), puis ouvre le vote ou le résultat. Les preuves restent visibles au vote. Un rythme de projecteur met successivement chaque complice au centre.
 
 ## Contrat technique 0.2
@@ -36,6 +40,7 @@ View reste explicitement projetée : champs publics existants (players, phase, r
 - `myClues: {spotId:string;index:number;value:string}[]`
 - `mySearch: {spotId:string;opened:number[];found:boolean}|null`
 - `myTarget: string|null`, `myCode: string` (restaurer son propre choix après reconnexion)
+- `vaultRetries: number` (0 puis 1 pour l'unique seconde tentative au coffre)
 
 `Finding` conserve id/action/promise/gain/betrayed et ajoute `detail:string`.
 `Report` conserve findings/incidents/alarmAdded/text et ajoute `alarmBefore:number;alarmAfter:number;poolBefore:number;poolAfter:number`.

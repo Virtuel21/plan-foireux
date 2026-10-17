@@ -27,11 +27,11 @@ export type Result = { kind: 'escape' | 'fbi' | 'police' | 'missed'; winners: st
 export type Game = {
   players: Player[]; roles: Record<string, Role>; choices: Record<string, Choice>; votes: Record<string, string>;
   phase: Phase; roomIndex: number; rooms: Room[]; alarm: number; pool: number; code: string;
-  objective: boolean; report: Report | null; history: { id: string; betrayed: boolean }[]; log: string[];
+  objective: boolean; report: Report | null; history: { id: string; action: Action; betrayed: boolean }[]; log: string[];
   deadline: number; turn: number; result: Result | null; agentExposed: boolean; rng: () => number;
   discoveries: Discovery[]; claims: Claim[]; privateClues: Record<string, Clue[]>;
   searches: Record<string, Search>; envelopes: Record<string, number>; discoveryPriority: Record<string, string[]>;
-  revealStarted: number; pendingResult: { kind: Result['kind']; text: string } | null;
+  revealStarted: number; pendingResult: { kind: Result['kind']; text: string } | null; vaultRetries: number;
 };
 export type View = {
   players: Player[]; phase: Phase; roomIndex: number; rooms: Room[]; alarm: number; pool: number;
@@ -39,7 +39,7 @@ export type View = {
   result: Result | null; agentExposed: boolean; myRole: Role; myChoice: Action | null;
   myVote: string | null; voteCount: number; myId: string; spots: typeof SPOTS;
   discoveries: Discovery[]; claims: Claim[]; myClues: Clue[]; mySearch: Search | null;
-  myTarget: string | null; myCode: string;
+  myTarget: string | null; myCode: string; vaultRetries: number;
 };
 
 export function random(seed: number) {
@@ -98,7 +98,7 @@ export function createGame(players: Player[], seed: number, now = Date.now()): G
     objective: false, report: null, history: [], log: ['Le musée ferme ses portes. À vous de jouer.'],
     deadline: now + 45_000, turn: 1, result: null, agentExposed: false, rng,
     discoveries: [], claims: [], privateClues: Object.fromEntries(players.map(p => [p.id, []])),
-    searches: {}, envelopes, discoveryPriority, revealStarted: 0, pendingResult: null,
+    searches: {}, envelopes, discoveryPriority, revealStarted: 0, pendingResult: null, vaultRetries: 0,
   };
 }
 
@@ -111,7 +111,7 @@ export function publicView(g: Game, id: string): View {
     myRole: g.roles[id] ?? 'burglar', myChoice: g.choices[id]?.action ?? null,
     myVote: g.votes[id] ?? null, voteCount: Object.keys(g.votes).length, myId: id,
     spots: SPOTS, discoveries: g.discoveries, claims: g.claims, myClues: g.privateClues[id] ?? [],
-    mySearch: g.searches[id] ?? null, myTarget: g.choices[id]?.target ?? null, myCode: g.choices[id]?.code ?? '',
+    mySearch: g.searches[id] ?? null, myTarget: g.choices[id]?.target ?? null, myCode: g.choices[id]?.code ?? '', vaultRetries: g.vaultRetries,
   });
 }
 
@@ -254,7 +254,7 @@ export function resolveRoom(g: Game, now = Date.now()) {
     }
     if (!details.has(p.id)) details.set(p.id, c.action === 'cover' ? 'Prêt à sauver un poste, mais personne ne manquait. +0.' : 'Fouille incomplète : aucun indice ni gain.');
     const gain = gains.get(p.id) ?? 0, betrayed = p.promise !== c.action;
-    p.money += gain; g.history.push({ id: p.id, betrayed });
+    p.money += gain; g.history.push({ id: p.id, action: c.action, betrayed });
     return { id: p.id, action: c.action, promise: p.promise, gain, betrayed, detail: details.get(p.id)!, ...(c.target ? { target: c.target } : {}) };
   });
   g.alarm = Math.max(0, Math.min(ALARM_MAX, alarmBefore + alarmDelta));
@@ -264,11 +264,19 @@ export function resolveRoom(g: Game, now = Date.now()) {
   g.phase = 'reveal'; g.revealStarted = now; g.deadline = now + REVEAL_TIMEOUT_MS; g.turn++;
   for (const p of g.players) p.ready = false;
   if (g.alarm >= ALARM_MAX) g.pendingResult = { kind: ps.some(p => g.roles[p.id] === 'agent') ? 'fbi' : 'police', text: 'La police est entrée. Le butin est perdu.' };
-  else if (g.roomIndex === 4) g.pendingResult = g.objective ? { kind: 'escape', text: 'Le fourgon est parti. Le plus riche des braqueurs remporte le casse !' } : { kind: 'missed', text: 'Vous êtes sortis les mains vides : le trésor est resté dans le coffre.' };
+  else if (g.roomIndex === 4) {
+    if (g.objective) g.pendingResult = { kind: 'escape', text: 'Le fourgon est parti. Le plus riche des braqueurs remporte le casse !' };
+    else if (ps.some(p => g.roles[p.id] === 'agent')) g.pendingResult = { kind: 'fbi', text: 'L’agent a fait sortir le groupe les mains vides. Le trésor est resté dans le coffre : le FBI gagne.' };
+    else g.pendingResult = { kind: 'missed', text: 'Vous êtes sortis les mains vides : le trésor est resté dans le coffre.' };
+  }
 }
 
 function nextRoom(g: Game, now: number) {
-  g.roomIndex++; balanceTasks(g); g.phase = 'promise'; g.choices = {}; g.votes = {}; g.searches = {};
+  if (g.roomIndex === 3 && !g.objective && g.vaultRetries < 1) {
+    g.vaultRetries++;
+    g.log.unshift('Le coffre résiste. Dernière tentative : vérifiez les annonces, retrouvez un indice ou forcez la serrure !');
+  } else g.roomIndex++;
+  balanceTasks(g); g.phase = 'promise'; g.choices = {}; g.votes = {}; g.searches = {};
   g.report = null; g.pendingResult = null;
   for (const p of g.players) { p.promise = null; p.ready = false; }
   g.turn++; g.deadline = now + 45_000;
@@ -333,11 +341,17 @@ export function botCommand(g: Game, p: Player): Command | null {
   }
   if (g.phase === 'promise') {
     const count = (action: Action) => active(g).filter(t => t.promise === action).length;
+    const leader = [...active(g)].sort((a, b) => b.money - a.money)[0];
+    const spot = botSpot(g, p.id);
+    const behindGreedyLeader = leader?.id !== p.id && leader?.promise === 'loot' && leader.money - p.money >= 12;
+    const checkingPublicClue = !spot || g.discoveries.some(d => d.spotId === spot.id);
     let action: Action;
     if (count('a') < room.a.need) action = 'a';
     else if (count('b') < room.b.need) action = 'b';
     else if (g.alarm >= 2 && !count('repair')) action = 'repair';
-    else if (botSpot(g, p.id) && !count('search')) action = 'search';
+    // A rich player cannot expect everyone else to keep financing their jackpot.
+    else if (behindGreedyLeader && (checkingPublicClue || r() < .35)) action = 'loot';
+    else if (spot && !count('search')) action = 'search';
     else action = r() < .65 ? 'loot' : 'cover';
     return { type: 'promise', action, turn };
   }
@@ -363,8 +377,17 @@ export function botCommand(g: Game, p: Player): Command | null {
     return { type: 'choose', action, turn };
   }
   if (g.phase === 'vote') {
-    const suspects = active(g).filter(t => t.id !== p.id).map(t => ({ p: t, n: g.history.filter(h => h.id === t.id && h.betrayed).length })).sort((a, b) => b.n - a.n);
-    const target = suspects[0]?.n >= 2 && r() < .65 ? suspects[0].p.id : 'skip';
+    const richest = Math.max(...active(g).map(t => t.money));
+    const suspects = active(g).filter(t => t.id !== p.id).map(t => {
+      const recent = g.history.filter(h => h.id === t.id).slice(-3);
+      const thefts = recent.filter(h => h.action === 'loot').length;
+      const brokenPromises = recent.filter(h => h.betrayed).length;
+      let greed = thefts >= 2 && t.money - p.money >= 12 && t.money >= richest ? thefts >= 3 ? .86 : .48 : 0;
+      // Returning to useful work is observable evidence; suspicion does not last forever.
+      if (recent.length && ['a', 'b', 'repair', 'cover'].includes(recent.at(-1)!.action)) greed *= .3;
+      return { p: t, suspicion: Math.max(brokenPromises >= 2 ? .65 : 0, greed) };
+    }).sort((a, b) => b.suspicion - a.suspicion || b.p.money - a.p.money);
+    const target = suspects[0]?.suspicion > 0 && r() < suspects[0].suspicion ? suspects[0].p.id : 'skip';
     return { type: 'vote', target, turn };
   }
   return null;

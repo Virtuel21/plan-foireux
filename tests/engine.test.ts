@@ -171,13 +171,40 @@ test('successful play banks the common bag only after the final reveal and exclu
   assert.ok(g.players.every(p => p.exposed && p.money >= 22)); assert.equal(g.report!.poolAfter, 88);
 });
 
-test('escaping without the treasure fails after its reveal; ejected agents cannot win a later raid', () => {
+test('an active agent wins an empty-handed escape after its reveal, but an ejected agent cannot', () => {
   const missed = game(); missed.roomIndex = 4; safeChoices(missed); resolveRoom(missed, 0); dismiss(missed);
-  assert.equal(missed.result?.kind, 'missed'); assert.ok(missed.players.every(p => p.money === 0));
+  assert.equal(missed.result?.kind, 'fbi'); assert.match(missed.result!.text, /L’agent a fait sortir le groupe les mains vides/);
+  assert.deepEqual(missed.result!.winners, missed.players.filter(p => missed.roles[p.id] === 'agent').map(p => p.id));
+  assert.ok(missed.players.every(p => p.money === 0));
+  const noAgent = game(); noAgent.roomIndex = 4; const exposed = noAgent.players.find(p => noAgent.roles[p.id] === 'agent')!;
+  exposed.active = false; exposed.exposed = 'agent'; noAgent.agentExposed = true; safeChoices(noAgent); resolveRoom(noAgent, 0); dismiss(noAgent);
+  assert.equal(noAgent.result?.kind, 'missed'); assert.deepEqual(noAgent.result!.winners, []);
   const g = game(); const agent = g.players.find(p => g.roles[p.id] === 'agent')!;
   agent.active = false; agent.exposed = 'agent'; g.agentExposed = true; g.alarm = 5;
   for (const p of g.players.filter(p => p.active)) g.choices[p.id] = { action: 'loot' };
   resolveRoom(g, 0); dismiss(g); assert.equal(g.result?.kind, 'police'); assert.deepEqual(g.result?.winners, []);
+});
+
+test('a failed vault grants exactly one fresh negotiation, search and code attempt before escape', () => {
+  const g = game(); g.roomIndex = 3;
+  const failVault = (now: number) => {
+    g.phase = 'secret'; g.players.forEach(p => p.ready = false);
+    choices(g, ['a', 'b', 'cover', 'cover']); g.choices.p0.code = '000'; resolveRoom(g, now); dismiss(g);
+    assert.equal(g.phase, 'vote');
+    for (const p of g.players) assert.equal(command(g, p.id, { type: 'vote', target: 'skip' }), true);
+    advance(g, now + 9_000);
+  };
+  failVault(0); assert.equal(g.roomIndex, 3); assert.equal(g.vaultRetries, 1); assert.equal(publicView(g, 'p0').vaultRetries, 1);
+  assert.equal(g.phase, 'promise'); assert.equal(g.objective, false); assert.deepEqual(g.choices, {}); assert.ok(g.players.every(p => !p.ready && p.promise === null));
+  assert.match(g.log[0], /Dernière tentative/);
+  g.phase = 'secret'; assert.equal(command(g, 'p2', { type: 'inspect', target: 'frame', step: 0 }), true);
+  failVault(50_000); assert.equal(g.roomIndex, 4); assert.equal(g.vaultRetries, 1); assert.equal(g.phase, 'promise');
+});
+
+test('a correctly opened vault goes directly to escape without a redundant retry', () => {
+  const g = game(); g.roomIndex = 3; safeChoices(g); resolveRoom(g, 0); dismiss(g);
+  g.votes = Object.fromEntries(g.players.map(p => [p.id, 'skip'])); resolveVote(g, 9_000);
+  assert.equal(g.roomIndex, 4); assert.equal(g.vaultRetries, 0); assert.equal(g.objective, true);
 });
 
 test('votes require absolute majority, erase ejected money and rebalance future heavy tasks', () => {
@@ -212,6 +239,28 @@ test('bots inspect and claim through legal commands, and can use false public co
   vault.claims = [0, 1, 2].map(index => ({ id: 'other', index, value: '9' }));
   Object.defineProperty(vault, 'code', { get() { throw Error('Bots must never inspect the authoritative code'); } });
   assert.equal(botCommand(vault, burglar)!.code, '999'); vault.claims = []; assert.equal(botCommand(vault, burglar)!.code, 'FORCE');
+});
+
+test('bots can suspect a rich chronic thief even with honest promises, and recent help cools suspicion', () => {
+  const g = game(); g.phase = 'vote'; g.players[0].money = 54; g.players[1].money = 9;
+  g.history = Array.from({ length: 3 }, () => ({ id: 'p0', action: 'loot' as const, betrayed: false }));
+  g.rng = () => .8;
+  assert.equal(botCommand(g, g.players[1])!.target, 'p0');
+  g.history.push({ id: 'p0', action: 'a', betrayed: false });
+  assert.equal(botCommand(g, g.players[1])!.target, 'skip');
+  g.history.push({ id: 'p0', action: 'b', betrayed: false });
+  g.rng = () => .1;
+  assert.equal(botCommand(g, g.players[1])!.target, 'skip');
+});
+
+test('a trailing bot competes with an announced rich looter once mandatory posts are covered', () => {
+  const g = game(); g.players[0].money = 30; g.players[0].promise = 'loot';
+  g.players[1].promise = 'a'; g.players[2].promise = 'b';
+  g.discoveries.push({ spotId: 'frame', index: 0, ownerId: 'p1' });
+  g.rng = () => .99;
+  assert.equal(botCommand(g, g.players[3])!.action, 'loot');
+  g.players[2].promise = null;
+  assert.equal(botCommand(g, g.players[3])!.action, 'b');
 });
 
 test('full bot-only games can progress through all command phases without a stranded secret or reveal', () => {
