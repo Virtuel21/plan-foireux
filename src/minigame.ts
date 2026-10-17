@@ -259,13 +259,22 @@ export class Minigame {
       );
       this.draw();
     });
-    this.root.querySelector(".restart-cut")?.addEventListener("click", () => {
+    const restartCut = () => {
       if (this.paused || t.done) return;
       t.cutIndex = 0;
       t.cutErrors = 0;
       t.cutSamples = 0;
       t.stage = 0;
+      const first = cutPath(t)[0];
+      t.cutX = first[0];
+      t.cutY = first[1];
+      this.publish();
       this.draw();
+    };
+    const restart = this.root.querySelector(".restart-cut");
+    restart?.addEventListener("click", restartCut);
+    restart?.addEventListener("pointerup", (e) => {
+      if ((e as PointerEvent).pointerType === "touch") restartCut();
     });
   }
   wires() {

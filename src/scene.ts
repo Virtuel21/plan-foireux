@@ -58,6 +58,7 @@ export class Museum {
   frames = 0;
   lastStats = 0;
   ready = false;
+  suspended = false;
   lines: HTMLDivElement[] = [];
   constructor(
     public container: HTMLElement,
@@ -103,7 +104,7 @@ export class Museum {
     this.scene.add(fill);
     const loader = new GLTFLoader();
     loader.load(
-      `${import.meta.env.BASE_URL}models/museum.glb?v=2.0.0`,
+      `${import.meta.env.BASE_URL}models/museum.glb?v=2.0.1`,
       (gltf) => {
         this.room = gltf.scene;
         this.configure(this.room);
@@ -470,7 +471,7 @@ export class Museum {
   }
   animate = () => {
     requestAnimationFrame(this.animate);
-    if (document.hidden) {
+    if (document.hidden || this.suspended) {
       this.clock.getDelta();
       return;
     }

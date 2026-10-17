@@ -34,6 +34,29 @@ test("landscape touchscreen: precise canvas cutting and three rotary radio frequ
         .map((p) => p.split(",").map(Number)),
     );
     const cdp = await ctx.newCDPSession(page);
+    // Inaccurate touch trace, then a single tap must reset it without an extra attempt.
+    const bad = [
+      ...Array.from({ length: 30 }, (_, i) => [30 + (i % 2) * 15, 40]),
+      ...points,
+    ];
+    for (let i = 0; i < bad.length; i++)
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: i ? "touchMove" : "touchStart",
+        touchPoints: [
+          {
+            x: rect.x + (bad[i][0] / 500) * rect.width,
+            y: rect.y + (bad[i][1] / 300) * rect.height,
+            id: 0,
+          },
+        ],
+      });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+    await expect(page.locator(".trial-status")).toContainText("trop imprécise");
+    await page.locator(".restart-cut").tap();
+    await expect(page.locator(".cut-percent")).toHaveText("0 %");
     for (let i = 0; i < points.length; i++)
       await cdp.send("Input.dispatchTouchEvent", {
         type: i === 0 ? "touchStart" : "touchMove",
@@ -138,4 +161,22 @@ test("landscape touchscreen: precise canvas cutting and three rotary radio frequ
   } finally {
     await ctx.close();
   }
+});
+
+test("each training attempt owns its timer after changing exercise", async ({
+  page,
+}) => {
+  await page.clock.install();
+  await page.goto(process.env.PF_TEST_URL || "/");
+  await page.getByRole("button", { name: "Essayer les épreuves" }).click();
+  await page.locator('[data-practice="secure"]').click();
+  await page.clock.fastForward(17000);
+  await page.getByRole("button", { name: "Retour", exact: true }).click();
+  await page.locator('[data-practice="loot"]').click();
+  await page.clock.fastForward(3000);
+  const before = await page.locator(".meter-needle").getAttribute("style");
+  await page.clock.fastForward(400);
+  const after = await page.locator(".meter-needle").getAttribute("style");
+  expect(after).not.toEqual(before);
+  await expect(page.locator(".trial-clock")).not.toHaveText("00:00");
 });

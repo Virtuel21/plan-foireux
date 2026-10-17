@@ -180,7 +180,7 @@ export class Session {
       history.replaceState(
         null,
         "",
-        `${location.pathname}?v=2.0.0#room=${this.room}`,
+        `${location.pathname}?v=2.0.1#room=${this.room}`,
       );
       this.emit();
     });
@@ -332,7 +332,7 @@ export class Session {
         history.replaceState(
           null,
           "",
-          `${location.pathname}?v=2.0.0#room=${this.room}`,
+          `${location.pathname}?v=2.0.1#room=${this.room}`,
         );
         this.emit();
       }

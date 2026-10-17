@@ -18,6 +18,7 @@ let minigame: Minigame | null = null,
   practice = false,
   modal = "",
   previousFocus: HTMLElement | null = null;
+let practiceTimer: ReturnType<typeof setInterval> | undefined;
 let muted = localStorage.getItem("pf-muted") === "1";
 const session = new Session(
   localStorage.getItem("pf-name") || "Julien",
@@ -127,6 +128,9 @@ function render(s: Snapshot) {
       s.status === "reconnecting";
     $("#trial-root").classList.toggle("entering", v.phase === "transition");
   } else if (!practice && minigame) disposeTrial();
+  if (museum)
+    museum.suspended =
+      practice || (!!v && ["transition", "minigame"].includes(v.phase));
   if (v?.phase === "transition") {
     const focus = museum?.transitionFocus(v.myChoice);
     if (focus) {
@@ -263,6 +267,9 @@ function closeModal() {
   previousFocus?.focus({ preventScroll: true });
 }
 function disposeTrial() {
+  if (museum) museum.suspended = false;
+  clearInterval(practiceTimer);
+  practiceTimer = undefined;
   minigame?.dispose();
   minigame = null;
   trialRound = 0;
@@ -298,6 +305,8 @@ function startPractice(action: Parameters<typeof newTrial>[0]) {
         minigame.feedback("Temps écoulé. Retour pour réessayer.");
     }
   }, 100);
+  practiceTimer = timer;
+  if (museum) museum.suspended = true;
   $("#app").inert = true;
 }
 document.addEventListener("input", (e) => {
@@ -399,7 +408,7 @@ document.addEventListener("click", async (e) => {
       notify("Le plein écran n’est pas disponible dans ce navigateur.");
     }
   } else if (action === "invite") {
-    const url = `${location.origin}${location.pathname}?v=2.0.0#room=${session.room}`;
+    const url = `${location.origin}${location.pathname}?v=2.0.1#room=${session.room}`;
     try {
       await navigator.clipboard.writeText(url);
       notify("Invitation copiée.");

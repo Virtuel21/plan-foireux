@@ -6,21 +6,23 @@
 - TypeScript/Vite et `npm run format:check` passent. Les 33 ressources du manifeste ont leurs tailles et SHA-256 vérifiés. Les trois MP3 sont identiques aux fichiers fournis par Julien.
 - Les scripts Blender du musée et de l’export ont été exécutés. `POST_Painting` est une vraie racine du GLB ; la voiture et `PROP_Escape` sont supprimés des sources et de l’export. Le personnage partagé et ses couleurs sont conservés.
 
-## Douze parcours Chrome
+## Treize parcours Chrome
 
-Les douze scénarios Playwright ont été exécutés en plusieurs commandes, sans modification de l’état des parties depuis les tests :
+Les treize scénarios Playwright ont été exécutés en plusieurs commandes, sans modification de l’état des parties depuis les tests :
 
 1. Six formats : **1440×900, 844×390, 740×360, 667×375, 390×844 et 320×740**. Huit repères visibles, cibles de 44 pixels minimum, aucune intersection ni sortie d’écran, pas de débordement horizontal, poste sélectionné et gain lisibles.
 2. Câbles sur deux panneaux, terminés par clics/taps, glisser et clavier.
 3. Perceuse, goupilles et sac terminés avec leurs commandes, après augmentation de difficulté.
 4. Réduction du mouvement et focus de la fenêtre de règles.
 5. Touches Chrome réelles (émulation tactile) : maintenir/relâcher pour perceuse et sac, taps pour goupilles.
-6. Découpe réussie par tracé tactile sur le contour, précision mesurée 100 %. Talkie terminé en trois fréquences, avec glisser tactile du bouton puis flèches clavier. Boutons rotatifs mesurés à au moins 44×44 pixels.
+6. Découpe volontairement trop imprécise, remise à zéro par un seul tap sur Recommencer, puis découpe réussie par tracé tactile sur le contour, précision mesurée 100 %. Talkie terminé en trois fréquences, avec glisser tactile du bouton puis flèches clavier. Boutons rotatifs mesurés à au moins 44×44 pixels.
 7. Quatre contextes WebRTC réels et **deux manches** : quatre joueurs prêts ; changement secret invisible chez les autres ; progression et rechargement d’un invité ; pause/reprise ; rechargement de l’hôte avec conservation des rôles ; vote simultané donnant 3/4 chez les quatre clients ; puis sélection privée d’une cible FBI et réussite du talkie. La cible avait terminé son épreuve et apparaît malgré cela en échec à la révélation. Le FBI conserve son poste public de couverture ; aucun émetteur n’est révélé.
 
 Les captures ont été examinées : musée paysage, promesses avec portraits/noms, découpe, talkie, quatre portraits de bilan et compteurs de vote. Les fenêtres peuvent défiler sur les petits écrans ; tous les boutons de vote restent accessibles. Le chrono du bilan/vote est aussi affiché dans la fenêtre.
 
 Les trois pistes musicales sont intégrées localement. Lecture de l’accueil et du premier thème en partie vérifiée dans Chrome ; le passage au second thème est vérifié en plaçant la lecture près de la fin de la première piste, puis en constatant la nouvelle piste décodée et en lecture. Le mute persistant coupe effets et musique. Cette vérification porte sur la lecture navigateur, pas sur une écoute critique de mixage sur téléphone physique.
+
+Un treizième scénario vérifie avec une horloge contrôlée que le minuteur d’un entraînement terminé ne fige jamais le suivant. La scène 3D est suspendue derrière les épreuves 2D opaques pour libérer du temps de calcul sur mobile.
 
 ## Partie complète avec délais réels
 
