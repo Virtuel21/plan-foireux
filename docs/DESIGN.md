@@ -1,9 +1,27 @@
-# Direction de la première version
+# Direction artistique et UX — v1
 
-Le diorama occupe l'essentiel de l'écran ; les promesses se lisent à droite et les trois décisions en bas, comme sur la référence. La page ouvre directement sur le musée et une invitation à jouer, sans page marketing.
+Le dernier brief fourni le 17 octobre remplace les cartes d’actions, l’éjection et les inspections des versions 0.x.
 
-Palette : encre #102737, papier #fff0cf, or #ffb321, bordeaux #743a3f, pierre #bd9c76, turquoise #2aa6a3. Titres condensés et épais (Barlow Condensed), corps lisible (Nunito Sans), polices système en secours. Les couleurs des joueurs sont complétées par leurs noms et numéros.
+## Direction
 
-Modèle commun construit dans Blender : proportions de figurine, visage et masque en volume, bonnet côtelé, sac, vêtements et chaussures. Matière nommée Cloth pour les variantes. Les pivots permettent les animations d'attente, marche et travail dans Three.js. Le GLB et le script source restent versionnés.
+Un musée Art déco, à la fois chaleureux et louche : bleu pétrole, bordeaux, laiton, pierre chaude, silhouettes cartoon arrondies. Les modèles sont construits dans Blender avec biseaux, profils lissés et matériaux PBR ; le décor reste entièrement 3D, avec un socle et un mur avant absent. La caméra orthographique cadre les postes sans navigation obligatoire.
 
-Le plan a été confronté à la référence : la recommandation générique de vitrine et de palette verte issue de UI/UX Pro Max est écartée ; le musée jouable et la palette de l'image guident la réalisation. On conserve les conseils de lisibilité, cibles tactiles, focus clavier et réduction des animations.
+Le skill UI/UX Pro Max a été appliqué. La recherche initiale trop générique renvoyait une vitrine marketing ; la recherche ciblée « gaming entertainment immersive » a fourni la direction 3D immersive. Les recommandations de hiérarchie, contraste, feedback, clavier, safe areas, mouvements réduits et gestes alternatifs ont été retenues. La palette reste adaptée au musée plutôt qu’au néon esport proposé par défaut.
+
+DM Sans compose les informations ; Barlow Condensed ExtraBold porte les titres. Les contrôles ont une hauteur minimale de 44 pixels CSS. Le gain et l’effet collectif sont dans les repères de poste et dans le pied d’écran. Le vert des promesses est doublé d’une coche et d’un compte ; il n’utilise jamais le choix privé pour certifier le plan.
+
+## Paysage mobile
+
+Le HUD, le titre de phase et le choix local entourent le diorama, sans colonne de cartes. Sur écran large et peu haut, les repères se répartissent en haut et en bas avec des lignes d’ancrage, pour dégager les objets et éviter les collisions. Le calcul évite le recouvrement des repères. Le coffre et la sécurité restent des objets cliquables ; les noms des joueurs donnent accès au vol et au vote.
+
+Le portrait reste utilisable avec un cadrage et une hiérarchie spécifiques. La rotation n’est jamais bloquée par un écran obligatoire. Les safe areas sont prises en compte. Le plein écran et le verrouillage paysage sont seulement demandés lorsque le navigateur les permet.
+
+## Mini-jeux
+
+Épreuves en 2D, temps basé sur le delta de simulation, progression sérialisée toutes les 250 ms. Les câbles permettent le glisser ou deux clics/taps et les boutons sont accessibles au clavier. Les trois autres épreuves utilisent un grand bouton et Espace. Les bons points restent acquis après une erreur. La transition ferme le musée puis ouvre l’épreuve pendant 600 ms ; les 18 secondes et les entrées démarrent ensuite. La préférence reduced-motion retire l’iris.
+
+L’exemple de gestes est présent dans chaque épreuve, avec deux étapes et un repère animé discret. Il ne montre pas la bonne borne du puzzle réel. Le salon offre les quatre entraînements. Une réussite anticipée reste dans l’épreuve jusqu’à l’échéance commune.
+
+## Vérification
+
+La recette automatique relève les dimensions et intersections des sept repères, vérifie l’absence de débordement horizontal, les zones de 44 pixels, le choix sélectionné et les erreurs JavaScript. Les quatre épreuves sont terminées par leurs vrais contrôles, les câbles aussi par glisser et clavier. Les formats, résultats et limites physiques sont consignés dans `VALIDATION.md`.

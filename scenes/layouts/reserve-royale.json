@@ -1,0 +1,9 @@
+{
+  "name": "La réserve royale",
+  "zones": { "vault": ["drill", "loot"], "entry": ["secure", "bags"] },
+  "offsets": {
+    "drill": [0.8, 0.15],
+    "loot": [-0.45, -0.45],
+    "secure": [-0.2, -0.55]
+  }
+}

@@ -1,328 +1,446 @@
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { ACTIONS, ALARM_MAX, COLORS, SPOTS, advance, apply, botCommand, createGame, makeRooms, publicView, resolveRoom, resolveVote, type Action, type Command, type Game, type Player } from '../src/engine';
-
-const players = (n = 4): Player[] => Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `Player ${i}`, color: COLORS[i], bot: false, online: true, active: true, money: 0, promise: null, ready: false, exposed: null }));
-const game = (n = 4, seed = 42) => createGame(players(n), seed, 0);
-function command(g: Game, id: string, input: Omit<Command, 'turn'>) { return apply(g, id, { ...input, turn: g.turn }, 0); }
-function choices(g: Game, actions: Action[]) {
-  for (let i = 0; i < actions.length; i++) { g.players[i].promise = actions[i]; g.choices[g.players[i].id] = { action: actions[i] }; }
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  advance,
+  apply,
+  CONFIG,
+  createGame,
+  legal,
+  player,
+  publicView,
+  recommended,
+  resolve,
+  setOnline,
+  type Action,
+  type Choice,
+  type Game,
+} from "../src/engine";
+const players = () =>
+  ["Julien", "Léa", "Sarah", "Max"].map((n, i) => player(String(i), n, i));
+const game = () => createGame(players(), 143, 0, () => 0.99);
+function phase(g: Game, name: Game["phase"]) {
+  g.phase = name;
+  g.phaseStarted = 0;
+  g.deadline = 100000;
 }
-function inspect(g: Game, id: string, spotId: string) {
-  assert.equal(command(g, id, { type: 'begin-search', target: spotId }), true);
-  const mark = publicView(g, id).mySearch!.mark!;
-  assert.equal(command(g, id, { type: 'inspect', target: spotId, step: (mark + 1) % 12 }), true);
-  assert.equal(command(g, id, { type: 'inspect', target: spotId, step: mark }), true);
+function round(
+  g: Game,
+  actions: (Action | Choice)[],
+  success = [true, true, true, true],
+  jam = true,
+) {
+  g.choices = Object.fromEntries(
+    actions.map((a, i) => [
+      String(i),
+      typeof a === "string" ? { action: a } : a,
+    ]),
+  );
+  g.successes = Object.fromEntries(success.map((s, i) => [String(i), s]));
+  g.jams = { "3": jam };
+  g.wallets = Object.fromEntries(g.players.map((p) => [p.id, p.money]));
+  return resolve(g);
 }
-function dismiss(g: Game, now = g.revealStarted + 8_000) {
-  for (const p of g.players.filter(p => p.active)) assert.equal(command(g, p.id, { type: 'continue' }), true);
-  advance(g, now);
+function next(g: Game, watched?: string) {
+  phase(g, "reveal");
+  advance(g, g.deadline);
+  if (g.phase === "ended") return;
+  if (watched)
+    g.votes = { "0": watched, "1": watched, "2": watched, "3": "pass" };
+  advance(g, g.deadline);
 }
-function safeChoices(g: Game) {
-  let count = 0;
-  const room = g.rooms[g.roomIndex];
-  for (const p of g.players.filter(p => p.active)) {
-    const action: Action = count < room.a.need ? 'a' : count < room.a.need + room.b.need ? 'b' : 'cover';
-    p.promise = action; g.choices[p.id] = { action, ...(g.roomIndex === 3 && action === 'a' ? { code: g.code } : {}) }; count++;
-  }
-}
-
-test('seeded rooms remain feasible for 3–6 players and preserve one spare for small crews', () => {
-  assert.equal(ACTIONS.length, 6);
-  for (let n = 3; n <= 6; n++) for (let seed = 0; seed < 100; seed++) {
-    const rooms = makeRooms(seed, n); assert.deepEqual(rooms, makeRooms(seed, n)); assert.equal(rooms.length, 5);
-    for (const room of rooms) { assert.ok(room.a.need + room.b.need <= n); if (n <= 4) assert.equal(room.a.need + room.b.need, 2); }
-  }
-  assert.throws(() => createGame([players()[0], players()[0], players()[1]], 0));
+test("four seats, one independently drawn FBI; public layout seed does not draw roles", () => {
+  const a = createGame(players(), 1, 0, () => 0),
+    b = createGame(players(), 1, 0, () => 0.9);
+  assert.equal(a.layout, b.layout);
+  assert.notDeepEqual(a.roles, b.roles);
+  assert.equal(Object.values(a.roles).filter((r) => r === "agent").length, 1);
+  assert.throws(() => createGame(players().slice(1), 1));
+  assert.throws(() => createGame([players()[0], ...players().slice(0, 3)], 1));
 });
-
-test('public snapshots explicitly omit host secrets and restore only the recipient choice', () => {
-  const g = game(); g.phase = 'secret'; inspect(g, 'p0', 'frame');
-  g.choices.p1 = { action: 'a', code: '321' }; g.votes.p1 = 'p2';
-  const v = publicView(g, 'p0');
-  for (const key of ['roles', 'choices', 'votes', 'code', 'rng', 'history', 'envelopes', 'privateClues', 'searches', 'discoveryPriority', 'pendingResult']) assert.ok(!(key in v));
-  assert.equal(v.myChoice, 'search'); assert.equal(v.myTarget, 'frame'); assert.equal(v.myCode, ''); assert.equal(v.myClues.length, 0);
-  assert.equal(publicView(g, 'p1').myCode, '321'); assert.equal(publicView(g, 'p1').mySearch, null);
-  v.players[0].money = 999; v.mySearch!.opened.push(99); assert.equal(g.players[0].money, 0); assert.equal(g.searches.p0.opened.length, 2);
-});
-
-test('inspection requires an irreversible search commitment and validates only the inscribed face', () => {
+test("private changes and early success do not alter another client projection", () => {
   const g = game();
-  assert.equal(command(g, 'p0', { type: 'begin-search', target: 'frame' }), false);
-  assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step: 0 }), false);
-  g.phase = 'secret';
-  assert.equal(command(g, 'p0', { type: 'begin-search', target: 'bust' }), false);
-  assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step: 0 }), false);
-  assert.equal(command(g, 'p0', { type: 'inspect', target: 'bust', step: 0 }), false);
-  for (const step of [-1, 12, .5, NaN]) assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step }), false);
-  assert.equal(command(g, 'p0', { type: 'choose', action: 'search', target: 'frame' }), false);
-  assert.equal(command(g, 'p0', { type: 'begin-search', target: 'frame' }), true);
-  const v = publicView(g, 'p0'), mark = v.mySearch!.mark!, index = v.spots.find(s => s.id === 'frame')!.clueIndex;
-  assert.equal(v.myChoice, 'search'); assert.equal(v.mySearch!.committed, true); assert.equal(v.mySearch!.value, g.code[index]);
-  assert.equal(g.players[0].ready, false); assert.equal(v.mySearch!.found, false);
-  assert.equal(command(g, 'p0', { type: 'choose', action: 'loot' }), false);
-  assert.equal(command(g, 'p0', { type: 'begin-search', target: 'frame' }), false);
-  g.roomIndex = 2;
-  assert.equal(command(g, 'p0', { type: 'begin-search', target: 'bust' }), false);
-  assert.equal(command(g, 'p0', { type: 'inspect', target: 'bust', step: mark }), false);
-  assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step: (mark + 1) % 12 }), true);
-  assert.equal(g.players[0].ready, false);
-  assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step: mark }), true);
-  assert.equal(publicView(g, 'p0').mySearch!.found, true); assert.equal(g.players[0].ready, true); assert.deepEqual(publicView(g, 'p0').myClues, []);
-  g.choices.p1 = { action: 'a' }; g.choices.p2 = { action: 'b' }; g.choices.p3 = { action: 'cover' }; resolveRoom(g, 0);
-  assert.equal(g.privateClues.p0[0].value, g.code[index]); assert.equal(g.discoveries.length, 1); assert.equal(g.players[0].money, 6);
+  phase(g, "secret");
+  const before = publicView(g, "0", 0);
+  assert.equal(
+    apply(
+      g,
+      "3",
+      { type: "choose", choice: { action: "loot" }, turn: g.turn },
+      1,
+    ),
+    true,
+  );
+  apply(g, "3", { type: "jam", enabled: true, turn: g.turn }, 1);
+  assert.deepEqual(publicView(g, "0", 0), before);
+  phase(g, "minigame");
+  const mini = publicView(g, "0", 0);
+  apply(g, "3", { type: "result", success: true, turn: g.turn }, 1);
+  assert.deepEqual(publicView(g, "0", 0), mini);
+  for (const secret of [
+    "roles",
+    "choices",
+    "jams",
+    "successes",
+    "votes",
+    "wallets",
+  ])
+    assert.equal(Object.hasOwn(mini, secret), false);
 });
-
-test('cache indices and twelve inscription positions are seeded, varied and private until commitment', () => {
-  const mappings = new Set<string>(), marks = new Set<number>();
-  for (let seed = 0; seed < 100; seed++) {
-    const g = game(4, seed), same = game(4, seed);
-    assert.deepEqual(g.spots, same.spots); assert.deepEqual(g.envelopes, same.envelopes);
-    assert.deepEqual(g.spots.map(s => s.clueIndex).sort(), [0, 1, 2]);
-    assert.deepEqual(g.spots.map(s => s.unlockRoom), SPOTS.map(s => s.unlockRoom));
-    mappings.add(g.spots.map(s => s.clueIndex).join(''));
-    for (const mark of Object.values(g.envelopes)) { assert.ok(Number.isInteger(mark) && mark >= 0 && mark < 12); marks.add(mark); }
-    assert.equal(publicView(g, 'p0').mySearch, null);
-    g.phase = 'secret'; command(g, 'p0', { type: 'begin-search', target: 'frame' });
-    const owner = publicView(g, 'p0'), other = publicView(g, 'p1');
-    assert.equal(owner.mySearch!.mark, g.envelopes.frame); assert.equal(owner.mySearch!.value, g.code[g.spots[0].clueIndex]);
-    assert.equal(other.mySearch, null); assert.deepEqual(other.myClues, []);
-    assert.ok(!JSON.stringify(other).includes('"mark"')); assert.ok(!JSON.stringify(other).includes('"value"'));
-  }
-  assert.equal(mappings.size, 6); assert.equal(marks.size, 12);
-});
-
-test('simultaneous search awards a single seeded first-discovery bonus independent of arrival order', () => {
-  const run = (order: string[]) => {
-    const g = game(); g.phase = 'secret';
-    for (const id of order) inspect(g, id, 'frame');
-    g.choices.p2 = { action: 'a' }; g.choices.p3 = { action: 'b' }; resolveRoom(g, 0); return g;
-  };
-  const first = run(['p0', 'p1']), second = run(['p1', 'p0']);
-  assert.deepEqual(first.discoveries, second.discoveries); assert.deepEqual(first.players.map(p => p.money), second.players.map(p => p.money));
-  assert.equal(first.discoveries.length, 1); assert.equal(first.players[0].money + first.players[1].money, 8);
-  assert.equal(first.players.find(p => p.id === first.discoveries[0].ownerId)!.money, 6);
-  assert.equal(publicView(first, 'p0').myClues[0].value, first.code[first.spots[0].clueIndex]); assert.deepEqual(publicView(first, 'p2').myClues, []);
-  assert.equal(first.report!.findings.find(f => f.id === 'p0')!.target, 'frame');
-});
-
-test('a second player can verify a cache privately but an individual cannot farm search money', () => {
-  const g = game(); g.phase = 'secret'; inspect(g, 'p0', 'frame');
-  g.choices.p1 = { action: 'a' }; g.choices.p2 = { action: 'b' }; g.choices.p3 = { action: 'cover' }; resolveRoom(g, 0);
-  g.roomIndex = 2; g.phase = 'secret'; g.choices = {}; g.players.forEach(p => p.ready = false); g.searches = {};
-  for (const id of ['p0', 'p1']) inspect(g, id, 'frame');
-  g.choices.p2 = { action: 'a' }; g.choices.p3 = { action: 'b' }; resolveRoom(g, 40_000);
-  assert.equal(g.report!.findings.find(f => f.id === 'p0')!.gain, 0); assert.equal(g.report!.findings.find(f => f.id === 'p1')!.gain, 2);
-  assert.equal(g.discoveries.length, 1); assert.equal(g.privateClues.p1[0].value, g.code[g.spots[0].clueIndex]);
-});
-
-test('announcements can lie and stay attributed; owning an index is required to announce it', () => {
-  const g = game(); g.privateClues.p0.push({ spotId: 'frame', index: 0, value: g.code[0] });
-  const lie = String((Number(g.code[0]) + 1) % 10);
-  assert.equal(command(g, 'p1', { type: 'claim', target: '0', code: lie }), false);
-  assert.equal(command(g, 'p0', { type: 'claim', target: '1', code: lie }), false);
-  assert.equal(command(g, 'p0', { type: 'claim', target: '0', code: lie }), true);
-  assert.deepEqual(publicView(g, 'p1').claims, [{ id: 'p0', index: 0, value: lie }]);
-  assert.equal(publicView(g, 'p1').myClues.length, 0); assert.equal(publicView(g, 'p0').myClues[0].value, g.code[0]);
-  assert.equal(command(g, 'p0', { type: 'claim', target: '0', code: g.code[0] }), true); assert.equal(g.claims.length, 1);
-});
-
-test('commands reject stale, duplicate, unknown, malformed and post-lock mutations', () => {
+test("promises and secret choices stay editable until their full deadline", () => {
   const g = game();
-  assert.equal(apply(g, 'p0', { type: 'promise', action: 'a', turn: g.turn - 1 }), false);
-  assert.equal(command(g, 'p0', { type: 'promise', action: 'fake' as Action }), false);
-  assert.equal(command(g, 'p0', { type: 'promise', action: 'a', target: 'frame' }), false);
-  assert.equal(apply(g, 'p0', { type: 'promise', action: 'a', turn: g.turn, injected: true } as Command), false);
-  assert.equal(command(g, 'p0', { type: 'clue' }), false);
-  g.phase = 'secret'; inspect(g, 'p0', 'frame');
-  assert.equal(command(g, 'p0', { type: 'choose', action: 'search', target: 'frame', code: '1' }), false);
-  assert.equal(command(g, 'p0', { type: 'choose', action: 'search', target: 'frame' }), false);
-  assert.equal(command(g, 'p0', { type: 'choose', action: 'loot' }), false);
-  assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step: 0 }), false);
-  g.privateClues.p0.push({ spotId: 'frame', index: 0, value: '1' });
-  assert.equal(command(g, 'p0', { type: 'claim', target: '0', code: '9' }), false);
+  phase(g, "promise");
+  assert.ok(
+    apply(
+      g,
+      "0",
+      { type: "promise", choice: { action: "drill" }, turn: g.turn },
+      1,
+    ),
+  );
+  assert.ok(
+    apply(
+      g,
+      "0",
+      { type: "promise", choice: { action: "secure" }, turn: g.turn },
+      2,
+    ),
+  );
+  advance(g, 99999);
+  assert.equal(g.phase, "promise");
+  assert.equal(
+    apply(
+      g,
+      "0",
+      { type: "promise", choice: { action: "loot" }, turn: g.turn },
+      100000,
+    ),
+    false,
+  );
+  advance(g, 100000);
+  assert.equal(g.phase, "secret");
+  assert.ok(
+    apply(
+      g,
+      "0",
+      { type: "choose", choice: { action: "loot" }, turn: g.turn },
+      100001,
+    ),
+  );
+  assert.equal(g.players[0].promise?.action, "secure");
 });
-
-test('stealing dilutes the jackpot and externalizes a visible collective risk', () => {
-  const g = game(); g.pool = 20; choices(g, ['a', 'b', 'loot', 'loot']); resolveRoom(g, 0);
-  assert.deepEqual(g.players.map(p => p.money), [3, 3, 9, 9]); assert.equal(g.alarm, 1); assert.equal(g.pool, 20);
-  assert.deepEqual([g.report!.alarmBefore, g.report!.alarmAfter, g.report!.poolBefore, g.report!.poolAfter], [0, 1, 20, 20]);
-  const reckless = game(); choices(reckless, ['loot', 'loot', 'loot', 'loot']); resolveRoom(reckless, 0);
-  assert.equal(reckless.alarm, 5); assert.equal(reckless.pool, 0); assert.ok(reckless.players.every(p => p.money === 4.5));
-});
-
-test('repair stacks wages but only one alarm reduction, and cover saves one missing person', () => {
-  const g = game(6); g.alarm = 4; choices(g, ['a', 'b', 'repair', 'repair', 'cover', 'cover']); resolveRoom(g, 0);
-  assert.equal(g.alarm, 2); assert.deepEqual(g.players.map(p => p.money), [3, 3, 1, 1, 0, 0]);
-  const rescue = game(); choices(rescue, ['a', 'cover', 'cover', 'loot']); resolveRoom(rescue, 0);
-  assert.equal(rescue.alarm, 1); assert.equal(rescue.players[1].money, 3); assert.equal(rescue.players[2].money, 3);
-  assert.match(rescue.report!.findings[1].detail, /remplacé/);
-  const both = game(); choices(both, ['cover', 'cover', 'cover', 'cover']); resolveRoom(both, 0);
-  assert.equal(both.alarm, 2); assert.equal(both.pool, 0); assert.ok(both.players.every(p => p.money === 1.5));
-});
-
-test('an actual vault code is required, a cover cannot conjure it, and FORCE has an explicit price', () => {
-  const attempt = (code: string) => {
-    const g = game(); g.roomIndex = 3; g.pool = 30; g.phase = 'secret';
-    assert.equal(command(g, 'p0', { type: 'choose', action: 'a', code }), true);
-    g.choices.p1 = { action: 'b' }; g.choices.p2 = { action: 'cover' }; g.choices.p3 = { action: 'cover' };
-    resolveRoom(g, 0); return g;
-  };
-  const good = attempt(game().code); assert.equal(good.objective, true); assert.equal(good.pool, 86); assert.equal(good.alarm, 0);
-  const bad = attempt('000'); assert.equal(bad.objective, false); assert.equal(bad.alarm, 2); assert.equal(bad.players[0].money, 0);
-  const forced = attempt('FORCE'); assert.equal(forced.objective, true); assert.equal(forced.pool, 68); assert.equal(forced.alarm, 2);
-  const redundantForce = game(); redundantForce.roomIndex = 3; redundantForce.pool = 30;
-  choices(redundantForce, ['a', 'a', 'b', 'cover']); redundantForce.choices.p0.code = redundantForce.code; redundantForce.choices.p1.code = 'FORCE';
-  resolveRoom(redundantForce, 0); assert.equal(redundantForce.pool, 68); assert.equal(redundantForce.alarm, 2);
-  const g = game(); g.roomIndex = 3; g.phase = 'secret';
-  for (const code of ['', '12', '12X', '1234', 'force']) assert.equal(command(g, 'p0', { type: 'choose', action: 'a', code }), false);
-});
-
-test('the last disastrous choices are revealed before seizure clears provisional gains', () => {
-  const g = game(); g.alarm = 1; choices(g, ['loot', 'loot', 'loot', 'loot']); resolveRoom(g, 100);
-  assert.equal(g.alarm, ALARM_MAX); assert.equal(g.phase, 'reveal'); assert.equal(g.result, null); assert.ok(g.players.every(p => p.money === 4.5));
-  for (const p of g.players) command(g, p.id, { type: 'continue' });
-  advance(g, 8_099, true); assert.equal(g.phase, 'reveal');
-  advance(g, 8_100); assert.equal(g.phase, 'ended'); assert.equal(publicView(g, 'p0').result?.kind, 'fbi'); assert.ok(g.players.every(p => p.money === 0));
-  assert.equal(g.report!.findings.length, 4); assert.equal(g.report!.alarmAfter, 6);
-});
-
-test('continue is a separate acknowledgement and reveal timeout also progresses', () => {
-  const g = game(); safeChoices(g); resolveRoom(g, 0);
-  assert.equal(command(g, 'p0', { type: 'continue' }), true); assert.equal(command(g, 'p0', { type: 'continue' }), false);
-  advance(g, 8_000); assert.equal(g.phase, 'reveal'); advance(g, 30_000); assert.equal(g.phase, 'vote');
-  assert.ok(g.players.every(p => !p.ready)); assert.equal(g.report!.findings.length, 4);
-});
-
-test('successful play banks the common bag only after the final reveal and excludes the agent from winners', () => {
+test("normalization falls back to a legal promise, otherwise security; transition precedes 18 seconds", () => {
   const g = game();
-  assert.ok(publicView(g, 'p0').players.every(p => p.exposed === null));
-  for (let i = 0; i < 5; i++) {
-    g.roomIndex = i; g.choices = {}; safeChoices(g); resolveRoom(g, i * 100_000);
-    assert.equal(g.alarm, 0); assert.equal(g.result, null); assert.equal(g.phase, 'reveal');
-    if (i === 4) dismiss(g);
+  phase(g, "secret");
+  g.players[0].promise = { action: "drill" };
+  g.vault = 8;
+  g.players[1].promise = { action: "loot" };
+  advance(g, 100000);
+  assert.equal(g.phase, "transition");
+  assert.equal(g.choices["0"].action, "secure");
+  assert.equal(g.choices["1"].action, "loot");
+  assert.equal(g.deadline, 100600);
+  advance(g, 100600);
+  assert.equal(g.deadline, 118600);
+  assert.equal(g.phase, "minigame");
+});
+test("alarm is resolved simultaneously, trace survives a net decrease", () => {
+  const g = game();
+  g.alarm = 4;
+  const r = round(g, ["drill", "secure", "loot", "loot"]);
+  assert.equal(g.alarm, 4);
+  assert.equal(g.result, null);
+  assert.equal(r.trace, "vault");
+  assert.equal(r.jam, 1);
+  const h = game();
+  h.alarm = 3;
+  const rr = round(h, ["secure", "secure", "loot", "secure"]);
+  assert.equal(h.alarm, 0);
+  assert.equal(rr.trace, "entry");
+  assert.equal(h.players[3].money, 6);
+});
+test("simultaneous drillers all earn six even at the cap; completed vault never recedes", () => {
+  const g = game();
+  g.vault = 6;
+  round(g, ["drill", "drill", "drill", "drill"]);
+  assert.equal(g.vault, 8);
+  assert.deepEqual(
+    g.players.map((p) => p.money),
+    [6, 6, 6, 6],
+  );
+  assert.equal(legal(g, "0", { action: "drill" }), false);
+});
+test("loot stock is 12 globally, shared only between successes", () => {
+  for (let n = 1; n <= 4; n++) {
+    const g = game();
+    round(
+      g,
+      ["loot", "loot", "loot", "loot"],
+      [0, 1, 2, 3].map((i) => i < n),
+      false,
+    );
+    assert.equal(
+      g.players.reduce((s, p) => s + p.money, 0),
+      12,
+    );
+    assert.equal(g.players[0].money, 12 / n);
   }
-  assert.equal(g.result?.kind, 'escape'); assert.equal(g.objective, true); assert.equal(g.pool, 88);
-  assert.ok(g.result!.winners.length > 0); assert.ok(g.result!.winners.every(id => g.roles[id] === 'burglar'));
-  assert.ok(g.players.every(p => p.exposed && p.money >= 22)); assert.equal(g.report!.poolAfter, 88);
-  const final = publicView(g, 'p0');
-  assert.ok(final.players.every(p => p.exposed === g.roles[p.id]));
-  assert.deepEqual(final.players.filter(p => p.exposed === 'agent').map(p => p.id), g.players.filter(p => g.roles[p.id] === 'agent').map(p => p.id));
 });
-
-test('an active agent wins an empty-handed escape after its reveal, but an ejected agent cannot', () => {
-  const missed = game(); missed.roomIndex = 4; safeChoices(missed); resolveRoom(missed, 0); dismiss(missed);
-  assert.equal(missed.result?.kind, 'fbi'); assert.match(missed.result!.text, /L’agent a fait sortir le groupe les mains vides/);
-  assert.deepEqual(missed.result!.winners, missed.players.filter(p => missed.roles[p.id] === 'agent').map(p => p.id));
-  assert.ok(missed.players.every(p => p.money === 0));
-  const noAgent = game(); noAgent.roomIndex = 4; const exposed = noAgent.players.find(p => noAgent.roles[p.id] === 'agent')!;
-  exposed.active = false; exposed.exposed = 'agent'; noAgent.agentExposed = true; safeChoices(noAgent); resolveRoom(noAgent, 0); dismiss(noAgent);
-  assert.equal(noAgent.result?.kind, 'missed'); assert.deepEqual(noAgent.result!.winners, []);
-  const g = game(); const agent = g.players.find(p => g.roles[p.id] === 'agent')!;
-  agent.active = false; agent.exposed = 'agent'; g.agentExposed = true; g.alarm = 5;
-  for (const p of g.players.filter(p => p.active)) g.choices[p.id] = { action: 'loot' };
-  resolveRoom(g, 0); dismiss(g); assert.equal(g.result?.kind, 'police'); assert.deepEqual(g.result?.winners, []);
+test("zero successes gives zero money and no extra alarm", () => {
+  const g = game();
+  round(
+    g,
+    ["drill", "secure", "loot", { action: "pocket", target: "0" }],
+    [false, false, false, false],
+  );
+  assert.deepEqual(
+    g.players.map((p) => p.money),
+    [0, 0, 0, 0],
+  );
+  assert.equal(g.alarm, 1);
 });
-
-test('a failed vault grants exactly one fresh negotiation, search and code attempt before escape', () => {
-  const g = game(); g.roomIndex = 3;
-  const failVault = (now: number) => {
-    g.phase = 'secret'; g.players.forEach(p => p.ready = false);
-    choices(g, ['a', 'b', 'cover', 'cover']); g.choices.p0.code = '000'; resolveRoom(g, now); dismiss(g);
-    assert.equal(g.phase, 'vote');
-    for (const p of g.players) assert.equal(command(g, p.id, { type: 'vote', target: 'skip' }), true);
-    advance(g, now + 9_000);
-  };
-  failVault(0); assert.equal(g.roomIndex, 3); assert.equal(g.vaultRetries, 1); assert.equal(publicView(g, 'p0').vaultRetries, 1);
-  assert.equal(g.phase, 'promise'); assert.equal(g.objective, false); assert.deepEqual(g.choices, {}); assert.ok(g.players.every(p => !p.ready && p.promise === null));
-  assert.match(g.log[0], /Dernière tentative/);
-  g.phase = 'secret'; assert.equal(command(g, 'p2', { type: 'begin-search', target: 'frame' }), true);
-  failVault(50_000); assert.equal(g.roomIndex, 4); assert.equal(g.vaultRetries, 1); assert.equal(g.phase, 'promise');
+test("three thieves share four in integers; remainder stays with victim", () => {
+  const g = game();
+  g.players[0].money = 10;
+  round(g, [
+    "secure",
+    ...[1, 2, 3].map(() => ({ action: "pocket" as const, target: "0" })),
+  ]);
+  assert.deepEqual(
+    g.players.map((p) => p.money),
+    [13, 1, 1, 1],
+  );
 });
-
-test('a correctly opened vault goes directly to escape without a redundant retry', () => {
-  const g = game(); g.roomIndex = 3; safeChoices(g); resolveRoom(g, 0); dismiss(g);
-  g.votes = Object.fromEntries(g.players.map(p => [p.id, 'skip'])); resolveVote(g, 9_000);
-  assert.equal(g.roomIndex, 4); assert.equal(g.vaultRetries, 0); assert.equal(g.objective, true);
+test("two thieves on three coins take one each, gains this turn cannot be stolen", () => {
+  const g = game();
+  g.players[0].money = 3;
+  round(g, [
+    "secure",
+    { action: "pocket", target: "0" },
+    { action: "pocket", target: "0" },
+    "loot",
+  ]);
+  assert.deepEqual(
+    g.players.map((p) => p.money),
+    [7, 1, 1, 12],
+  );
+  const h = game();
+  round(h, ["secure", { action: "pocket", target: "0" }, "loot", "drill"]);
+  assert.equal(h.players[1].money, 0);
 });
-
-test('votes require absolute majority, erase ejected money and rebalance future heavy tasks', () => {
-  const g = game(6); const agent = g.players.find(p => g.roles[p.id] === 'agent')!; agent.money = 20;
-  g.phase = 'vote'; g.votes = Object.fromEntries(g.players.map((p, i) => [p.id, i < 3 ? agent.id : 'skip'])); resolveVote(g, 0);
-  assert.equal(agent.active, true);
-  g.phase = 'vote'; g.votes = Object.fromEntries(g.players.filter(p => p.id !== agent.id).map(p => [p.id, agent.id])); resolveVote(g, 0);
-  assert.equal(agent.active, false); assert.equal(agent.money, 0); assert.equal(agent.exposed, 'agent'); assert.equal(g.agentExposed, true);
-  g.players.slice(0, 4).forEach(p => { p.active = false; });
-  const survivor = g.players.find(p => p.active); if (!survivor) g.players[5].active = true;
-  g.phase = 'vote'; g.votes = {}; resolveVote(g, 0);
-  const count = g.players.filter(p => p.active).length;
-  for (const room of g.rooms.slice(g.roomIndex)) assert.ok(room.a.need + room.b.need <= count);
-});
-
-test('timeouts do not collect untouched clues and never magically solve the vault', () => {
-  const g = game(); advance(g, 45_000); assert.equal(g.phase, 'secret'); assert.equal(g.deadline, 105_000); advance(g, 105_000);
-  assert.equal(g.phase, 'reveal'); assert.equal(g.discoveries.length, 0); assert.ok(Object.values(g.privateClues).every(clues => !clues.length));
-  const vault = game(); vault.roomIndex = 3; vault.players[0].promise = 'a'; vault.players[1].promise = 'b';
-  advance(vault, 45_000); advance(vault, 105_000); assert.equal(vault.objective, false); assert.equal(vault.report!.findings[0].gain, 0);
-  const abandoned = game(); abandoned.phase = 'secret'; abandoned.players[0].promise = 'loot';
-  command(abandoned, 'p0', { type: 'begin-search', target: 'frame' });
-  const mark = publicView(abandoned, 'p0').mySearch!.mark!;
-  command(abandoned, 'p0', { type: 'inspect', target: 'frame', step: (mark + 1) % 12 });
-  advance(abandoned, abandoned.deadline);
-  assert.equal(abandoned.phase, 'reveal'); assert.equal(abandoned.report!.findings[0].action, 'search');
-  assert.equal(abandoned.report!.findings[0].gain, 0); assert.match(abandoned.report!.findings[0].detail, /Fouille incomplète/);
-  assert.deepEqual(abandoned.privateClues.p0, []); assert.deepEqual(abandoned.discoveries, []);
-});
-
-test('bots inspect and claim through legal commands, and can use false public code without reading host truth', () => {
-  const g = game(); const p = g.players.find(p => g.roles[p.id] === 'burglar')!;
-  p.promise = 'search'; g.phase = 'secret';
-  const begin = botCommand(g, p)!; assert.equal(begin.type, 'begin-search'); assert.equal(apply(g, p.id, begin), true);
-  const owner = publicView(g, p.id), inspection = botCommand(g, p)!;
-  assert.equal(inspection.type, 'inspect'); assert.equal(inspection.step, owner.mySearch!.mark); assert.equal(inspection.target, owner.mySearch!.spotId);
-  assert.equal(g.players.find(player => player.id === p.id)!.ready, false);
-  let inspected = false;
-  for (let i = 0; i < 5 && !p.ready; i++) { const cmd = botCommand(g, p)!; inspected ||= cmd.type === 'inspect'; assert.equal(apply(g, p.id, cmd), true); }
-  assert.equal(inspected, true); assert.equal(g.choices[p.id].action, 'search'); resolveRoom(g, 0); dismiss(g);
-  const claim = botCommand(g, p)!; assert.equal(claim.type, 'claim'); assert.equal(apply(g, p.id, claim), true);
-  const vault = game(); const burglar = vault.players.find(player => vault.roles[player.id] === 'burglar')!;
-  vault.roomIndex = 3; vault.phase = 'secret'; burglar.promise = 'a'; vault.rng = () => .99;
-  vault.claims = [0, 1, 2].map(index => ({ id: 'other', index, value: '9' }));
-  Object.defineProperty(vault, 'code', { get() { throw Error('Bots must never inspect the authoritative code'); } });
-  assert.equal(botCommand(vault, burglar)!.code, '999'); vault.claims = []; assert.equal(botCommand(vault, burglar)!.code, 'FORCE');
-});
-
-test('bots can suspect a rich chronic thief even with honest promises, and recent help cools suspicion', () => {
-  const g = game(); g.phase = 'vote'; g.players[0].money = 54; g.players[1].money = 9;
-  g.history = Array.from({ length: 3 }, () => ({ id: 'p0', action: 'loot' as const, betrayed: false }));
-  g.rng = () => .8;
-  assert.equal(botCommand(g, g.players[1])!.target, 'p0');
-  g.history.push({ id: 'p0', action: 'a', betrayed: false });
-  assert.equal(botCommand(g, g.players[1])!.target, 'skip');
-  g.history.push({ id: 'p0', action: 'b', betrayed: false });
-  g.rng = () => .1;
-  assert.equal(botCommand(g, g.players[1])!.target, 'skip');
-});
-
-test('a trailing bot competes with an announced rich looter once mandatory posts are covered', () => {
-  const g = game(); g.players[0].money = 30; g.players[0].promise = 'loot';
-  g.players[1].promise = 'a'; g.players[2].promise = 'b';
-  g.discoveries.push({ spotId: 'frame', index: 0, ownerId: 'p1' });
-  g.rng = () => .99;
-  assert.equal(botCommand(g, g.players[3])!.action, 'loot');
-  g.players[2].promise = null;
-  assert.equal(botCommand(g, g.players[3])!.action, 'b');
-});
-
-test('full bot-only games can progress through all command phases without a stranded secret or reveal', () => {
-  let sawSearch = false, sawClaim = false, sawFinalReveal = false;
-  for (let seed = 0; seed < 30; seed++) {
-    const g = game(4, seed); let now = 0;
-    for (let step = 0; step < 500 && g.phase !== 'ended'; step++) {
-      for (const p of g.players) { const cmd = botCommand(g, p); if (cmd) { sawSearch ||= cmd.type === 'inspect'; sawClaim ||= cmd.type === 'claim'; assert.equal(apply(g, p.id, cmd, now), true, JSON.stringify(cmd)); } }
-      sawFinalReveal ||= g.phase === 'reveal' && g.pendingResult !== null; now += 1_000; advance(g, now);
-    }
-    assert.equal(g.phase, 'ended', `seed ${seed} did not finish`);
+test("cross theft and result arrival order do not change the common snapshot", () => {
+  const a = game(),
+    b = game();
+  for (const g of [a, b]) {
+    g.players.forEach((p, i) => (p.money = i + 2));
+    g.wallets = Object.fromEntries(g.players.map((p) => [p.id, p.money]));
+    g.choices = {
+      "0": { action: "pocket", target: "1" },
+      "1": { action: "pocket", target: "0" },
+      "2": { action: "pocket", target: "3" },
+      "3": { action: "pocket", target: "2" },
+    };
   }
-  assert.ok(sawSearch); assert.ok(sawClaim); assert.ok(sawFinalReveal);
+  a.successes = { "0": true, "1": true, "2": true, "3": true };
+  b.successes = { "3": true, "2": true, "1": true, "0": true };
+  resolve(a);
+  resolve(b);
+  assert.deepEqual(
+    a.players.map((p) => p.money),
+    [3, 2, 4, 5],
+  );
+  assert.deepEqual(a.players, b.players);
+  assert.ok(a.players.every((p) => p.money >= 0));
+});
+test("resolution is idempotent and replayed or duplicate results rejected", () => {
+  const g = game();
+  phase(g, "minigame");
+  assert.ok(apply(g, "0", { type: "result", success: true, turn: 1 }, 1));
+  assert.equal(
+    apply(g, "0", { type: "result", success: false, turn: 1 }, 2),
+    false,
+  );
+  assert.equal(
+    apply(g, "1", { type: "result", success: true, turn: 0 }, 2),
+    false,
+  );
+  round(g, ["secure", "drill", "loot", "loot"]);
+  const saved = structuredClone(g);
+  resolve(g);
+  assert.deepEqual(g, saved);
+});
+test("votes private until tally; three votes spend one charge, two or pass spend none", () => {
+  for (const [votes, spent] of [
+    [{ "0": "3", "1": "3", "2": "3" }, 1],
+    [{ "0": "3", "1": "3", "2": "2", "3": "2" }, 0],
+    [{ "0": "pass", "1": "pass", "2": "pass" }, 0],
+    [{}, 0],
+  ] as const) {
+    const g = game();
+    phase(g, "debate");
+    g.votes = { ...votes };
+    assert.equal(
+      publicView(g, "1").myVote,
+      votes["1" as keyof typeof votes] ?? null,
+    );
+    advance(g, 100000);
+    assert.equal(g.charges, 2 - spent);
+    assert.equal(g.watched, spent ? "3" : null);
+    assert.deepEqual(g.voteResult?.votes, votes);
+  }
+});
+test("surveillance restricts one turn and blocks jam; expiry permits another vote", () => {
+  const g = game();
+  g.watched = "3";
+  phase(g, "secret");
+  assert.equal(legal(g, "3", { action: "loot" }), false);
+  assert.equal(legal(g, "3", { action: "pocket", target: "0" }), false);
+  assert.equal(legal(g, "3", { action: "drill" }), true);
+  assert.equal(
+    apply(g, "3", { type: "jam", enabled: true, turn: g.turn }, 1),
+    false,
+  );
+  round(g, ["loot", "drill", "secure", "secure"]);
+  assert.equal(g.report?.jam, 0);
+  assert.equal(g.watched, null);
+  assert.equal(g.players[3].money, 6);
+  g.watched = "3";
+  g.vault = 8;
+  assert.equal(legal(g, "3", { action: "drill" }), false);
+  assert.equal(legal(g, "3", { action: "secure" }), true);
+});
+test("no surveillance left keeps debate available but rejects suspect and pass", () => {
+  const g = game();
+  phase(g, "debate");
+  g.charges = 0;
+  assert.equal(apply(g, "0", { type: "vote", target: "3", turn: 1 }, 1), false);
+  advance(g, 100000);
+  assert.equal(g.watched, null);
+  assert.equal(g.charges, 0);
+});
+test("5 alarms beats a full vault; opening vault does not cause early escape", () => {
+  const g = game();
+  g.vault = 8;
+  g.alarm = 5;
+  phase(g, "reveal");
+  advance(g, 100000);
+  assert.equal(g.result?.kind, "fbi");
+  assert.deepEqual(g.result?.winners, ["3"]);
+  assert.ok(g.players.filter((p) => p.id !== "3").every((p) => p.money === 0));
+  const h = game();
+  h.vault = 8;
+  phase(h, "reveal");
+  advance(h, 100000);
+  assert.equal(h.phase, "debate");
+  assert.equal(h.result, null);
+});
+test("fifth round incomplete vault loses; escape rewards all burglars and tied kings, ignores FBI wallet", () => {
+  const g = game();
+  g.round = 5;
+  phase(g, "reveal");
+  advance(g, 100000);
+  assert.equal(g.result?.kind, "fbi");
+  const h = game();
+  h.round = 5;
+  h.vault = 8;
+  h.players.forEach((p) => (p.money = p.id === "3" ? 999 : 10));
+  phase(h, "reveal");
+  advance(h, 100000);
+  assert.equal(h.phase, "ended");
+  assert.deepEqual(h.result?.winners, ["0", "1", "2"]);
+  assert.deepEqual(h.result?.kings, ["0", "1", "2"]);
+  assert.deepEqual(
+    h.players.map((p) => p.money),
+    [18, 18, 18, 999],
+  );
+});
+test("brief five-round numerical example reproduced exactly", () => {
+  const g = game();
+  round(g, ["drill", "loot", "loot", "loot"]);
+  assert.deepEqual(
+    [g.vault, g.alarm, ...g.players.map((p) => p.money)],
+    [2, 2, 6, 4, 4, 4],
+  );
+  next(g);
+  round(
+    g,
+    ["drill", "secure", { action: "pocket", target: "0" }, "loot"],
+    [true, false, true, true],
+  );
+  assert.deepEqual(
+    [g.vault, g.alarm, ...g.players.map((p) => p.money)],
+    [4, 4, 8, 4, 8, 16],
+  );
+  next(g, "0");
+  round(g, ["drill", "secure", "loot", "loot"], undefined, false);
+  assert.deepEqual(
+    [g.vault, g.alarm, ...g.players.map((p) => p.money)],
+    [6, 3, 14, 10, 14, 22],
+  );
+  next(g, "3");
+  round(
+    g,
+    ["loot", { action: "pocket", target: "0" }, "drill", "secure"],
+    [true, true, true, false],
+  );
+  assert.deepEqual(
+    [g.vault, g.alarm, ...g.players.map((p) => p.money)],
+    [8, 4, 22, 14, 20, 22],
+  );
+  next(g);
+  round(g, ["loot", "secure", "loot", "loot"]);
+  assert.deepEqual(
+    [g.vault, g.alarm, ...g.players.map((p) => p.money)],
+    [8, 4, 26, 20, 24, 26],
+  );
+  next(g);
+  assert.equal(g.result?.kind, "escape");
+  assert.deepEqual(
+    g.players.map((p) => p.money),
+    [34, 28, 32, 26],
+  );
+  assert.deepEqual(g.result?.kings, ["0"]);
+});
+test("disconnect freezes all phases, resumes exact remaining time, expires without ranking", () => {
+  for (const name of [
+    "promise",
+    "secret",
+    "minigame",
+    "reveal",
+    "debate",
+  ] as const) {
+    const g = game();
+    phase(g, name);
+    setOnline(g, "1", false, 2000);
+    advance(g, 80000);
+    assert.equal(g.phase, name);
+    assert.equal(
+      apply(g, "0", { type: "vote", target: "1", turn: 1 }, 3000),
+      false,
+    );
+    setOnline(g, "1", true, 32000);
+    assert.equal(g.deadline, 130000);
+    assert.equal(g.pausedAt, null);
+  }
+  const h = game();
+  setOnline(h, "1", false, 2000);
+  advance(h, 92000);
+  assert.equal(h.result?.kind, "aborted");
+  assert.deepEqual(h.result?.winners, []);
+  assert.ok(h.players.every((p) => p.exposed === null));
+});
+test("recommendations include current turn and command validation rejects malformed or illegal data", () => {
+  assert.equal(recommended({ vault: 4, round: 5 }), 2);
+  assert.equal(recommended({ vault: 8, round: 5 }), 0);
+  const g = game();
+  phase(g, "secret");
+  for (const c of [
+    null,
+    {},
+    { type: "__proto__", turn: 1 },
+    { type: "choose", turn: 1, choice: { action: "pocket", target: "0" } },
+    { type: "choose", turn: 1, choice: { action: "drill", target: "3" } },
+    { type: "result", turn: 1, success: true, money: 999 },
+  ])
+    assert.equal(apply(g, "0", c as any, 1), false);
+  assert.equal(CONFIG.durations.minigame, 18000);
 });

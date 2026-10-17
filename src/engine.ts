@@ -1,402 +1,602 @@
-export const ACTIONS = ['a', 'b', 'loot', 'search', 'repair', 'cover'] as const;
+import { newTrial, type Trial } from "./trial";
+import { CONFIG } from "../config/rules";
+export { CONFIG } from "../config/rules";
+export const COLORS = ["#ecac32", "#28aaa5", "#ee7836", "#9d65b2"];
+export const ACTIONS = ["drill", "secure", "loot", "pocket"] as const;
 export type Action = (typeof ACTIONS)[number];
-export type Phase = 'promise' | 'secret' | 'reveal' | 'vote' | 'ended';
-export type Role = 'burglar' | 'agent';
-export const ALARM_MAX = 6;
-export const COLORS = ['#ecac32', '#28aaa5', '#ee7836', '#9d65b2', '#5f8ce1', '#df647c'];
-export const SPOTS = [
-  { id: 'frame', name: 'Le cadre du hall', clueIndex: 0, unlockRoom: 0 },
-  { id: 'desk', name: 'Le bureau de la galerie', clueIndex: 1, unlockRoom: 1 },
-  { id: 'bust', name: 'La statue de la réserve', clueIndex: 2, unlockRoom: 2 },
-];
-const REVEAL_MIN_MS = 8_000;
-const REVEAL_TIMEOUT_MS = 30_000;
-const SECRET_TIMEOUT_MS = 60_000;
-
-export type Player = { id: string; name: string; color: string; bot: boolean; online: boolean; active: boolean; money: number; promise: Action | null; ready: boolean; exposed: Role | null };
-export type Task = { name: string; short: string; detail: string; need: number; icon: string };
-export type Room = { title: string; subtitle: string; a: Task; b: Task; layout: number; clue: number; objective: string };
-export type Finding = { id: string; action: Action; promise: Action | null; gain: number; betrayed: boolean; detail: string; target?: string };
-export type Report = { findings: Finding[]; incidents: string[]; alarmAdded: number; text: string; alarmBefore: number; alarmAfter: number; poolBefore: number; poolAfter: number };
-export type Command = { type: string; action?: Action; target?: string; code?: string; step?: number; turn?: number };
-export type Clue = { spotId: string; index: number; value: string };
-export type Search = { spotId: string; opened: number[]; found: boolean; committed: boolean; mark?: number; value?: string };
-export type Discovery = { spotId: string; index: number; ownerId: string };
-export type Claim = { id: string; index: number; value: string };
-export type Choice = { action: Action; target?: string; code?: string };
-export type Result = { kind: 'escape' | 'fbi' | 'police' | 'missed'; winners: string[]; text: string };
+export type Role = "burglar" | "agent";
+export type Phase = keyof typeof CONFIG.durations | "ended";
+export type Choice = { action: Action; target?: string };
+export type Player = {
+  id: string;
+  name: string;
+  color: string;
+  bot: boolean;
+  online: boolean;
+  money: number;
+  promise: Choice | null;
+  ready: boolean;
+  exposed: Role | null;
+};
+export type Finding = {
+  id: string;
+  choice: Choice;
+  promise: Choice | null;
+  success: boolean;
+  gain: number;
+  loss: number;
+  betrayed: boolean;
+  zone: "vault" | "entry";
+};
+export type Report = {
+  round: number;
+  findings: Finding[];
+  alarmBefore: number;
+  alarmAfter: number;
+  jam: number;
+  security: number;
+  vaultAdded: number;
+  trace: "vault" | "entry" | null;
+};
+export type Result = {
+  kind: "escape" | "fbi" | "aborted";
+  winners: string[];
+  kings: string[];
+  text: string;
+};
+export type Command = {
+  type: "promise" | "choose" | "jam" | "vote" | "progress" | "result";
+  turn: number;
+  choice?: Choice;
+  enabled?: boolean;
+  target?: string;
+  trial?: Trial;
+  success?: boolean;
+};
 export type Game = {
-  players: Player[]; roles: Record<string, Role>; choices: Record<string, Choice>; votes: Record<string, string>;
-  phase: Phase; roomIndex: number; rooms: Room[]; alarm: number; pool: number; code: string;
-  objective: boolean; report: Report | null; history: { id: string; action: Action; betrayed: boolean }[]; log: string[];
-  deadline: number; turn: number; result: Result | null; agentExposed: boolean; rng: () => number;
-  discoveries: Discovery[]; claims: Claim[]; privateClues: Record<string, Clue[]>;
-  searches: Record<string, Search>; spots: typeof SPOTS; envelopes: Record<string, number>; discoveryPriority: Record<string, string[]>;
-  revealStarted: number; pendingResult: { kind: Result['kind']; text: string } | null; vaultRetries: number;
+  players: Player[];
+  roles: Record<string, Role>;
+  choices: Record<string, Choice>;
+  jams: Record<string, boolean>;
+  votes: Record<string, string>;
+  trials: Record<string, Trial>;
+  successes: Record<string, boolean>;
+  wallets: Record<string, number>;
+  phase: Phase;
+  round: number;
+  turn: number;
+  phaseStarted: number;
+  deadline: number;
+  layout: number;
+  seed: number;
+  vault: number;
+  alarm: number;
+  charges: number;
+  watched: string | null;
+  report: Report | null;
+  history: Report[];
+  voteResult: { votes: Record<string, string>; suspect: string | null } | null;
+  result: Result | null;
+  pausedAt: number | null;
+  disconnects: Record<string, number>;
 };
-export type View = {
-  players: Player[]; phase: Phase; roomIndex: number; rooms: Room[]; alarm: number; pool: number;
-  objective: boolean; report: Report | null; log: string[]; deadline: number; turn: number;
-  result: Result | null; agentExposed: boolean; myRole: Role; myChoice: Action | null;
-  myVote: string | null; voteCount: number; myId: string; spots: typeof SPOTS;
-  discoveries: Discovery[]; claims: Claim[]; myClues: Clue[]; mySearch: Search | null;
-  myTarget: string | null; myCode: string; vaultRetries: number;
+export type View = Pick<
+  Game,
+  | "players"
+  | "phase"
+  | "round"
+  | "turn"
+  | "deadline"
+  | "phaseStarted"
+  | "layout"
+  | "seed"
+  | "vault"
+  | "alarm"
+  | "charges"
+  | "watched"
+  | "report"
+  | "voteResult"
+  | "result"
+  | "pausedAt"
+> & {
+  myId: string;
+  myRole: Role;
+  myChoice: Choice | null;
+  myJam: boolean;
+  myVote: string | null;
+  myTrial: Trial | null;
+  mySuccess: boolean | null;
+  pauseRemaining: number;
 };
-
 export function random(seed: number) {
   return () => {
-    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-
-export function makeRooms(seed: number, count: number): Room[] {
-  const r = random(seed), heavy = count >= 5 ? 2 : 1;
-  const objective = ['la Couronne du roi', 'le Diamant bleu', 'le Masque d’or'][Math.floor(r() * 3)];
-  const task = (name: string, short: string, detail: string, need: number, icon: string): Task => ({ name, short, detail, need, icon });
-  const pairs = [
-    [task('Brouiller les caméras', 'Caméras', 'Coupe la surveillance de l’entrée.', 1, 'eye'), task('Occuper le gardien', 'Gardien', 'Une diversion, et on entre sans bruit.', 1, 'shield')],
-    [task('Soulever la grille', 'Grille', 'Maintenez la grille ensemble.', heavy, 'grid'), task('Couper les lasers', 'Lasers', 'Désactive le panneau de sécurité.', 1, 'laser')],
-    [task('Neutraliser l’alarme', 'Alarme', 'Débranche le détecteur de mouvement.', 1, 'laser'), task('Déplacer la statue', 'Statue', 'Dégagez le passage vers le trésor.', heavy, 'users')],
-    [task('Ouvrir le coffre', 'Coffre', 'Saisis le code découvert, ou force le coffre à tes risques.', 1, 'lock'), task('Surveiller le couloir', 'Guet', 'Garde un œil sur le gardien.', 1, 'eye')],
-    [task('Conduire le fourgon', 'Volant', 'Laisse le moteur tourner !', 1, 'van'), task('Faire diversion', 'Diversion', 'Attire la sécurité de l’autre côté.', 1, 'shield')],
-  ];
-  if (r() > .5) [pairs[1], pairs[2]] = [pairs[2], pairs[1]];
-  return pairs.map((p, i) => ({ title: ['Entrer sans se faire voir', 'Traverser la galerie', 'Atteindre la réserve', 'Ouvrir la salle du trésor', 'Tout le monde au fourgon !'][i], subtitle: ['Le hall des antiquités', 'La galerie des portraits', 'La réserve interdite', 'Le grand coffre', 'La cour du musée'][i], a: p[0], b: p[1], layout: Math.floor(r() * 3), clue: Math.min(i, 2), objective }));
-}
-
-const active = (g: Game) => g.players.filter(p => p.active);
-const isAction = (value: unknown): value is Action => ACTIONS.includes(value as Action);
-const accessibleSpot = (g: Game, id: string | undefined) => g.spots.find(s => s.id === id && s.unlockRoom <= g.roomIndex && g.roomIndex < 4);
-
-/** Reducing the crew must not leave a physically impossible mandatory plan. */
-function balanceTasks(g: Game) {
-  const count = active(g).length;
-  for (const room of g.rooms.slice(g.roomIndex)) {
-    room.a.need = Math.min(room.a.need, count ? Math.max(1, count - 1) : 0);
-    room.b.need = Math.min(room.b.need, Math.max(0, count - room.a.need));
-  }
-}
-
-export function createGame(players: Player[], seed: number, now = Date.now()): Game {
-  if (players.length < 3 || players.length > 6 || new Set(players.map(p => p.id)).size !== players.length) throw Error('3 à 6 joueurs distincts requis');
-  const rng = random(seed), agent = Math.floor(rng() * players.length);
-  const rooms = makeRooms(Math.floor(rng() * 0xffffffff), players.length);
-  const code = String(100 + Math.floor(rng() * 900));
-  const indices = [0, 1, 2];
-  for (let i = indices.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [indices[i], indices[j]] = [indices[j], indices[i]]; }
-  const spots = SPOTS.map((spot, i) => ({ ...spot, clueIndex: indices[i] }));
-  const envelopes: Record<string, number> = {}, discoveryPriority: Record<string, string[]> = {};
-  for (const spot of spots) {
-    // Six faces, two possible inscriptions per face. The placement is secret until committing a search.
-    envelopes[spot.id] = Math.floor(rng() * 12);
-    const shuffled = players.map(p => p.id);
-    for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
-    discoveryPriority[spot.id] = shuffled;
-  }
+export function player(
+  id: string,
+  name: string,
+  index: number,
+  bot = false,
+): Player {
   return {
-    players: players.map(p => ({ ...p, active: true, money: 0, promise: null, ready: false, exposed: null })),
-    roles: Object.fromEntries(players.map((p, i) => [p.id, i === agent ? 'agent' : 'burglar'])),
-    choices: {}, votes: {}, phase: 'promise', roomIndex: 0, rooms, alarm: 0, pool: 0, code,
-    objective: false, report: null, history: [], log: ['Le musée ferme ses portes. À vous de jouer.'],
-    deadline: now + 45_000, turn: 1, result: null, agentExposed: false, rng,
-    discoveries: [], claims: [], privateClues: Object.fromEntries(players.map(p => [p.id, []])),
-    searches: {}, spots, envelopes, discoveryPriority, revealStarted: 0, pendingResult: null, vaultRetries: 0,
+    id,
+    name: name.trim().slice(0, 18) || "Complice",
+    color: COLORS[index % 4],
+    bot,
+    online: true,
+    money: 0,
+    promise: null,
+    ready: bot,
+    exposed: null,
   };
 }
-
-/** Only this explicit projection may leave the authority of the host. */
-export function publicView(g: Game, id: string): View {
-  const search = g.searches[id], spot = search?.committed && g.spots.find(s => s.id === search.spotId);
+export function createGame(
+  players: Player[],
+  seed: number,
+  now = Date.now(),
+  privateRandom = Math.random,
+): Game {
+  if (players.length !== 4 || new Set(players.map((p) => p.id)).size !== 4)
+    throw Error("Exactement quatre joueurs distincts sont requis.");
+  const agent = Math.floor(privateRandom() * 4);
+  return {
+    players: players.map((p) => ({
+      ...p,
+      money: 0,
+      promise: null,
+      exposed: null,
+    })),
+    roles: Object.fromEntries(
+      players.map((p, i) => [p.id, i === agent ? "agent" : "burglar"]),
+    ),
+    choices: {},
+    jams: {},
+    votes: {},
+    trials: {},
+    successes: {},
+    wallets: {},
+    phase: "role",
+    round: 1,
+    turn: 1,
+    phaseStarted: now,
+    deadline: now + CONFIG.durations.role,
+    seed,
+    layout: Math.floor(random(seed)() * 3),
+    vault: 0,
+    alarm: 0,
+    charges: 2,
+    watched: null,
+    report: null,
+    history: [],
+    voteResult: null,
+    result: null,
+    pausedAt: null,
+    disconnects: {},
+  };
+}
+export function publicView(g: Game, id: string, now = Date.now()): View {
   return structuredClone({
-    players: g.players, phase: g.phase, roomIndex: g.roomIndex, rooms: g.rooms,
-    alarm: g.alarm, pool: g.pool, objective: g.objective, report: g.report,
-    log: g.log, deadline: g.deadline, turn: g.turn, result: g.result, agentExposed: g.agentExposed,
-    myRole: g.roles[id] ?? 'burglar', myChoice: g.choices[id]?.action ?? null,
-    myVote: g.votes[id] ?? null, voteCount: Object.keys(g.votes).length, myId: id,
-    spots: g.spots, discoveries: g.discoveries, claims: g.claims, myClues: g.privateClues[id] ?? [],
-    mySearch: spot ? { ...search, mark: g.envelopes[spot.id], value: g.code[spot.clueIndex] } : null,
-    myTarget: g.choices[id]?.target ?? null, myCode: g.choices[id]?.code ?? '', vaultRetries: g.vaultRetries,
+    players: g.players,
+    phase: g.phase,
+    round: g.round,
+    turn: g.turn,
+    deadline: g.deadline,
+    phaseStarted: g.phaseStarted,
+    layout: g.layout,
+    seed: g.seed,
+    vault: g.vault,
+    alarm: g.alarm,
+    charges: g.charges,
+    watched: g.watched,
+    report: g.report,
+    voteResult: g.voteResult,
+    result: g.result,
+    pausedAt: g.pausedAt,
+    myId: id,
+    myRole: g.roles[id] ?? "burglar",
+    myChoice: g.choices[id] ?? null,
+    myJam: g.jams[id] ?? false,
+    myVote: g.votes[id] ?? null,
+    myTrial: g.trials[id] ?? null,
+    mySuccess: g.successes[id] ?? null,
+    pauseRemaining:
+      g.pausedAt === null
+        ? 0
+        : Math.max(
+            0,
+            CONFIG.reconnect -
+              (now - Math.min(...Object.values(g.disconnects))),
+          ),
   });
 }
-
-function end(g: Game, kind: Result['kind'], text: string) {
-  const survivors = active(g), agent = survivors.find(p => g.roles[p.id] === 'agent');
-  let winners: string[] = [];
-  if (kind === 'escape') {
-    for (const p of survivors) p.money += g.pool / survivors.length;
-    const burglars = survivors.filter(p => g.roles[p.id] === 'burglar');
-    const max = Math.max(...burglars.map(p => p.money));
-    winners = burglars.filter(p => Math.abs(p.money - max) < 1e-8).map(p => p.id);
-  } else {
-    for (const p of g.players) p.money = 0;
-    if (kind === 'fbi' && agent) winners = [agent.id];
-  }
-  for (const p of g.players) p.exposed = g.roles[p.id];
-  g.result = { kind, text, winners }; g.pendingResult = null; g.phase = 'ended'; g.turn++;
+export function legal(
+  g: Pick<Game, "players" | "vault" | "watched">,
+  id: string,
+  c: Choice | undefined,
+): c is Choice {
+  return (
+    !!c &&
+    typeof c === "object" &&
+    Object.keys(c).every((k) => ["action", "target"].includes(k)) &&
+    ACTIONS.includes(c.action) &&
+    !(c.action === "drill" && g.vault >= CONFIG.vault) &&
+    !(g.watched === id && (c.action === "loot" || c.action === "pocket")) &&
+    (c.action !== "pocket"
+      ? c.target === undefined
+      : typeof c.target === "string" &&
+        c.target !== id &&
+        g.players.some((p) => p.id === c.target))
+  );
 }
-
-/** Validate even locally produced commands: guests and bots use the same rules. */
-export function apply(g: Game, id: string, command: Command, now = Date.now()): boolean {
-  const p = g.players.find(player => player.id === id);
-  if (!p?.active || g.phase === 'ended' || !command || typeof command !== 'object' || command.turn !== g.turn) return false;
-  if (Object.keys(command).some(key => !['type', 'action', 'target', 'code', 'step', 'turn'].includes(key))) return false;
-  if (typeof command.type !== 'string' || !Number.isInteger(command.turn) || (command.action !== undefined && !isAction(command.action)) || (command.target !== undefined && (typeof command.target !== 'string' || command.target.length > 80)) || (command.code !== undefined && (typeof command.code !== 'string' || command.code.length > 5)) || (command.step !== undefined && (!Number.isInteger(command.step) || command.step < 0 || command.step > 11))) return false;
-  const only = (...keys: string[]) => Object.keys(command).every(key => ['type', 'turn', ...keys].includes(key));
-
-  if (command.type === 'claim') {
-    if (!only('target', 'code') || !/^[0-2]$/.test(command.target ?? '') || !/^\d$/.test(command.code ?? '') || (g.phase === 'secret' && p.ready)) return false;
-    const index = Number(command.target);
-    if (!g.privateClues[id]?.some(clue => clue.index === index)) return false;
-    const existing = g.claims.find(claim => claim.id === id && claim.index === index);
-    if (existing?.value === command.code) return false;
-    if (existing) existing.value = command.code!;
-    else g.claims.push({ id, index, value: command.code! });
+export const recommended = (v: Pick<View, "vault" | "round">) =>
+  Math.ceil((CONFIG.vault - v.vault) / (2 * (CONFIG.rounds + 1 - v.round)));
+export function apply(
+  g: Game,
+  id: string,
+  c: Command,
+  now = Date.now(),
+): boolean {
+  if (
+    !c ||
+    typeof c !== "object" ||
+    Array.isArray(c) ||
+    !g.players.some((p) => p.id === id) ||
+    c.turn !== g.turn ||
+    g.phase === "ended" ||
+    g.pausedAt !== null ||
+    now >= g.deadline
+  )
+    return false;
+  const fields: Record<Command["type"], string[]> = {
+    promise: ["choice"],
+    choose: ["choice"],
+    jam: ["enabled"],
+    vote: ["target"],
+    progress: ["trial"],
+    result: ["success"],
+  };
+  if (
+    !Object.hasOwn(fields, c.type) ||
+    Object.keys(c).some((k) => !["type", "turn", ...fields[c.type]].includes(k))
+  )
+    return false;
+  if (c.type === "promise" && g.phase === "promise" && legal(g, id, c.choice)) {
+    g.players.find((p) => p.id === id)!.promise = structuredClone(c.choice);
     return true;
   }
-  if (command.type === 'continue') {
-    if (!only() || g.phase !== 'reveal' || p.ready) return false;
-    p.ready = true; return true;
-  }
-  if (command.type === 'promise') {
-    if (!only('action') || g.phase !== 'promise' || p.ready || !isAction(command.action) || (command.action === 'search' && g.roomIndex === 4)) return false;
-    p.promise = command.action; p.ready = true; return true;
-  }
-  if (command.type === 'begin-search') {
-    const spot = accessibleSpot(g, command.target);
-    if (!only('target') || g.phase !== 'secret' || p.ready || g.choices[id] || !spot) return false;
-    g.choices[id] = { action: 'search', target: spot.id };
-    g.searches[id] = { spotId: spot.id, opened: [], found: false, committed: true };
+  if (c.type === "choose" && g.phase === "secret" && legal(g, id, c.choice)) {
+    g.choices[id] = structuredClone(c.choice);
     return true;
   }
-  if (command.type === 'inspect') {
-    const spot = accessibleSpot(g, command.target), state = g.searches[id];
-    if (!only('target', 'step') || g.phase !== 'secret' || p.ready || !spot || command.step === undefined || !state?.committed || state.spotId !== spot.id || g.choices[id]?.action !== 'search' || g.choices[id]?.target !== spot.id) return false;
-    if (state.opened.includes(command.step)) return false;
-    state.opened.push(command.step); state.found ||= command.step === g.envelopes[spot.id];
-    if (state.found) p.ready = true;
+  if (
+    c.type === "jam" &&
+    g.phase === "secret" &&
+    g.roles[id] === "agent" &&
+    g.watched !== id &&
+    typeof c.enabled === "boolean"
+  ) {
+    g.jams[id] = c.enabled;
     return true;
   }
-  if (command.type === 'choose') {
-    if (!only('action', 'target', 'code') || g.phase !== 'secret' || p.ready || g.choices[id] || !isAction(command.action)) return false;
-    if (command.action === 'search') return false;
-    else {
-      if (command.target !== undefined) return false;
-      const vaultAttempt = g.roomIndex === 3 && command.action === 'a';
-      if (vaultAttempt ? !/^(?:\d{3}|FORCE)$/.test(command.code ?? '') : command.code !== undefined && command.code !== '') return false;
-      g.choices[id] = { action: command.action, ...(vaultAttempt ? { code: command.code } : {}) };
-    }
-    p.ready = true; return true;
+  if (
+    c.type === "vote" &&
+    g.phase === "debate" &&
+    g.charges > 0 &&
+    typeof c.target === "string" &&
+    (c.target === "pass" || g.players.some((p) => p.id === c.target))
+  ) {
+    g.votes[id] = c.target;
+    return true;
   }
-  if (command.type === 'vote') {
-    if (!only('target') || g.phase !== 'vote' || p.ready || g.votes[id] || !(command.target === 'skip' || active(g).some(target => target.id === command.target && target.id !== id))) return false;
-    g.votes[id] = command.target!; p.ready = true; return true;
+  if (
+    c.type === "progress" &&
+    g.phase === "minigame" &&
+    !(id in g.successes) &&
+    validProgress(c.trial, g.trials[id])
+  ) {
+    g.trials[id] = structuredClone(c.trial!);
+    return true;
+  }
+  if (
+    c.type === "result" &&
+    g.phase === "minigame" &&
+    typeof c.success === "boolean" &&
+    !(id in g.successes)
+  ) {
+    g.successes[id] = c.success;
+    return true;
   }
   return false;
 }
-
-export function resolveRoom(g: Game, now = Date.now()) {
-  balanceTasks(g);
-  const room = g.rooms[g.roomIndex], ps = active(g), alarmBefore = g.alarm, poolBefore = g.pool;
-  const incidents: string[] = [], gains = new Map(ps.map(p => [p.id, 0])), details = new Map<string, string>();
-  const choice = (id: string) => g.choices[id] ?? { action: 'cover' as const };
-  const looters = ps.filter(p => choice(p.id).action === 'loot');
-  const repairers = ps.filter(p => choice(p.id).action === 'repair');
-  const covers = ps.filter(p => choice(p.id).action === 'cover');
-  let alarmDelta = 0;
-
-  // Discoveries are resolved as a batch, never in network arrival order.
-  for (const spot of g.spots) {
-    const seekers = ps.filter(p => choice(p.id).action === 'search' && choice(p.id).target === spot.id && g.searches[p.id]?.spotId === spot.id && g.searches[p.id]?.found);
-    const fresh = seekers.filter(p => !g.privateClues[p.id].some(clue => clue.index === spot.clueIndex));
-    for (const p of seekers) details.set(p.id, 'Indice déjà connu : aucune nouvelle prime.');
-    for (const p of fresh) {
-      g.privateClues[p.id].push({ spotId: spot.id, index: spot.clueIndex, value: g.code[spot.clueIndex] });
-      gains.set(p.id, 2); details.set(p.id, `A découvert le chiffre ${spot.clueIndex + 1}. Il reste privé. +2.`);
-    }
-    if (fresh.length && !g.discoveries.some(d => d.spotId === spot.id)) {
-      const ownerId = g.discoveryPriority[spot.id].find(id => fresh.some(p => p.id === id))!;
-      g.discoveries.push({ spotId: spot.id, index: spot.clueIndex, ownerId });
-      gains.set(ownerId, (gains.get(ownerId) ?? 0) + 4);
-      details.set(ownerId, `Premier indice découvert : chiffre ${spot.clueIndex + 1} privé. +2 et prime +4.`);
-    }
-  }
-
-  const vaultAttempts = ps.filter(p => choice(p.id).action === 'a' && g.roomIndex === 3);
-  const correctVault = vaultAttempts.some(p => choice(p.id).code === g.code);
-  const forcedVault = vaultAttempts.some(p => choice(p.id).code === 'FORCE');
-  const vaultOpened = correctVault || forcedVault;
-  const contributors = {
-    a: ps.filter(p => choice(p.id).action === 'a' && (g.roomIndex !== 3 || choice(p.id).code === g.code || choice(p.id).code === 'FORCE')).length,
-    b: ps.filter(p => choice(p.id).action === 'b').length,
+function validProgress(
+  t: Trial | undefined,
+  current: Trial | undefined,
+): boolean {
+  if (
+    !t ||
+    !current ||
+    JSON.stringify(t).length > 3000 ||
+    t.action !== current.action ||
+    t.seed !== current.seed
+  )
+    return false;
+  return (
+    Number.isFinite(t.elapsed) &&
+    t.elapsed >= current.elapsed &&
+    t.elapsed <= 18.1 &&
+    Number.isInteger(t.stage) &&
+    t.stage >= 0 &&
+    t.stage <= 3 &&
+    [t.needle, t.progress, t.cooldown, t.cursor].every(Number.isFinite) &&
+    t.needle >= 0 &&
+    t.needle <= 1 &&
+    t.progress >= 0 &&
+    t.progress <= 1.1 &&
+    t.cooldown >= 0 &&
+    t.cooldown <= 0.6 &&
+    Array.isArray(t.connections) &&
+    t.connections.length === 3 &&
+    t.connections.every((n) => Number.isInteger(n) && n >= -1 && n <= 2) &&
+    Array.isArray(t.correct) &&
+    t.correct.length === 3 &&
+    t.correct.every((n) => typeof n === "boolean") &&
+    typeof t.done === "boolean"
+  );
+}
+function finish(g: Game) {
+  const escape = g.vault >= CONFIG.vault && g.alarm < CONFIG.alarm,
+    burglars = g.players.filter((p) => g.roles[p.id] === "burglar");
+  for (const p of burglars) p.money = escape ? p.money + CONFIG.bonus : 0;
+  const max = Math.max(...burglars.map((p) => p.money));
+  g.result = {
+    kind: escape ? "escape" : "fbi",
+    winners: g.players
+      .filter((p) =>
+        escape ? g.roles[p.id] === "burglar" : g.roles[p.id] === "agent",
+      )
+      .map((p) => p.id),
+    kings: escape
+      ? burglars.filter((p) => p.money === max).map((p) => p.id)
+      : [],
+    text: escape
+      ? "Le casse est réussi. Tous les braqueurs s’échappent !"
+      : g.alarm >= CONFIG.alarm
+        ? "La police entre dans le musée. Le FBI gagne."
+        : "Le van arrive, mais le coffre est incomplet. Le FBI gagne.",
   };
-  const deficits = { a: Math.max(0, room.a.need - contributors.a), b: Math.max(0, room.b.need - contributors.b) };
-  const covered = covers.length ? (deficits.a && (g.roomIndex !== 3 || vaultOpened) ? 'a' : deficits.b ? 'b' : null) : null;
-  if (covered) {
-    deficits[covered]--;
-    incidents.push(`La couverture a sauvé ${room[covered].short} : prime de 6 partagée.`);
-    for (const p of covers) { gains.set(p.id, 6 / covers.length); details.set(p.id, `A remplacé une personne à ${room[covered].short}. Prime partagée.`); }
-  }
-  let missing = 0;
-  for (const post of ['a', 'b'] as const) {
-    if (deficits[post] > 0) { missing++; alarmDelta += 2; incidents.push(`${room[post].short} : poste incomplet. +2 alarme.`); }
-  }
-  if (!missing) { g.pool += 8; incidents.push('Les deux postes sont assurés : +8 au sac commun.'); }
-  if (g.roomIndex === 3 && vaultOpened && !g.objective) {
-    if (forcedVault) { g.pool = Math.max(0, g.pool - 18); alarmDelta += 2; incidents.push('Coffre forcé : +2 alarme et −18 au sac (plancher 0).'); }
-    g.objective = true; g.pool += 48; incidents.push('Le trésor est dans le sac ! +48 au sac commun.');
-  }
-  if (looters.length) {
-    g.pool = Math.max(0, g.pool - 8); alarmDelta++; incidents.push(`${looters.length} voleur${looters.length > 1 ? 's' : ''} : 18 partagées, +1 alarme, −8 au sac.`);
-    for (const p of looters) { gains.set(p.id, 18 / looters.length); details.set(p.id, `18 ÷ ${looters.length} voleur${looters.length > 1 ? 's' : ''}. Le groupe paie +1 alarme et −8 au sac.`); }
-  }
-  if (repairers.length) {
-    alarmDelta -= 2; incidents.push('Une réparation efficace : −2 alarme (effet collectif plafonné).');
-    for (const p of repairers) { gains.set(p.id, 1); details.set(p.id, 'A réparé la sécurité. −2 alarme au total pour les réparateurs.'); }
-  }
-  const findings: Finding[] = ps.map(p => {
-    const c = choice(p.id);
-    if (c.action === 'a' || c.action === 'b') {
-      const valid = !(g.roomIndex === 3 && c.action === 'a' && c.code !== g.code && c.code !== 'FORCE');
-      gains.set(p.id, valid ? 3 : 0);
-      details.set(p.id, valid ? (g.roomIndex === 3 && c.action === 'a' ? c.code === 'FORCE' ? 'A forcé le coffre : bruyant et coûteux.' : 'Le code saisi était correct. Coffre ouvert !' : `A assuré ${room[c.action].short}. +3.`) : 'Mauvais code : cette tentative n’a rien ouvert. Aucun salaire.');
+  g.players.forEach((p) => (p.exposed = g.roles[p.id]));
+  g.phase = "ended";
+  g.turn++;
+}
+export function resolve(g: Game): Report {
+  if (g.history.some((r) => r.round === g.round))
+    return g.history.find((r) => r.round === g.round)!;
+  const before = { ...g.wallets },
+    gains: Record<string, number> = {},
+    losses: Record<string, number> = {};
+  let drills = 0,
+    secure = 0,
+    jam = 0,
+    trace: Report["trace"] = null;
+  const looters = g.players.filter(
+    (p) => g.choices[p.id]?.action === "loot" && g.successes[p.id],
+  );
+  for (const p of g.players) {
+    gains[p.id] = 0;
+    losses[p.id] = 0;
+    const c = g.choices[p.id];
+    if (!c || !g.successes[p.id]) continue;
+    if (c.action === "drill") {
+      drills++;
+      gains[p.id] += CONFIG.cooperation;
     }
-    if (!details.has(p.id)) details.set(p.id, c.action === 'cover' ? 'Prêt à sauver un poste, mais personne ne manquait. +0.' : 'Fouille incomplète : aucun indice ni gain.');
-    const gain = gains.get(p.id) ?? 0, betrayed = p.promise !== c.action;
-    p.money += gain; g.history.push({ id: p.id, action: c.action, betrayed });
-    return { id: p.id, action: c.action, promise: p.promise, gain, betrayed, detail: details.get(p.id)!, ...(c.target ? { target: c.target } : {}) };
-  });
-  g.alarm = Math.max(0, Math.min(ALARM_MAX, alarmBefore + alarmDelta));
-  const text = missing ? 'Des postes ont été abandonnés. Qui avait promis quoi ?' : 'Le passage est ouvert. Regardez qui a rempli ses poches.';
-  g.report = { findings, incidents, alarmAdded: g.alarm - alarmBefore, text, alarmBefore, alarmAfter: g.alarm, poolBefore, poolAfter: g.pool };
-  g.log.unshift(`${g.roomIndex === 4 ? 'Fuite' : `Salle ${g.roomIndex + 1}`} : alarme ${alarmBefore} → ${g.alarm}, sac ${poolBefore} → ${g.pool}.`);
-  g.phase = 'reveal'; g.revealStarted = now; g.deadline = now + REVEAL_TIMEOUT_MS; g.turn++;
-  for (const p of g.players) p.ready = false;
-  if (g.alarm >= ALARM_MAX) g.pendingResult = { kind: ps.some(p => g.roles[p.id] === 'agent') ? 'fbi' : 'police', text: 'La police est entrée. Le butin est perdu.' };
-  else if (g.roomIndex === 4) {
-    if (g.objective) g.pendingResult = { kind: 'escape', text: 'Le fourgon est parti. Le plus riche des braqueurs remporte le casse !' };
-    else if (ps.some(p => g.roles[p.id] === 'agent')) g.pendingResult = { kind: 'fbi', text: 'L’agent a fait sortir le groupe les mains vides. Le trésor est resté dans le coffre : le FBI gagne.' };
-    else g.pendingResult = { kind: 'missed', text: 'Vous êtes sortis les mains vides : le trésor est resté dans le coffre.' };
-  }
-}
-
-function nextRoom(g: Game, now: number) {
-  if (g.roomIndex === 3 && !g.objective && g.vaultRetries < 1) {
-    g.vaultRetries++;
-    g.log.unshift('Le coffre résiste. Dernière tentative : vérifiez les annonces, retrouvez un indice ou forcez la serrure !');
-  } else g.roomIndex++;
-  balanceTasks(g); g.phase = 'promise'; g.choices = {}; g.votes = {}; g.searches = {};
-  g.report = null; g.pendingResult = null;
-  for (const p of g.players) { p.promise = null; p.ready = false; }
-  g.turn++; g.deadline = now + 45_000;
-}
-
-export function resolveVote(g: Game, now = Date.now()) {
-  const ps = active(g), needed = Math.floor(ps.length / 2) + 1, counts: Record<string, number> = {};
-  for (const id of Object.values(g.votes)) if (id !== 'skip') counts[id] = (counts[id] ?? 0) + 1;
-  const out = ps.find(p => (counts[p.id] ?? 0) >= needed);
-  if (out) {
-    out.active = false; out.money = 0; out.exposed = g.roles[out.id];
-    g.log.unshift(`${out.name} a été éjecté·e : ${out.exposed === 'agent' ? 'agent du FBI !' : 'braqueur innocent.'}`);
-    if (out.exposed === 'agent') g.agentExposed = true;
-  } else g.log.unshift('Aucune majorité. Le groupe reste au complet.');
-  if (!g.agentExposed && active(g).length <= 2) end(g, 'fbi', 'Il ne reste qu’un braqueur face à l’agent. Le FBI gagne.');
-  else nextRoom(g, now);
-}
-
-function timeoutChoice(g: Game, p: Player): Choice {
-  const action = p.promise ?? 'cover';
-  if (action === 'search') {
-    const state = g.searches[p.id];
-    return state?.found && accessibleSpot(g, state.spotId) ? { action, target: state.spotId } : { action: 'cover' };
-  }
-  // A promised vault job with no submitted code must fail, never auto-solve.
-  return { action, ...(g.roomIndex === 3 && action === 'a' ? { code: '' } : {}) };
-}
-
-export function advance(g: Game, now = Date.now(), force = false) {
-  if (g.phase === 'ended') return;
-  const allReady = active(g).every(p => p.ready), elapsed = now >= g.deadline;
-  if (g.phase === 'promise' && (allReady || elapsed)) {
-    for (const p of active(g)) { p.promise ??= 'cover'; p.ready = false; }
-    g.phase = 'secret'; g.turn++; g.deadline = now + SECRET_TIMEOUT_MS;
-  } else if (g.phase === 'secret' && (allReady || elapsed)) {
-    for (const p of active(g)) g.choices[p.id] ??= timeoutChoice(g, p);
-    resolveRoom(g, now);
-  } else if (g.phase === 'reveal' && now - g.revealStarted >= REVEAL_MIN_MS && (allReady || elapsed || force)) {
-    if (g.pendingResult) end(g, g.pendingResult.kind, g.pendingResult.text);
-    else if (g.agentExposed) nextRoom(g, now);
-    else {
-      g.phase = 'vote'; g.turn++; g.deadline = now + 45_000; g.votes = {};
-      for (const p of g.players) p.ready = false;
+    if (c.action === "secure") {
+      secure++;
+      gains[p.id] += CONFIG.cooperation;
     }
-  } else if (g.phase === 'vote' && (allReady || elapsed)) resolveVote(g, now);
-}
-
-function botSpot(v: View) {
-  return v.spots.filter(s => s.unlockRoom <= v.roomIndex && v.roomIndex < 4 && !v.myClues.some(clue => clue.index === s.clueIndex)).sort((a, b) => Number(v.discoveries.some(d => d.spotId === a.id)) - Number(v.discoveries.some(d => d.spotId === b.id)) || b.unlockRoom - a.unlockRoom)[0];
-}
-
-/** Bots know their own discoveries and unverified announcements, exactly like a player. */
-export function botCommand(g: Game, p: Player): Command | null {
-  if (!p.active || p.ready || g.phase === 'ended') return null;
-  const v = publicView(g, p.id), turn = g.turn, room = g.rooms[g.roomIndex], r = g.rng, agent = v.myRole === 'agent';
-  if (g.phase === 'reveal') return { type: 'continue', turn };
-  if (g.phase === 'promise' || g.phase === 'secret' || g.phase === 'vote') {
-    for (const clue of v.myClues) {
-      const value = agent ? String((Number(clue.value) + 1) % 10) : clue.value;
-      if (!g.claims.some(claim => claim.id === p.id && claim.index === clue.index && claim.value === value)) return { type: 'claim', target: String(clue.index), code: value, turn };
+    if (c.action === "loot") gains[p.id] += CONFIG.loot / looters.length;
+    if (g.roles[p.id] === "agent" && g.jams[p.id] && g.watched !== p.id) {
+      jam = 1;
+      trace = c.action === "drill" || c.action === "loot" ? "vault" : "entry";
     }
   }
-  if (g.phase === 'promise') {
-    const count = (action: Action) => active(g).filter(t => t.promise === action).length;
-    const leader = [...active(g)].sort((a, b) => b.money - a.money)[0];
-    const spot = botSpot(v);
-    const behindGreedyLeader = leader?.id !== p.id && leader?.promise === 'loot' && leader.money - p.money >= 12;
-    const checkingPublicClue = !spot || g.discoveries.some(d => d.spotId === spot.id);
-    let action: Action;
-    if (count('a') < room.a.need) action = 'a';
-    else if (count('b') < room.b.need) action = 'b';
-    else if (g.alarm >= 2 && !count('repair')) action = 'repair';
-    // A rich player cannot expect everyone else to keep financing their jackpot.
-    else if (behindGreedyLeader && (checkingPublicClue || r() < .35)) action = 'loot';
-    else if (spot && !count('search')) action = 'search';
-    else action = r() < .65 ? 'loot' : 'cover';
-    return { type: 'promise', action, turn };
+  for (const victim of g.players) {
+    const thieves = g.players.filter(
+      (p) =>
+        g.choices[p.id]?.action === "pocket" &&
+        g.choices[p.id]?.target === victim.id &&
+        g.successes[p.id],
+    );
+    if (!thieves.length) continue;
+    const share = Math.floor(
+      Math.min(CONFIG.theft, before[victim.id] ?? victim.money) /
+        thieves.length,
+    );
+    thieves.forEach((p) => (gains[p.id] += share));
+    losses[victim.id] = share * thieves.length;
   }
-  if (g.phase === 'secret') {
-    if (v.mySearch?.committed) return { type: 'inspect', target: v.mySearch.spotId, step: v.mySearch.mark!, turn };
-    let action = p.promise ?? 'cover';
-    if (agent && (action === 'a' || action === 'b' || action === 'repair') && r() < .28) action = 'loot';
-    else if (!agent && (action === 'a' || action === 'b') && g.alarm === 0 && r() < .08) action = 'loot';
-    if (action === 'search') {
-      const spot = botSpot(v);
-      if (spot) return { type: 'begin-search', target: spot.id, turn };
-      action = g.alarm >= 2 ? 'repair' : 'cover';
+  const report: Report = {
+    round: g.round,
+    findings: g.players.map((p) => ({
+      id: p.id,
+      choice: g.choices[p.id] ?? { action: "secure" },
+      promise: p.promise,
+      success: !!g.successes[p.id],
+      gain: gains[p.id],
+      loss: losses[p.id],
+      betrayed:
+        !!p.promise &&
+        (p.promise.action !== g.choices[p.id]?.action ||
+          p.promise.target !== g.choices[p.id]?.target),
+      zone: ["drill", "loot"].includes(g.choices[p.id]?.action)
+        ? "vault"
+        : "entry",
+    })),
+    alarmBefore: g.alarm,
+    alarmAfter: Math.max(0, g.alarm + 1 + jam - 2 * secure),
+    jam,
+    security: secure,
+    vaultAdded: Math.min(CONFIG.vault - g.vault, 2 * drills),
+    trace,
+  };
+  g.players.forEach((p) => (p.money += gains[p.id] - losses[p.id]));
+  g.alarm = report.alarmAfter;
+  g.vault += report.vaultAdded;
+  g.report = report;
+  g.history.push(report);
+  g.watched = null;
+  return report;
+}
+export function setOnline(
+  g: Game,
+  id: string,
+  online: boolean,
+  now = Date.now(),
+) {
+  const p = g.players.find((p) => p.id === id);
+  if (!p || p.bot || g.phase === "ended") return;
+  p.online = online;
+  if (!online) {
+    g.disconnects[id] ??= now;
+    g.pausedAt ??= now;
+  } else {
+    delete g.disconnects[id];
+    if (!Object.keys(g.disconnects).length && g.pausedAt !== null) {
+      const duration = now - g.pausedAt;
+      g.deadline += duration;
+      g.phaseStarted += duration;
+      g.pausedAt = null;
     }
-    if (action === 'a' && g.roomIndex === 3) {
-      const digits = [0, 1, 2].map(index => v.myClues.find(clue => clue.index === index)?.value ?? [...v.claims].reverse().find(claim => claim.index === index)?.value);
-      const known = digits.every(value => value !== undefined);
-      const code = known ? digits.join('') : agent ? '000' : 'FORCE';
-      return { type: 'choose', action, code, turn };
+  }
+}
+export function advance(
+  g: Game,
+  now = Date.now(),
+  privateRandom = Math.random,
+) {
+  if (g.phase === "ended") return;
+  if (g.pausedAt !== null) {
+    if (Object.values(g.disconnects).some((t) => now - t >= CONFIG.reconnect)) {
+      g.result = {
+        kind: "aborted",
+        winners: [],
+        kings: [],
+        text: "Reconnexion expirée. Partie terminée sans classement.",
+      };
+      g.phase = "ended";
+      g.turn++;
     }
-    return { type: 'choose', action, turn };
+    return;
   }
-  if (g.phase === 'vote') {
-    const richest = Math.max(...active(g).map(t => t.money));
-    const suspects = active(g).filter(t => t.id !== p.id).map(t => {
-      const recent = g.history.filter(h => h.id === t.id).slice(-3);
-      const thefts = recent.filter(h => h.action === 'loot').length;
-      const brokenPromises = recent.filter(h => h.betrayed).length;
-      let greed = thefts >= 2 && t.money - p.money >= 12 && t.money >= richest ? thefts >= 3 ? .86 : .48 : 0;
-      // Returning to useful work is observable evidence; suspicion does not last forever.
-      if (recent.length && ['a', 'b', 'repair', 'cover'].includes(recent.at(-1)!.action)) greed *= .3;
-      return { p: t, suspicion: Math.max(brokenPromises >= 2 ? .65 : 0, greed) };
-    }).sort((a, b) => b.suspicion - a.suspicion || b.p.money - a.p.money);
-    const target = suspects[0]?.suspicion > 0 && r() < suspects[0].suspicion ? suspects[0].p.id : 'skip';
-    return { type: 'vote', target, turn };
+  if (now < g.deadline) return;
+  let next: Phase;
+  if (g.phase === "role") next = "promise";
+  else if (g.phase === "promise") next = "secret";
+  else if (g.phase === "secret") {
+    for (const p of g.players) {
+      if (!legal(g, p.id, g.choices[p.id]))
+        g.choices[p.id] = legal(g, p.id, p.promise ?? undefined)
+          ? { ...p.promise! }
+          : { action: "secure" };
+      g.trials[p.id] = newTrial(
+        g.choices[p.id].action,
+        Math.floor(privateRandom() * 0xffffffff),
+      );
+      g.wallets[p.id] = p.money;
+    }
+    next = "transition";
+  } else if (g.phase === "transition") next = "minigame";
+  else if (g.phase === "minigame") {
+    resolve(g);
+    next = "reveal";
+  } else if (g.phase === "reveal") {
+    if (g.alarm >= CONFIG.alarm || g.round === CONFIG.rounds) {
+      finish(g);
+      return;
+    }
+    next = "debate";
+  } else {
+    const counts: Record<string, number> = {};
+    Object.values(g.votes).forEach(
+      (id) => (counts[id] = (counts[id] ?? 0) + 1),
+    );
+    const suspect =
+      g.charges > 0
+        ? (g.players.find((p) => (counts[p.id] ?? 0) >= 3)?.id ?? null)
+        : null;
+    g.voteResult = { votes: { ...g.votes }, suspect };
+    if (suspect) g.charges--;
+    g.watched = suspect;
+    g.round++;
+    g.choices = {};
+    g.jams = {};
+    g.votes = {};
+    g.trials = {};
+    g.successes = {};
+    g.wallets = {};
+    g.players.forEach((p) => (p.promise = null));
+    next = "promise";
   }
-  return null;
+  g.phase = next;
+  g.turn++;
+  g.phaseStarted = now;
+  g.deadline = now + CONFIG.durations[next as keyof typeof CONFIG.durations];
+}
+export function botAct(g: Game, p: Player, now = Date.now()) {
+  const r = random(g.seed + g.round * 173 + g.players.indexOf(p) * 61 + g.turn),
+    index = g.players.indexOf(p);
+  const choice = (): Choice => {
+    if (g.watched === p.id)
+      return {
+        action: g.vault < CONFIG.vault && index % 2 === 0 ? "drill" : "secure",
+      };
+    if (g.vault < CONFIG.vault && index === (g.round - 1) % 4)
+      return { action: "drill" };
+    if (index === g.round % 4) return { action: "secure" };
+    if (g.vault < CONFIG.vault && g.round >= 3 && index === (g.round + 1) % 4)
+      return { action: "drill" };
+    return { action: "loot" };
+  };
+  if (now - g.phaseStarted < 1400 + index * 350) return;
+  if (g.phase === "promise" && !p.promise)
+    apply(g, p.id, { type: "promise", choice: choice(), turn: g.turn }, now);
+  if (g.phase === "secret" && !g.choices[p.id]) {
+    apply(
+      g,
+      p.id,
+      {
+        type: "choose",
+        choice:
+          r() < 0.2 && g.watched !== p.id
+            ? { action: "loot" }
+            : (p.promise ?? choice()),
+        turn: g.turn,
+      },
+      now,
+    );
+    if (g.roles[p.id] === "agent")
+      apply(g, p.id, { type: "jam", enabled: r() < 0.8, turn: g.turn }, now);
+  }
+  if (
+    g.phase === "minigame" &&
+    now - g.phaseStarted > 9000 &&
+    !(p.id in g.successes)
+  )
+    apply(g, p.id, { type: "result", success: r() > 0.12, turn: g.turn }, now);
+  if (g.phase === "debate" && !(p.id in g.votes)) {
+    const suspects =
+      g.report?.findings
+        .filter((f) => g.report?.trace === f.zone)
+        .map((f) => f.id) ?? [];
+    const target =
+      suspects.length && r() < 0.75
+        ? suspects[Math.floor(r() * suspects.length)]
+        : "pass";
+    apply(g, p.id, { type: "vote", target, turn: g.turn }, now);
+  }
 }
