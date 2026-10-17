@@ -35,7 +35,7 @@
       "draft": true,
       "deployed": false
     },
-    "latestRevisionCredits": 15,
+    "latestRevisionCredits": 0,
     "cameraBoxCredits": 0,
     "safe": {
       "taskId": "01a14b42-b599-7523-ac3f-5750a26f8139",
@@ -45,10 +45,13 @@
       "credits": 15,
       "bytes": 6514972,
       "position": [
-        -5.22,
-        0.325,
-        -1.85
+        -5.44,
+        0.32,
+        -1.15
       ],
+      "rotationY": 1.5707963267948966,
+      "scale": [0.92, 1.05, 0.64],
+      "placementProof": "validation/safe-placement",
       "door": "native disconnected pieces; parent transforms only; every triangle retained"
     },
     "camera": {

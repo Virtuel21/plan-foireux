@@ -1,6 +1,7 @@
 import * as T from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { mountSafe } from "./safe";
+import safePlacement from "../scenes/safe-placement.json";
 
 const url = (name: string) =>
   `${import.meta.env.BASE_URL}models/${name}.glb?v=meshy-originals-20261017`;
@@ -47,9 +48,13 @@ export async function loadMeshyMuseum(loader: GLTFLoader) {
     root.add(object);
     return { root, width: dimensions.x * scale };
   };
-  // The stone step inside the native arch is at y=0.317 (ray checked).
-  const safe = station("POST_Vault", -5.22, 0.325, -1.85);
-  safe.rotation.y = Math.PI / 2;
+  // Center the case in the measured niche and support its full base on the sill.
+  const safe = station(
+    "POST_Vault",
+    ...(safePlacement.position as [number, number, number]),
+  );
+  safe.rotation.y = safePlacement.rotationY;
+  safe.scale.fromArray(safePlacement.scale);
   safe.add(mountSafe(vault.scene));
   station("POST_Loot", 0.8, 0.15, -2.2).add(fit(lockers.scene, 1.6).root);
   const cameras = station("POST_Security", 5.2, 0.15, -3.3);

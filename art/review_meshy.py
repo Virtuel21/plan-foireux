@@ -3,7 +3,7 @@
 blender --background --factory-startup --python art/review_meshy.py -- PRODUCTION
 """
 import bpy
-import math
+import json
 import sys
 from pathlib import Path
 from mathutils import Vector
@@ -85,8 +85,15 @@ sx, sy = 12 / (high.x - low.x), 8 / (high.y - low.y)
 decor.scale = (sx, sy, sx)
 decor.location = (-(low.x + high.x) * sx / 2, -(low.y + high.y) * sy / 2, .14 - -.244910535 * sx)
 safe, imported = load(OUT / 'sources/safe-hinged.glb', 'POST_Vault')
-safe.location = (-5.22, 1.85, .325)
-safe.rotation_euler.z = math.pi / 2
+placement_file = Path(__file__).resolve().parents[1] / 'scenes/safe-placement.json'
+if not placement_file.exists():
+    placement_file = Path(__file__).with_name('safe-placement.json')
+placement = json.loads(placement_file.read_text(encoding='utf-8-sig'))
+px, py, pz = placement['position']
+sx, sy, sz = placement['scale']
+safe.location = (px, -pz, py)
+safe.rotation_euler.z = placement['rotationY']
+safe.scale = (sx, sz, sy)
 fit(OUT / 'raw/lockers.glb', 'POST_Loot', (.8, 2.2, .15), 1.6)
 camera_box, imported = load(OUT / 'models/camera-box.glb', 'CameraClosedBox')
 camera_box.location = (5.2, 3.3, 1.65)
