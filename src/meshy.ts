@@ -2,14 +2,15 @@ import * as T from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { mountSafe } from "./safe";
 import safePlacement from "../scenes/safe-placement.json";
+import { sleepingGuardClip } from "./sleeping-guard";
 
 const url = (name: string) =>
   `${import.meta.env.BASE_URL}models/${name}.glb?v=meshy-originals-20261017`;
 
 /** Original Meshy objects, placed with parent transforms only. */
 export async function loadMeshyMuseum(loader: GLTFLoader) {
-  const [backdrop, vault, lockers, cameraBox, guard] = await Promise.all(
-    ["museum", "safe-box", "lockers", "camera-box", "guard"].map((name) =>
+  const [backdrop, vault, cameraBox, guard] = await Promise.all(
+    ["museum", "safe-box", "camera-box", "guard-sleeping"].map((name) =>
       loader.loadAsync(url(name)),
     ),
   );
@@ -68,21 +69,6 @@ export async function loadMeshyMuseum(loader: GLTFLoader) {
     room.add(root);
     return root;
   };
-  const fit = (object: T.Object3D, height: number) => {
-    const root = new T.Group();
-    const bounds = new T.Box3().setFromObject(object);
-    const dimensions = bounds.getSize(new T.Vector3());
-    const middle = bounds.getCenter(new T.Vector3());
-    const scale = height / dimensions.y;
-    object.scale.multiplyScalar(scale);
-    object.position.set(
-      -middle.x * scale,
-      -bounds.min.y * scale,
-      -middle.z * scale,
-    );
-    root.add(object);
-    return { root, width: dimensions.x * scale };
-  };
   // Center the case in the measured niche and support its full base on the sill.
   const safe = station(
     "POST_Vault",
@@ -91,8 +77,16 @@ export async function loadMeshyMuseum(loader: GLTFLoader) {
   safe.rotation.y = safePlacement.rotationY;
   safe.scale.fromArray(safePlacement.scale);
   safe.add(mountSafe(vault.scene));
-  // Keep a clear gap in front of the backdrop's plant in every layout.
-  station("POST_Loot", -0.3, 0.15, -1.5).add(fit(lockers.scene, 1.6).root);
+  // The statue already belongs to the original museum mesh. This invisible
+  // target makes that exhibit usable without duplicating or moving its artwork.
+  const statue = station("POST_Loot", -2.05, 0.15, 3.4);
+  const statuePick = new T.Mesh(
+    new T.BoxGeometry(0.85, 1.7, 0.75),
+    new T.MeshBasicMaterial({ visible: false }),
+  );
+  statuePick.name = "StatuePick";
+  statuePick.position.y = 1.65;
+  statue.add(statuePick);
   const cameras = station("POST_Security", 5.2, 0.15, -3.3);
   cameraBox.scene.position.y = 1.5;
   cameras.add(cameraBox.scene);
@@ -135,10 +129,19 @@ export async function loadMeshyMuseum(loader: GLTFLoader) {
     });
     station(`PROP_Wealth_${i}`, x, floor?.point.y ?? 0.15, z);
   }
-  // Native Meshy rig, native idle animation. No weight or topology changes.
-  const watchman = station("Guard", -2.4, 0.15, -1.75);
+  // Keep the supplied character and its included chair together. Only the
+  // initial sleeping pose is used; no waking motion enters the room mixer.
+  const watchman = station("Guard", -3.65, 0.15, -1.9);
+  watchman.rotation.y = 0.12;
+  watchman.userData.sourceAnimation = "Reveil_Sursaut_Debout";
+  watchman.userData.activeAnimation = "GuardSleepLoop";
   watchman.add(guard.scene);
-  return { scene: room, animations: guard.animations };
+  const initial = T.AnimationClip.findByName(
+    guard.animations,
+    "Reveil_Sursaut_Debout",
+  );
+  if (!initial) throw Error("Pose du gardien endormi absente");
+  return { scene: room, animations: [sleepingGuardClip(initial)] };
 }
 
 export async function loadMeshyCharacters(loader: GLTFLoader) {

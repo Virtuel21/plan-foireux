@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
+import { carryStatue } from "./statue-controls";
 const evidence = "test-results/visual";
 async function ready(page: Page) {
   await page.goto(process.env.PF_TEST_URL || "/");
@@ -159,7 +160,7 @@ test("landscape cables playable by taps, mouse drag, and keyboard", async ({
   }
   await expect(page.locator(".trial-status")).toContainText("Réussi");
 });
-test("drill, pins and pocket are completed through their real controls", async ({
+test("drill, statue and pocket are completed through their real controls", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 844, height: 390 });
@@ -176,12 +177,7 @@ test("drill, pins and pocket are completed through their real controls", async (
       )
     ) {
       if (action === "loot") {
-        const inBand = await page.locator(".meter").evaluate((e) => {
-          const a = e.querySelector(".meter-needle")!.getBoundingClientRect(),
-            b = e.querySelector(".target-band")!.getBoundingClientRect();
-          return a.x > b.x && a.x < b.right;
-        });
-        if (inBand) await page.keyboard.press("Space");
+        await carryStatue(page, "keyboard");
       } else {
         const press =
           action === "drill"

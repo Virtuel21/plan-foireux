@@ -1,4 +1,4 @@
-import { newTrial, type Trial } from "./trial";
+import { newTrial, normalizeTrial, type Trial } from "./trial";
 import { CONFIG } from "../config/rules";
 export { CONFIG } from "../config/rules";
 export const COLORS = ["#ecac32", "#28aaa5", "#ee7836", "#9d65b2"];
@@ -341,7 +341,7 @@ export function apply(
     !(id in g.successes) &&
     validProgress(c.trial, g.trials[id])
   ) {
-    g.trials[id] = structuredClone(c.trial!);
+    g.trials[id] = normalizeTrial(structuredClone(c.trial!));
     return true;
   }
   if (
@@ -397,6 +397,10 @@ function validProgress(
     t.progress <= 1.1 &&
     t.cooldown >= 0 &&
     t.cooldown <= 0.6 &&
+    (t.statueNoise === undefined ||
+      (Number.isFinite(t.statueNoise) &&
+        t.statueNoise >= 0 &&
+        t.statueNoise <= 1)) &&
     Array.isArray(t.connections) &&
     t.connections.length === 3 &&
     t.connections.every((n) => Number.isInteger(n) && n >= -1 && n <= 2) &&
@@ -595,10 +599,7 @@ export function advance(
           ? "radio"
           : g.choices[p.id].action,
         Math.floor(privateRandom() * 0xffffffff),
-        g.choices[p.id].action === "pocket" &&
-          g.lastThefts[p.id] === g.choices[p.id].target
-          ? 2
-          : 1,
+        g.choices[p.id].action === "pocket" && g.lastThefts[p.id] ? 2 : 1,
       );
       g.wallets[p.id] = p.money;
     }

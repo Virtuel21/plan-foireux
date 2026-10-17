@@ -65,21 +65,33 @@
   transform: translateY(var(--anchor-y, 0px));
 }
 .electrical-plug {
-  color: var(--wire);
+  color: #10252b;
   cursor: grab;
+}
+.electrical-plug::before {
+  inset: 6px;
+  border: 2px solid #fff6d8;
+  background: var(--wire);
+  box-shadow:
+    0 0 0 2px #112832,
+    0 0 12px var(--wire);
 }
 .electrical-plug::after {
   content: "+";
   font-weight: 900;
-  font-size: 18px;
-  text-shadow: 0 1px 3px #000;
+  font-size: 25px;
+  line-height: 44px;
+  text-shadow: 0 1px #fff6;
   display: block;
   transform: translateY(var(--anchor-y, 0px));
 }
 .electrical-plug.selected::before {
   inset: 3px;
-  border-color: #fff4c9;
-  box-shadow: 0 0 12px var(--wire);
+  border-color: var(--wire);
+  background: #fff4c9;
+  box-shadow:
+    0 0 0 2px #112832,
+    0 0 16px var(--wire);
 }
 .electrical-board .electrical-plug.connected {
   pointer-events: none;
@@ -102,15 +114,28 @@
 }
 .electrical-socket > span {
   position: absolute;
-  left: 39px;
-  top: calc(11px + var(--anchor-y, 0px));
-  padding: 2px 3px;
-  border-radius: 3px;
-  background: #183037ee;
-  font-size: 12px;
-  line-height: 18px;
+  left: calc(22px + var(--plate-x));
+  top: calc(22px + var(--anchor-y, 0px) + var(--plate-y));
+  transform: translate(-50%, -50%);
+  width: calc(var(--model-unit) * 0.125);
+  padding: 0;
+  background: transparent;
+  color: #10262b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-size: clamp(9px, calc(var(--model-unit) * 0.055), 15px);
+  line-height: 1;
   font-weight: 900;
   white-space: nowrap;
+  text-shadow: 0 1px #fff5;
+  pointer-events: none;
+}
+.electrical-socket > span i {
+  font-style: normal;
+  font-size: 1.2em;
 }
 .electrical-source-label {
   position: absolute;
@@ -176,10 +201,5 @@
   }
   .electrical-switch-hint {
     font-size: 11px;
-  }
-  .electrical-socket > span {
-    left: 37px;
-    font-size: 11px;
-    padding: 1px 2px;
   }
 }

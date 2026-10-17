@@ -5,9 +5,13 @@ import {
   gaze,
   lever,
   newTrial,
-  pin,
-  pinBand,
   stepTrial,
+  normalizeTrial,
+  statueTarget,
+  statueBand,
+  statueNoise,
+  statueBalanced,
+  supportStatue,
   targetBand,
   terminalId,
   radioTarget,
@@ -63,15 +67,87 @@ test("overheat resets current point only and keeps completed points", () => {
   assert.equal(t.progress, 0);
   assert.equal(t.cooldown, 0.5);
 });
-test("pins use a tighter sub-0.2-second target window; error keeps completed pins", () => {
-  const t = newTrial("loot", 4);
-  t.cursor = pinBand(t);
-  assert.equal(pin(t), true);
-  t.cursor = 0;
-  assert.equal(pin(t), false);
+test("statue requires carrying through three different supports and works at 30 and 60 FPS", () => {
+  for (const fps of [30, 60]) {
+    const t = newTrial("loot", 4),
+      targets: number[] = [];
+    for (let i = 0; i < fps * 18 && !t.done; i++) {
+      targets[t.stage] = statueTarget(t);
+      supportStatue(t, statueTarget(t));
+      stepTrial(t, 1 / fps, true);
+    }
+    assert.equal(t.done, true);
+    assert.equal(t.stage, 3);
+    assert.ok(t.elapsed > 4.4 && t.elapsed < 5);
+    assert.ok(targets[1] - targets[0] > 0.2);
+    assert.ok(targets[1] - targets[2] > 0.1);
+    assert.equal(t.cursor, 0, "the statue has no timed locker cursor");
+    assert.equal(statueNoise(t), 0);
+  }
+  const fixed = newTrial("loot", 4);
+  for (let i = 0; i < 60 * 18; i++) stepTrial(fixed, 1 / 60, true);
+  assert.equal(fixed.done, false);
+  assert.equal(
+    fixed.stage,
+    0,
+    "holding at a fixed support cannot complete the statue",
+  );
+});
+test("statue can be steadied before carrying; noise resets only the current checkpoint", () => {
+  const t = newTrial("loot", 2);
+  t.stage = 1;
+  t.progress = 0.8;
+  t.statueNoise = 0.99;
+  supportStatue(t, 0);
+  stepTrial(t, 0.1, true);
   assert.equal(t.stage, 1);
+  assert.equal(t.progress, 0);
   assert.equal(t.cooldown, 0.5);
-  assert.ok(0.15 / 0.76 < 0.2);
+  assert.equal(t.statueNoise, 0.25);
+  for (let i = 0; i < 8; i++) {
+    supportStatue(t, statueTarget(t));
+    stepTrial(t, 0.1, false);
+  }
+  assert.equal(t.stage, 1);
+  assert.equal(t.progress, 0);
+  assert.equal(t.statueNoise, 0);
+  assert.equal(statueBalanced(t), true);
+  assert.equal(statueBand(t), 0.2);
+});
+test("statue state survives JSON restoration and legacy saves receive a zero noise default", () => {
+  const t = newTrial("loot", 9);
+  t.stage = 1;
+  t.progress = 0.3;
+  t.statueNoise = 0.2;
+  const restored = JSON.parse(JSON.stringify(t));
+  for (let i = 0; i < 120; i++)
+    for (const trial of [t, restored]) {
+      supportStatue(trial, statueTarget(trial));
+      stepTrial(trial, 1 / 60, true);
+    }
+  assert.deepEqual(restored, t);
+  const legacy = newTrial("loot", 3);
+  legacy.stage = 1;
+  legacy.progress = 0.4;
+  delete legacy.statueNoise;
+  assert.equal(statueNoise(legacy), 0);
+  normalizeTrial(legacy);
+  assert.equal(legacy.statueNoise, 0);
+  assert.equal(legacy.stage, 1);
+  assert.equal(legacy.progress, 0.4);
+});
+test("statue support rejects invalid gestures and clamps the usable support range", () => {
+  const t = newTrial("loot", 1);
+  for (const input of [NaN, Infinity, -Infinity])
+    assert.equal(supportStatue(t, input), false);
+  assert.equal(t.needle, 0.5);
+  supportStatue(t, -1);
+  assert.equal(t.needle, 0);
+  supportStatue(t, 2);
+  assert.equal(t.needle, 1);
+  t.done = true;
+  assert.equal(supportStatue(t, 0.3), false);
+  assert.equal(supportStatue(newTrial("drill", 1), 0.3), false);
 });
 test("pocket warning precedes face, caught motion restores last checkpoint; completion possible", () => {
   const t = newTrial("pocket", 0);

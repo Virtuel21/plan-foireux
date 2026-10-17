@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { HostRoom } from "../src/host";
+import { newTrial } from "../src/trial";
 const token = (i: number) => `test-token-unique-${i}`;
 function room() {
   const r = new HostRoom("host", "Julien");
@@ -81,6 +82,24 @@ test("host reload snapshot keeps secrets locally and pauses until all guests rej
   [1, 2, 3].forEach((i) => restored.join(token(i), ""));
   assert.equal(restored.game!.pausedAt, null);
   assert.equal(restored.players.length, 4);
+});
+test("legacy host saves retain theft history and statue checkpoints while adding missing noise", () => {
+  const r = room(),
+    id = r.players[1].id;
+  r.game!.phase = "minigame";
+  r.game!.deadline = Date.now() + 18000;
+  r.game!.lastThefts[id] = r.players[2].id;
+  r.game!.trials[id] = newTrial("loot", 9);
+  r.game!.trials[id].stage = 1;
+  r.game!.trials[id].progress = 0.3;
+  delete r.game!.trials[id].statueNoise;
+  const restored = HostRoom.restore(r.serialize());
+  assert.equal(restored.game!.trials[id].statueNoise, 0);
+  assert.equal(restored.game!.trials[id].stage, 1);
+  assert.equal(restored.game!.trials[id].progress, 0.3);
+  assert.equal(restored.view(id)?.myLastTheft, r.players[2].id);
+  assert.equal(restored.view("host")?.myLastTheft, null);
+  assert.equal(Object.hasOwn(restored.view("host")!, "lastThefts"), false);
 });
 test("expired disconnected peer finishes without ranking, replay preserves room roster", () => {
   const r = room();

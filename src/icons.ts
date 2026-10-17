@@ -24,6 +24,8 @@ const paths: Record<string, string> = {
   mute: '<path d="M3 9h4l5-5v16l-5-5H3Zm13 0 6 6m0-6-6 6"/>',
   close: '<path d="m6 6 12 12m0-12L6 18"/>',
   museum: '<path d="m2 8 10-6 10 6H2Zm1 13h18M5 10v8m7-8v8m7-8v8"/>',
+  statue:
+    '<circle cx="12" cy="5" r="3"/><path d="m9 9-3 4 2 4h8l2-4-3-4M10 10v5m4-5v5M6 18h12v4H6Z"/>',
   flag: '<path d="M5 22V3c5-4 9 4 15 0v12c-6 4-10-4-15 0"/>',
   clock: '<circle cx="12" cy="13" r="9"/><path d="M12 8v5l3 2M9 1h6"/>',
   chat: '<path d="M21 3H3v14h5v5l6-5h7Z"/>',

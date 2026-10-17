@@ -47,6 +47,29 @@ async function connectPanel(page: Page, mode: "tap" | "drag" | "keyboard") {
   } else await toggle.click();
 }
 
+async function plateCircuits(page: Page) {
+  const board = (await page.locator(".electrical-board").boundingBox())!;
+  const plates = await page.locator("[data-terminal]").evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const label = button.querySelector("span")!.getBoundingClientRect();
+      return {
+        circuit: Number(button.dataset.circuit),
+        color: button.style.getPropertyValue("--wire"),
+        x: label.x + label.width / 2,
+        y: label.y + label.height / 2,
+        expectedX: Number(button.dataset.plateX),
+        expectedY: Number(button.dataset.plateY),
+      };
+    }),
+  );
+  for (const plate of plates) {
+    expect(plate.x).toBeCloseTo(board.x + plate.expectedX, 1);
+    expect(plate.y).toBeCloseTo(board.y + plate.expectedY, 1);
+    expect(plate.color).toBe(["#edb844", "#ef896a", "#47d8ca"][plate.circuit]);
+  }
+  return plates.map((plate) => plate.circuit);
+}
+
 for (const [width, height] of [
   [1000, 800],
   [844, 390],
@@ -110,8 +133,18 @@ for (const [width, height] of [
     await expect(
       board.getByRole("button", { name: "Valider les circuits" }),
     ).toHaveCount(1);
+    const firstPanel = await plateCircuits(page);
+    await page.screenshot({
+      path: `work/ui-controls-qa/electrical-initial-${width}x${height}.png`,
+    });
     await connectPanel(page, width === 320 ? "tap" : "drag");
     await expect(board).toHaveAttribute("data-panel", "2");
+    expect(await plateCircuits(page)).toEqual(
+      firstPanel.map((circuit) => (circuit + 1) % 3),
+    );
+    await page.screenshot({
+      path: `work/ui-controls-qa/electrical-reordered-${width}x${height}.png`,
+    });
     await connectPanel(page, "keyboard");
     await expect(page.locator(".trial-status")).toContainText("Réussi");
     await page.screenshot({
@@ -149,7 +182,7 @@ test("a failed model request can be retried by reopening training", async ({
   page,
 }) => {
   let requests = 0;
-  await page.route("**/electrical-box.glb", async (route) => {
+  await page.route("**/electrical-box*.glb*", async (route) => {
     requests++;
     if (requests <= 2) await route.abort();
     else await route.continue();

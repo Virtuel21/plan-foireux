@@ -1,0 +1,21 @@
+{
+  "reference": "User-supplied guardian character sheet",
+  "image_task": "01a14bd3-7177-7478-bb0e-a148699d036b",
+  "image_model": "nano-banana-2-lite",
+  "model_task": "01a14bd5-4966-71b2-9226-7ad1455a7c1f",
+  "model": "meshy-t2.5",
+  "model_type": "smart-topology",
+  "texture_resolution": "2k",
+  "target_faces": 10000,
+  "rig_task": "01a14bd6-aaef-7347-a910-2c2381be0224",
+  "rejected_swift_motion_task": "01a14bd4-7d27-7751-888b-5004e5749e74",
+  "rejected_motion_reason": "Downloaded BVH had 840 frames at 30fps and did not stand up; not used in delivered animation.",
+  "final_animation": "Authored locally in Blender for the rigged Meshy character",
+  "chair": "Authored locally in Blender; separate static mesh",
+  "eyelids": "Authored locally; skin-matched, skinned to head with animated morph targets",
+  "paid_animation_retargeting": false,
+  "credits_spent": 26,
+  "approved_budget_cap": 29,
+  "balance_before": 1845,
+  "balance_after": 1819
+}

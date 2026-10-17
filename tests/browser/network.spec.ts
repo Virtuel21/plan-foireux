@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { postShare } from "../../src/engine";
+import { carryStatue } from "./statue-controls";
 test("four WebRTC browsers hosted locally: secret choices, guest reload, synchronized reveal", async ({
   browser,
 }) => {
@@ -116,27 +117,32 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
       timeout: 15000,
     });
     await expect(p.locator("[data-terminal].occupied")).toHaveCount(1);
-    for (let i = 1; i < 3; i++) {
-      await p.locator(`[data-cable="${i}"]`).tap();
-      await p
-        .getByRole("button", {
-          name: `Borne ${["1 △", "2 ○", "3 ╳"][i]}`,
-          exact: true,
-        })
-        .tap();
-    }
-    await p.getByRole("button", { name: "Valider les circuits" }).tap();
-    for (let i = 0; i < 3; i++) {
-      await p.locator(`[data-cable="${i}"]`).tap();
-      await p
-        .getByRole("button", {
-          name: `Borne ${["1 △", "2 ○", "3 ╳"][i]}`,
-          exact: true,
-        })
-        .tap();
-    }
-    await p.getByRole("button", { name: "Valider les circuits" }).tap();
-    await expect(p.locator(".trial-status")).toContainText("Réussi");
+    await Promise.all([
+      (async () => {
+        for (let i = 1; i < 3; i++) {
+          await p.locator(`[data-cable="${i}"]`).tap();
+          await p
+            .getByRole("button", {
+              name: `Borne ${["1 △", "2 ○", "3 ╳"][i]}`,
+              exact: true,
+            })
+            .tap();
+        }
+        await p.getByRole("button", { name: "Valider les circuits" }).tap();
+        for (let i = 0; i < 3; i++) {
+          await p.locator(`[data-cable="${i}"]`).tap();
+          await p
+            .getByRole("button", {
+              name: `Borne ${["1 △", "2 ○", "3 ╳"][i]}`,
+              exact: true,
+            })
+            .tap();
+        }
+        await p.getByRole("button", { name: "Valider les circuits" }).tap();
+        await expect(p.locator(".trial-status")).toContainText("Réussi");
+      })(),
+      carryStatue(pages[3], "touch"),
+    ]);
     await expect(pages[0].locator(".my-money")).toContainText("0");
     await expect(pages[0].locator("body")).toHaveAttribute(
       "data-phase",
@@ -152,6 +158,10 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
     await expect(
       pages[0].locator(".vote-card").filter({ hasText: "Léa" }),
     ).toContainText(`Gain +${postShare("secure", 1)}`);
+    // Sarah and Max really chose the statue; Sarah's failed share stays lost.
+    await expect(
+      pages[0].locator(".vote-card").filter({ hasText: "Max" }),
+    ).toContainText(`Gain +${postShare("loot", 2)}`);
     await pages[0].screenshot({ path: "test-results/network-reveal.png" });
     const rolesBefore = await pages[0].evaluate(
       () =>

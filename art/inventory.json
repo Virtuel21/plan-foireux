@@ -1,6 +1,6 @@
 {
   "version": "3.0.0",
-  "generated": "2026-10-17",
+  "generated": "2026-10-18",
   "assets": [
     {
       "path": "public/models/burglar.glb",
@@ -217,6 +217,15 @@
       "bytes": 18159832,
       "sha256": "19061500b69dfe6c534a4bb39ed55e0755945614cb9c6396fa963cab11556918",
       "source": "Meshy native GLB; art/assemble_meshy.py; original geometry, native PBR maps and rig; art/meshy-provenance.json"
+    },
+    {
+      "path": "public/models/guard-sleeping.glb",
+      "bytes": 3334852,
+      "sha256": "0ae2f3c0d9882033446de40fd43a112aee19751192131e59cbc9fed6f6ea33f2",
+      "triangles": 13429,
+      "source": "Exact GLB supplied by Julien in uti/outputs/gardien-endormi; Meshy T2.5 character and native rig, local Blender chair/eyelids/animation; art/sleeping-guard/source-provenance.json",
+      "sourceVerification": "art/sleeping-guard/source-verification.json",
+      "runtimeAnimation": "GuardSleepLoop derived reproducibly from the initial seated, eyes-closed pose in src/sleeping-guard.ts; original wake animation retained in GLB but never played"
     },
     {
       "path": "public/models/lockers.glb",

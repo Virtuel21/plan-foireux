@@ -1,0 +1,51 @@
+.archived-locker {
+  background: #17303a;
+  color: #f5ecd7;
+  padding: 20px;
+  border: 1px solid #9a845b;
+  border-radius: 12px;
+}
+.archived-locker .machine-art {
+  display: block;
+  width: 100%;
+  height: 190px;
+}
+.archived-locker .locker-meter {
+  height: 34px;
+  position: relative;
+  margin: 16px 0;
+  border: 2px solid #6a7e7b;
+  border-radius: 7px;
+  background: #071820;
+}
+.archived-locker .locker-meter span {
+  position: absolute;
+  inset: 0 auto;
+  width: 15%;
+  background: #287d6b;
+  border-inline: 3px solid #8aecd0;
+}
+.archived-locker .locker-meter i {
+  position: absolute;
+  top: -7px;
+  bottom: -7px;
+  width: 5px;
+  background: #fff5d8;
+  transform: translateX(-50%);
+  border-radius: 3px;
+}
+.archived-locker .locker-status {
+  margin: 10px 0;
+}
+.archived-locker button {
+  min-width: 44px;
+  min-height: 44px;
+  background: #f0c36b;
+  color: #11232c;
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}

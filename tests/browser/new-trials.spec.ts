@@ -186,9 +186,9 @@ test("each training attempt owns its timer after changing exercise", async ({
   await page.getByRole("button", { name: "Retour", exact: true }).click();
   await page.locator('[data-practice="loot"]').click();
   await page.clock.fastForward(3000);
-  const before = await page.locator(".meter-needle").getAttribute("style");
+  const before = await page.locator(".statue-safe").getAttribute("style");
   await page.clock.fastForward(400);
-  const after = await page.locator(".meter-needle").getAttribute("style");
+  const after = await page.locator(".statue-safe").getAttribute("style");
   expect(after).not.toEqual(before);
   await expect(page.locator(".trial-clock")).not.toHaveText("00:00");
 });
