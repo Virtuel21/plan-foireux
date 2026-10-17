@@ -1,36 +1,5 @@
 # Vérifications
 
-## Version 0.4 — 17 octobre 2026
-
-### Moteur, session et compilation exécutés
-
-- 49 tests passent : 29 régressions historiques, 14 tests du moteur 0.4 et 6 tests de session 0.4. TypeScript strict et build Vite passent.
-- Règles vérifiées : un seul FBI, répartition équitable des offres, salaire/rafle, croche-pied annulant travail et salaire, vols simultanés indépendants de l'ordre réseau, partage entier d'un petit sac, chaînes de vol sans création d'argent ni dette, alarme plafonnée, saisie après révélation, majorité absolue, innocent conservant sa place et son argent, FBI démasqué, égalités de fortune, fuite après neuf coups et rôles finaux.
-- Projection explicite et transport simulé : aucun rôle des autres, choix, offre future ou bulletin individuel transmis. Commandes malformées/périmées rejetées. Reconnexion avec même siège, offre, choix et cible ; ancien canal ignoré. Chat, signaux et heartbeat indépendants. Délai de reprise des absents de 20 s et révélation de 12 s vérifiés.
-- 300 simulations déterministes du moteur, à 3–6 joueurs : 92 FBI démasqués, 135 descentes de police, 73 fuites. Toutes terminées, commandes légales, pièces entières et non négatives. Ce ne sont pas des essais entre humains.
-- 32 simulations déterministes de session avec horloge avancée par pas d'une seconde : les bots parlent avant de choisir et toutes les parties terminent. Dix parties atteignant le neuvième coup durent **8 min 40 simulées**. Budget maximal des délais : **11 min 23**. Les fins anticipées sont plus courtes. Cela ne mesure pas encore le rythme ressenti par un groupe humain.
-- Les boutons `?qa` sont réservés au développement local, désactivés en salon réseau. Absence des marqueurs « QA coup », « QA poches » et `qa-tools` vérifiée dans le bundle de production.
-
-### Parcours navigateur exécutés
-
-- Démarrage, saisie du pseudo, rôle en une phrase, deux cartes sans confirmation supplémentaire, choix verrouillé et caché, messages rapides et chat accessible sans menu.
-- Paysage 740 × 360 : la promesse « Je braque » reste visible dans la scène et sous forme de courte étiquette sur le portrait après avoir choisi secrètement de rafler. Un masquage CSS des bulles en paysage a été corrigé ; il ne s'applique désormais qu'aux étiquettes de révélation. Les deux cartes et messages restent accessibles sans défilement.
-- Scénarios locaux préparés via `?qa` : changement de victime par portrait ; carte et cible mises à jour ; vol de 5 pièces, pertes simultanées et gains nets négatifs ; croche-pied ; travail annulé ; six résultats, six portraits et six étiquettes de récompense visibles. Clignotement CSS `red-flash` effectivement lu sur les auteurs de coups fourrés. Les étiquettes occupent deux lignes et évitent la fenêtre de mise en avant.
-- Scénarios préparés : sélection d'un suspect, vote caché enregistré, écran de fuite révélant le nom/portrait du FBI, écran de saisie avec tous les sacs à zéro, relance. Ces scénarios ne constituent pas un match gagné en jouant les neuf coups au rythme normal.
-- Écrans contrôlés : 1280 × 720, paysage compact 740 × 360 et 844 × 390, portrait 390 × 844. À 740 × 360, deux cartes et trois messages rapides de 44 px, six portraits, six lignes de révélation et fin de partie accessibles ; panneau de choix/révélation sans débordement mesuré après corrections. En portrait, la garde d'orientation est affichée et le jeu est inerte. Le verrouillage matériel de rotation n'est pas prouvé par cette émulation.
-- Salon WebRTC réel à deux onglets et deux bots : invitation et remplacement d'un bot par l'invité, promesse « Je braque » visible sans révéler son vol secret, chat reçu par l'hôte. Rechargement de l'invité puis reconnexion : même siège, rôle et vol caché retrouvés. Progression normale jusqu'aux contrôles et aux coups suivants ; contrôle passé sans élimination. Un vol ciblé sur Max l'a fait passer de 20 à 15 pièces et son auteur de 12 à 17. Deux consoles sans avertissement ni erreur aux relevés effectués. Le parcours a ensuite atteint le neuvième coup et la fuite sans outils QA : Max gagne avec 40, Julien 37, l’invité Complice 36 et Sarah 35 ; le rôle FBI de Complice est révélé dans la scène et dans la carte finale. Ce sont deux clients pilotés par le même testeur, pas un essai de compréhension avec deux nouveaux joueurs.
-
-### Publication et vérifications publiques
-
-- Workflow GitHub Actions : build et déploiement Pages réussis. Le site public charge le moteur/interface 0.4 et le musée GLB.
-- Partie publique lancée avec six joueurs : rôle FBI affiché en une phrase, deux choix, trois messages rapides, six portraits et personnages recolorés. Aucun outil QA visible ; aucun avertissement ni erreur console relevé au démarrage.
-- Une barre de défilement de deux pixels sur le grand panneau d'action a été corrigée ; mesure locale finale 296 px de contenu pour 296 px disponibles à 1280 × 720.
-
-### Limites et prochain essai humain
-
-Pas de validation sur téléphone physique, Safari/iOS ou réseau mobile. Pas de test de charge à six appareils ni de TURN/migration d'hôte. Le vocal n'est pas intégré. La compréhension immédiate, le plaisir, les stratégies dominantes et le rythme de conversation restent à éprouver avec des joueurs découvrant les règles. Les simulations et scénarios préparés ne prouvent pas ces qualités.
-
----
 ## Version 0.3 — 17 octobre 2026
 
 ### Moteur et compilation exécutés

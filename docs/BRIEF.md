@@ -1,9 +1,5 @@
 # Plan Foireux
 
-## Correction 0.4 prioritaire
-
-Le dernier brief demande un audit profond et autorise la suppression des mécaniques antérieures. Cible : 8–12 minutes, jouable sans vocal. Braqueurs : sortir les plus riches, quitte à faire des coups fourrés sans ruiner le casse. FBI : faire échouer le casse sans être démasqué. La refonte décrite dans [AUDIT_V4.md](AUDIT_V4.md) remplace le parcours 0.3 ; elle retire du jeu principal les postes A/B, promesses obligatoires, fouille/code, sac commun et éliminations prolongées.
-
 ## Correction 0.3 prioritaire — lisibilité et manipulation
 
 Le dernier retour de Julien du 17 octobre prévaut : rendre les choix compréhensibles sans calcul ni lecture de six cartes équivalentes. Phase publique : annoncer un poste avec gain et besoins visibles. Phase secrète : opposer tenir sa promesse et voler, puis garder les autres aides dans un second niveau. Montrer le gain potentiel et le risque collectif avant validation. Au reveal, les avatars signalent en rouge les vols/promesses rompues et le décor affiche les gains avec pièces d'or. À la fin, révéler clairement le nom et le portrait du FBI, y compris après une fuite réussie.
