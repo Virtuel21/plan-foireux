@@ -19,5 +19,6 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 276px;grid-template-rows:m
 #chat-history{max-height:36px;overflow-y:auto;flex:1;line-height:18px;scrollbar-width:thin;overflow-wrap:anywhere}#chat-history p{margin:0}#chat-history b{color:var(--gold);margin-right:5px}
 .name-tag.is-revealing .scene-betrayal{display:none}
 @media(max-height:420px) and (orientation:landscape){.lobby-start>small{display:none}}
+@media(min-width:1051px) and (min-height:651px){.quick-signals{margin-top:7px}}
 @media(max-height:420px) and (orientation:landscape){#chat-history{max-height:30px;line-height:15px}}
 @media(max-width:1050px),(max-height:650px){.vote-memory{font-size:8px;position:absolute;top:2px;right:3px;background:#102737d9;padding:1px 3px;border-radius:3px}.player:has(.vote-memory) .avatar{width:25px;height:28px}}
