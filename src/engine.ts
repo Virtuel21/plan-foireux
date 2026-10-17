@@ -250,7 +250,7 @@ export function resolveRoom(g: Game, now = Date.now()) {
     if (c.action === 'a' || c.action === 'b') {
       const valid = !(g.roomIndex === 3 && c.action === 'a' && c.code !== g.code && c.code !== 'FORCE');
       gains.set(p.id, valid ? 3 : 0);
-      details.set(p.id, valid ? (g.roomIndex === 3 && c.action === 'a' ? c.code === 'FORCE' ? 'A forcé le coffre : bruyant et coûteux.' : 'Le code saisi était correct. Coffre ouvert !' : `A assuré ${room[c.action].short}. +3.`) : 'Mauvais code : le coffre est resté fermé. Aucun salaire.');
+      details.set(p.id, valid ? (g.roomIndex === 3 && c.action === 'a' ? c.code === 'FORCE' ? 'A forcé le coffre : bruyant et coûteux.' : 'Le code saisi était correct. Coffre ouvert !' : `A assuré ${room[c.action].short}. +3.`) : 'Mauvais code : cette tentative n’a rien ouvert. Aucun salaire.');
     }
     if (!details.has(p.id)) details.set(p.id, c.action === 'cover' ? 'Prêt à sauver un poste, mais personne ne manquait. +0.' : 'Fouille incomplète : aucun indice ni gain.');
     const gain = gains.get(p.id) ?? 0, betrayed = p.promise !== c.action;

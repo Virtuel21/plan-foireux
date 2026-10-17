@@ -42,7 +42,7 @@ View reste explicitement projetée : champs publics existants (players, phase, r
 - `myTarget: string|null`, `myCode: string` (restaurer son propre choix après reconnexion)
 - `vaultRetries: number` (0 puis 1 pour l'unique seconde tentative au coffre)
 
-`Finding` conserve id/action/promise/gain/betrayed et ajoute `detail:string`.
+`Finding` conserve id/action/promise/gain/betrayed et ajoute `detail:string`, `target?:string` (objet ciblé, sans le chiffre secret).
 `Report` conserve findings/incidents/alarmAdded/text et ajoute `alarmBefore:number;alarmAfter:number;poolBefore:number;poolAfter:number`.
 Exporter `ACTIONS`, `SPOTS`, `ALARM_MAX`, `Command`. `apply` refuse tout champ invalide et ne permet pas la collecte hors phase secret ni la modification après verrouillage. `publicView` ne publie jamais le code ou les zones contenant les enveloppes.
 
