@@ -7,6 +7,8 @@ import { COLORS } from './engine';
 const mat=(color:T.ColorRepresentation,metalness=0,roughness=.72)=>new T.MeshStandardMaterial({color,roughness,metalness});
 type Actor = {id:string;root:T.Object3D;parts:Record<string,T.Object3D>;pose:Record<string,T.Euler>;target:T.Vector3;label:HTMLDivElement;status:HTMLSpanElement;reward:HTMLDivElement;link:HTMLDivElement;labelPosition:{x:number;y:number}|null;index:number;action:string|null;searchSpot:string|null};
 type Interaction = {target:string;object:T.Object3D;anchor:T.Vector3;button:HTMLButtonElement;line:HTMLDivElement;available:boolean};
+type CaperFinding={id:string;action:string;scheme:string|null;target:string|null;blocked:boolean;stole:number;lost:number;gain:number};
+type CaperSignal={id:string;kind:string;target?:string;at:number};
 export class Museum {
   scene=new T.Scene(); camera:T.OrthographicCamera; renderer:T.WebGLRenderer; world=new T.Group(); props=new T.Group(); crew=new T.Group();
   actors:Actor[]=[];
@@ -15,6 +17,7 @@ export class Museum {
   raycaster=new T.Raycaster();pointer=new T.Vector2();pointerStart:{x:number;y:number}|null=null;
   focusedId:string|null=null;focusHalo:T.Mesh;focusLight:T.PointLight;cameraAim=new T.Vector3(0,1.15,0);
   nextBadgeLayout=0;actorLayoutKey='';
+  caperFindings:CaperFinding[]=[];caperSignals:CaperSignal[]=[];caperKey='';flyingCoins:{mesh:T.Mesh;from:string;to:string;offset:number}[]=[];
   roster:Player[]=this.previewPlayers();guard:T.Group|null=null;
   reduced=matchMedia('(prefers-reduced-motion: reduce)').matches; ready=false;
   gold=mat('#d8a345',.65,.32); stone=mat('#ba9c7a'); iron=mat('#34434a',.6,.48); red=mat('#743b40'); black=mat('#202c36');
@@ -245,6 +248,7 @@ export class Museum {
       this.actors.push({id:p.id,root,parts,pose,target:start.clone(),label,status,reward,link,labelPosition:null,index:i,action:null,searchSpot:null});
     });
     if(this.view)this.update(this.view);
+    this.presentCaper(this.caperFindings,this.caperSignals);
   }
   addGuard(){if(!this.base)return;this.guard=this.base.clone(true);this.guard.scale.setScalar(.85);this.guard.position.set(-4.8,.07,-2.5);this.guard.rotation.y=.4;
     this.guard.traverse(o=>{if(o instanceof T.Mesh){o.castShadow=true;if(o.material.name==='Cloth'){o.material=o.material.clone();o.material.color.set('#39627d');}if(/DominoMask|MaskBridge|MaskStrap|Backpack|PackPocket|PackFlap|PackHandle|ShoulderStrap|StrapBuckle/.test(o.name))o.visible=false;}});if(this.view)this.guard.position.set([-4.8,-3.8,4.8][this.view.rooms[this.view.roomIndex].layout],.07,-2.8);this.world.add(this.guard);this.configurePostInteractions();
@@ -268,7 +272,7 @@ export class Museum {
       actor.label.classList.toggle('is-revealing',v.phase==='reveal');actor.label.style.visibility='';
       actor.status.hidden=!harmful&&!agent;actor.status.textContent=agent?'Agent infiltré · FBI':finding?.betrayed?'Promesse rompue':'Vol du butin';
       actor.reward.hidden=!finding;
-      if(finding){actor.reward.innerHTML=`<svg viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="18" rx="13" ry="12" fill="#a86d12"/><circle cx="16" cy="15" r="12" fill="#ffd154" stroke="#e4a624" stroke-width="2"/><circle cx="16" cy="15" r="8.5" fill="none" stroke="#fff0a6" stroke-width="1.4"/><path d="M18.7 10.5c-4-2-7 4.5-2.7 4.5s1.3 6.5-2.7 4.5M16 8.5v13" fill="none" stroke="#a76c12" stroke-width="2" stroke-linecap="round"/><path d="m7 8 2-2" stroke="#fff8d6" stroke-width="2" stroke-linecap="round"/></svg><strong>+${finding.gain}</strong>`;actor.label.setAttribute('aria-label',`${p.name}${finding.betrayed?', promesse rompue':''}, +${finding.gain} pièces`);}
+      if(finding){const amount=`${finding.gain>=0?'+':''}${finding.gain}`;actor.reward.innerHTML=`<svg viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="18" rx="13" ry="12" fill="#a86d12"/><circle cx="16" cy="15" r="12" fill="#ffd154" stroke="#e4a624" stroke-width="2"/><circle cx="16" cy="15" r="8.5" fill="none" stroke="#fff0a6" stroke-width="1.4"/><path d="M18.7 10.5c-4-2-7 4.5-2.7 4.5s1.3 6.5-2.7 4.5M16 8.5v13" fill="none" stroke="#a76c12" stroke-width="2" stroke-linecap="round"/><path d="m7 8 2-2" stroke="#fff8d6" stroke-width="2" stroke-linecap="round"/></svg><strong>${amount}</strong>`;actor.label.setAttribute('aria-label',`${p.name}${finding.betrayed?', promesse rompue':''}, ${amount} pièces`);}
       else if(agent)actor.label.setAttribute('aria-label',`${p.name}, agent infiltré du FBI`);else actor.label.removeAttribute('aria-label');
       if((v.phase==='reveal'||v.phase==='vote'||v.phase==='ended')&&v.report){const f=v.report.findings.find(f=>f.id===p.id);if(f){
         actor.action=f.action;const others=v.report.findings.filter(a=>a.action===f.action&&(f.action!=='search'||a.target===f.target)),n=others.findIndex(a=>a.id===p.id);
@@ -286,6 +290,22 @@ export class Museum {
       actor.target.set(T.MathUtils.clamp(position.x+spread+side,-5.7,5.7),.08,position.z+(action==='cover'?3.1:action==='search'?1.15:action==='loot'?1.35:1)+Math.floor(index/3)*.8);}
   }
   focusPlayer(id:string|null) {this.focusedId=id;this.focusHalo.visible=!!id;this.focusLight.intensity=id?4:0;if(!id){this.focusHalo.visible=false;}}
+  presentCaper(findings:CaperFinding[],signals:CaperSignal[]=[]){
+    this.caperFindings=findings;this.caperSignals=signals;
+    const homes=new Map(this.actors.map(a=>[a.id,a.target.clone()]));
+    for(const a of this.actors){const f=findings.find(f=>f.id===a.id),signal=signals.find(s=>s.id===a.id);
+      a.label.classList.toggle('is-victim',!!f&&(f.blocked||f.lost>0));
+      if(f){a.status.hidden=false;a.status.textContent=f.blocked?'Patatras !':f.scheme==='trip'?'Croche-pied !':f.scheme==='pocket'?'Les mains dans le sac !':f.scheme==='grab'?'Tout pour moi !':'Au travail';
+        if(f.target&&homes.has(f.target))a.target.copy(homes.get(f.target)!).add(new T.Vector3(.65,0,.45));
+        if(f.blocked)a.action='fallen';else if(f.scheme==='trip')a.action='trip';else if(f.scheme==='pocket')a.action='pocket';
+        a.reward.classList.toggle('negative',f.gain<0);const amount=a.reward.querySelector('strong');if(amount)amount.textContent=`${f.gain>=0?'+':''}${f.gain}`;
+      }else if(signal){a.status.hidden=false;a.status.textContent=signal.kind==='work'?'« Je braque ! »':signal.kind==='help'?'« Besoin d’aide ! »':'« Je te surveille ! »';}
+    }
+    const key=findings.length?`${this.view?.turn}:${findings.map(f=>`${f.id}:${f.stole}`).join()}`:'';
+    if(key!==this.caperKey){this.caperKey=key;for(const c of this.flyingCoins){this.world.remove(c.mesh);c.mesh.geometry.dispose();}this.flyingCoins=[];
+      for(const f of findings)if(f.target&&f.stole>0)for(let i=0;i<Math.min(f.stole,5);i++){const mesh=new T.Mesh(new T.CylinderGeometry(.12,.12,.04,14),this.gold);mesh.rotation.x=Math.PI/2;this.world.add(mesh);this.flyingCoins.push({mesh,from:f.target,to:f.id,offset:i*.19});}
+    }
+  }
   setZoom(delta:number){this.zoom=T.MathUtils.clamp(this.zoom+delta,.8,1.5);this.resize();}
   resize() {const w=this.container.clientWidth,h=this.container.clientHeight;if(!w||!h)return;const ratio=w/h;const height=Math.max(8.7,15.5/ratio)/this.zoom;this.camera.left=-height*ratio/2;this.camera.right=height*ratio/2;this.camera.top=height/2;this.camera.bottom=-height/2;this.camera.updateProjectionMatrix();this.renderer.setSize(w,h);this.nextBadgeLayout=0;}
   animate=()=>{
@@ -296,7 +316,10 @@ export class Museum {
       const rotate=(name:string,axis:'x'|'y'|'z',angle:number)=>{if(a.parts[name])a.parts[name].rotation[axis]+=angle;};
       if(walking){rotate('ArmL','x',motion);rotate('ArmR','x',-motion);rotate('LegL','x',-motion);rotate('LegR','x',motion);}
       else if(work||this.view?.phase==='ended'&&a.action){
-        if(a.action==='search'){a.root.rotation.x=.18;rotate('Head','x',.3);rotate('ArmL','x',-.8+motion);rotate('ArmR','x',-1.12-motion);rotate('LegR','x',.2);}
+        if(a.action==='fallen'){a.root.rotation.z=this.reduced?.9:1.0+Math.sin(time*3)*.1;rotate('ArmL','z',-1.6);rotate('ArmR','z',1.6);rotate('LegL','x',.5);rotate('Head','z',-.3);}
+        else if(a.action==='trip'){rotate('LegR','z',-.9);rotate('ArmL','z',-.65);rotate('Head','y',.5);}
+        else if(a.action==='pocket'){a.root.rotation.y=-1;rotate('ArmR','x',-1.4+motion*.3);rotate('ArmL','x',-.6);rotate('Head','y',-.5);}
+        else if(a.action==='search'){a.root.rotation.x=.18;rotate('Head','x',.3);rotate('ArmL','x',-.8+motion);rotate('ArmR','x',-1.12-motion);rotate('LegR','x',.2);}
         else if(a.action==='loot'){a.root.rotation.z=motion*.18;rotate('ArmL','x',-1.1+motion);rotate('ArmR','x',-.45-motion);rotate('Head','x',.18);}
         else if(a.action==='repair'){a.root.rotation.x=.12;rotate('Head','x',.3);rotate('ArmL','x',-.65);rotate('ArmR','x',-1.25+motion*.8);rotate('ArmR','z',-.15);}
         else if(a.action==='cover'){rotate('ArmL','z',-.62-motion*.25);rotate('ArmR','z',.62+motion*.25);rotate('Head','y',motion);}
@@ -309,6 +332,7 @@ export class Museum {
     const aim=focus?new T.Vector3(focus.root.position.x*.32,1.15,focus.root.position.z*.22):new T.Vector3(0,1.15,0);this.cameraAim.lerp(aim,this.reduced?1:Math.min(1,dt*3));this.camera.position.set(10+this.cameraAim.x,10,16+this.cameraAim.z);this.camera.lookAt(this.cameraAim);
     const cameraZoom=T.MathUtils.lerp(this.camera.zoom,focus?1.08:1,this.reduced?1:Math.min(1,dt*3));if(Math.abs(this.camera.zoom-cameraZoom)>.00005){this.camera.zoom=cameraZoom;this.camera.updateProjectionMatrix();}
     if(focus){this.focusHalo.position.copy(focus.root.position);this.focusHalo.position.y=.105;this.focusLight.position.copy(focus.root.position).add(new T.Vector3(0,2.6,1));this.focusLight.intensity=4;}else this.focusLight.intensity=0;
+    for(const c of this.flyingCoins){const from=this.actors.find(a=>a.id===c.from),to=this.actors.find(a=>a.id===c.to);if(from&&to){const progress=this.reduced?.5:((time*.55+c.offset)%1);c.mesh.position.lerpVectors(from.root.position,to.root.position,progress);c.mesh.position.y+=1.3+Math.sin(progress*Math.PI)*1.3;c.mesh.rotation.z=this.reduced?0:time*3;}}
     this.renderer.render(this.scene,this.camera);this.layoutActorLabels();if(time>=this.nextBadgeLayout){this.layoutBadges();this.nextBadgeLayout=time+.12;}
   };
 }
