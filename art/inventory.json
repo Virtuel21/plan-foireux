@@ -1,5 +1,5 @@
 {
-  "version": "2.0.1",
+  "version": "3.0.0",
   "generated": "2026-10-17",
   "assets": [
     {
@@ -16,8 +16,8 @@
     },
     {
       "path": "public/models/museum.glb",
-      "bytes": 1320248,
-      "sha256": "52fb1b55a48a97c7db0fd72bc522fec04b7539b5dfb1b814c82b8eaa059b88fd",
+      "bytes": 1226220,
+      "sha256": "93001e2b242cd1ba23163119ecab6779066e283ca6ecc171ad9624cb145bfb1d",
       "source": "art/build_museum.py and art/finish_assets.py; original geometry"
     },
     {
@@ -199,6 +199,12 @@
       "bytes": 8295334,
       "sha256": "d5f90b2024fe88317a9aed4ad29c00f13fc4de1f1bd3c9f8c1b9f2ff3a744e25",
       "source": "Music supplied by Julien from Documents/Plan foireux/songs; original MP3, no reencoding"
+    },
+    {
+      "path": "public/models/wealth.glb",
+      "bytes": 36412,
+      "sha256": "0750564fe8d875785125edd33ad81a1c1b74132840308e51aaf8bbf9ef73d2cc",
+      "source": "art/wealth_units.py; Money Tour authored wealth units reused and optimized for Plan Foireux at Julien request"
     }
   ]
 }

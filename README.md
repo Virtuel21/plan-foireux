@@ -1,4 +1,4 @@
-# Plan Foireux — prototype jouable v2
+# Plan Foireux — prototype jouable v3
 
 Un musée Art déco, quatre complices, un FBI. Le brief du 17 octobre 2026 dans `docs/BRIEF.md` remplace les règles 0.x. La précision ultérieure de Julien prévaut sur son chapitre réseau : **le navigateur de l’hôte gère la partie localement**, sans serveur de jeu à déployer.
 
@@ -10,9 +10,9 @@ Ouvrez le coffre pour fuir, en cinq manches maximum. À 5 alarmes, la police gag
 
 Annoncez publiquement un poste parmi Forer, Sécuriser, Casiers ou Voler la toile. Les portraits et noms montrent qui promet quoi. En secret, choisissez votre vrai poste ou faites les poches d’un rival : le vol ne peut jamais être annoncé. Les phases durent 20 s de promesses, 12 s de secret, 18 s d’épreuve et 12 s de bilan. Un débat de 30 s suit chaque manche qui continue.
 
-Chaque poste partage **12 pièces entre tous ses participants réels** : seul 12, à deux 6, à trois 4, à quatre 3 ; une part ratée est perdue. Forer ajoute aussi 2 au coffre ; Sécuriser retire 2 alarmes. Le vol prend jusqu’à 4 pièces au portefeuille initial d’un rival, partagé entre les voleurs réussis. Voler la toile demande de découper un contour avec 85 % de précision.
+Chaque poste partage **12 pièces entre tous ses participants réels** : seul 12, à deux 6, à trois 4, à quatre 3 ; une part ratée est perdue. Forer ajoute aussi 2 au coffre ; Sécuriser retire 2 alarmes. Le vol prend presque tout le gain de la manche d’un rival : **11 sur 12** pour un voleur seul, au moins une pièce laissée à la cible. Sans gain, jusqu’à 4 pièces de sa réserve. Plusieurs voleurs partagent ce montant. Reprendre la même cible à la manche suivante rend le défi beaucoup plus difficile. Voler la toile accepte **70 % de précision**, avec une marge de tracé élargie pour le doigt.
 
-L’alarme ajoute 1 pour le temps et 1 par défi raté, puis retire 2 par sécurité réussie. Le bilan automatique explique ce calcul et présente les statistiques des quatre portraits. Le vote affiche les nombres de voix en direct : 3/4 imposent un tour de surveillance, deux charges communes, aucun rôle révélé.
+L’alarme ajoute 1 pour le temps et 1 par défi raté, puis retire 2 par joueur qui désactive les alarmes. Le bilan automatique explique ce calcul **seulement si l’alarme monte** et présente les statistiques des quatre portraits. Le vote affiche les nombres de voix en direct : 3/4 imposent un tour de surveillance, deux charges communes, aucun rôle révélé. **La quatrième réponse termine immédiatement le vote**, y compris Passer. Une grande annonce centrale signale les promesses et les choix secrets. Le butin est représenté par des piles de lingots et de billets qui grandissent et diminuent avec les portefeuilles.
 
 Le FBI choisit une cible privée et joue un talkie-walkie à trois fréquences : rouge, orange, vert. S’il réussit, la cible apparaît comme ayant raté son défi et son propre poste de couverture réussit. Un joueur surveillé ne peut pas brouiller. Tous les détails sont dans `docs/BRIEF.md`, les règles précédentes dans `docs/BRIEF-v1-archive.md`.
 

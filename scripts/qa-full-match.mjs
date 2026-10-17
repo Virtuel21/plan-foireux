@@ -20,6 +20,7 @@ try {
         await page.locator(`[data-post="${action}"]`).tap();
       }
       if (phase === 'ended') break;
+      if (phase === 'debate') await page.getByRole('button', { name: /^(Passer|Continuer)/ }).tap();
     }
     if (phase === 'minigame') {
       if (action === 'secure' && attempts++ === 0) {

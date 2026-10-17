@@ -3,6 +3,7 @@ export type TrialAction = Action | "radio";
 export type Trial = {
   action: TrialAction;
   seed: number;
+  difficulty: 1 | 2;
   elapsed: number;
   stage: number;
   needle: number;
@@ -19,10 +20,15 @@ export type Trial = {
   cutY: number;
   done: boolean;
 };
-export function newTrial(action: TrialAction, seed: number): Trial {
+export function newTrial(
+  action: TrialAction,
+  seed: number,
+  difficulty: 1 | 2 = 1,
+): Trial {
   return {
     action,
     seed,
+    difficulty,
     elapsed: 0,
     stage: 0,
     needle: 0.12,
@@ -52,6 +58,10 @@ export const radioSignal = (t: Trial) =>
       ? "orange"
       : "red";
 export function gaze(t: Trial): "away" | "warning" | "front" {
+  if (t.difficulty === 2) {
+    const cycle = (t.elapsed + (t.seed % 7) / 10) % 3.2;
+    return cycle < 0.8 ? "away" : cycle < 1.05 ? "warning" : "front";
+  }
   const cycle = (t.elapsed + (t.seed % 7) / 10) % 3.4;
   return cycle < 1.65 ? "away" : cycle < 2.05 ? "warning" : "front";
 }
@@ -84,9 +94,10 @@ export function stepTrial(t: Trial, dt: number, held: boolean): void {
   if (t.action === "pocket" && held && !t.cooldown) {
     if (gaze(t) === "front") {
       t.progress = 0;
+      if (t.difficulty === 2) t.stage = Math.max(0, t.stage - 1);
       t.cooldown = 0.5;
     } else {
-      t.progress += dt / 1.3;
+      t.progress += dt / (t.difficulty === 2 ? 1.35 : 1.3);
       if (t.progress >= 1) {
         t.stage++;
         t.progress = 0;
@@ -146,6 +157,8 @@ export function cutPath(t: Pick<Trial, "seed">): [number, number][] {
 }
 export const cutAccuracy = (t: Trial) =>
   Math.round(100 * (1 - t.cutErrors / Math.max(1, t.cutSamples)));
+export const CUT_TOLERANCE = 0.09;
+export const CUT_REQUIRED_ACCURACY = 70;
 export function cutAt(t: Trial, x: number, y: number): boolean {
   if (
     t.action !== "painting" ||
@@ -154,25 +167,47 @@ export function cutAt(t: Trial, x: number, y: number): boolean {
     !Number.isFinite(y)
   )
     return false;
+  const path = cutPath(t),
+    oldX = t.cutX,
+    oldY = t.cutY;
   t.cutX = Math.max(0, Math.min(1, x));
   t.cutY = Math.max(0, Math.min(1, y));
-  const path = cutPath(t);
-  t.cutSamples = Math.min(10000, t.cutSamples + 1);
-  let best = -1,
-    dist = Infinity;
-  for (let i = t.cutIndex; i < Math.min(81, t.cutIndex + 5); i++) {
-    const d = Math.hypot(x - path[i][0], y - path[i][1]);
-    if (d < dist) {
-      dist = d;
-      best = i;
+  if (t.cutIndex === 0) {
+    t.cutSamples++;
+    if (Math.hypot(x - path[0][0], y - path[0][1]) > 0.12) {
+      t.cutErrors++;
+      return false;
+    }
+    t.cutIndex = 1;
+    return true;
+  }
+  const steps = Math.max(1, Math.ceil(Math.hypot(x - oldX, y - oldY) / 0.025));
+  let accepted = false;
+  for (let k = 1; k <= steps; k++) {
+    const px = oldX + ((x - oldX) * k) / steps,
+      py = oldY + ((y - oldY) * k) / steps;
+    let best = -1,
+      dist = Infinity;
+    for (
+      let i = Math.max(0, t.cutIndex - 4);
+      i < Math.min(81, t.cutIndex + 10);
+      i++
+    ) {
+      const d = Math.hypot(px - path[i][0], py - path[i][1]);
+      if (d < dist) {
+        dist = d;
+        best = i;
+      }
+    }
+    t.cutSamples = Math.min(10000, t.cutSamples + 1);
+    if (dist > CUT_TOLERANCE)
+      t.cutErrors = Math.min(t.cutSamples, t.cutErrors + 1);
+    else {
+      accepted = true;
+      t.cutIndex = Math.max(t.cutIndex, best + 1);
     }
   }
-  if (dist > 0.045) {
-    t.cutErrors = Math.min(t.cutSamples, t.cutErrors + 1);
-    return false;
-  }
-  t.cutIndex = best + 1;
   t.stage = Math.min(3, Math.floor(t.cutIndex / 27));
-  t.done = t.cutIndex >= 81 && cutAccuracy(t) >= 85;
-  return true;
+  t.done = t.cutIndex >= 81 && cutAccuracy(t) >= CUT_REQUIRED_ACCURACY;
+  return accepted;
 }

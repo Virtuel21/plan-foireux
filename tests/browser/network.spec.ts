@@ -19,7 +19,7 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
     await pages[0]
       .getByRole("button", { name: "Inviter mes complices" })
       .click();
-    await expect(pages[0]).toHaveURL(/#room=pf-v2-/, { timeout: 30000 });
+    await expect(pages[0]).toHaveURL(/#room=pf-v3-/, { timeout: 30000 });
     const url = pages[0].url();
     for (let i = 1; i < 4; i++) {
       await pages[i].goto(url);
@@ -57,6 +57,9 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
       { timeout: 10000 },
     );
     await expect(pages[0].locator('[data-post="painting"]')).toBeVisible();
+    await expect(pages[0].locator("#phase-announcement")).toContainText(
+      "Annoncez votre poste",
+    );
     await Promise.all(
       pages.map((p, i) =>
         p
@@ -69,6 +72,10 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
       "secret",
       { timeout: 25000 },
     );
+    await expect(pages[0].locator("#phase-announcement")).toContainText(
+      "Choisissez votre vrai poste",
+    );
+    await pages[0].screenshot({ path: "test-results/secret-announcement.png" });
     await pages[3].locator('[data-post="loot"]').click();
     await expect(pages[3].locator('[data-post="loot"]')).toHaveAttribute(
       "aria-pressed",
@@ -137,7 +144,7 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
     await pages[0].screenshot({ path: "test-results/network-reveal.png" });
     const rolesBefore = await pages[0].evaluate(
       () =>
-        JSON.parse(JSON.parse(sessionStorage.getItem("pf-v2-host")!).data).game
+        JSON.parse(JSON.parse(sessionStorage.getItem("pf-v3-host")!).data).game
           .roles,
     );
     await pages[0].reload();
@@ -149,7 +156,7 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
     });
     const restored = await pages[0].evaluate(
       () =>
-        JSON.parse(JSON.parse(sessionStorage.getItem("pf-v2-host")!).data).game,
+        JSON.parse(JSON.parse(sessionStorage.getItem("pf-v3-host")!).data).game,
     );
     expect(restored.roles).toEqual(rolesBefore);
     expect(restored.report.findings.some((f: any) => f.gain === 12)).toBe(true);
@@ -177,11 +184,12 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
     await expect(pages[0].locator(".vote-card")).toHaveCount(4);
     await expect(pages[0].locator(".report-clock")).toHaveText(/00:\d{2}/);
     await pages[0].screenshot({ path: "test-results/live-vote-landscape.png" });
+    await pages[3].locator('[data-action="pass"]').tap();
     // Next round: the real private radio UI overrides a challenge completed locally.
     await expect(pages[0].locator("body")).toHaveAttribute(
       "data-phase",
       "promise",
-      { timeout: 35000 },
+      { timeout: 3000 },
     );
     await Promise.all(
       pages.map((p) => p.locator('[data-post="secure"]').tap()),
@@ -253,12 +261,13 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
     );
     for (const p of pages) {
       await expect(p.locator(".vote-card").nth(victimIndex)).toContainText(
-        "Raté · +1 alarme",
+        "Raté",
       );
       await expect(p.locator(".vote-card").nth(agentIndex)).toContainText(
         "Sécuriser · Réussi",
       );
       await expect(p.locator(".vote-card")).toHaveCount(4);
+      await expect(p.locator(".alarm-explanation")).toHaveCount(0);
     }
     await pages[0].screenshot({
       path: "test-results/targeted-radio-reveal.png",

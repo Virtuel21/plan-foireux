@@ -12,6 +12,7 @@ import { pose, type Clip } from "./animation";
 import gallery from "../scenes/layouts/grande-galerie.json";
 import cabinet from "../scenes/layouts/cabinet-curiosites.json";
 import reserve from "../scenes/layouts/reserve-royale.json";
+import { WealthPiles } from "./wealth";
 import { escapeHTML as esc } from "./html";
 
 export const LABELS = {
@@ -44,6 +45,7 @@ export class Museum {
   model: T.Object3D | null = null;
   drill: T.Object3D | null = null;
   room: T.Object3D | null = null;
+  wealth: WealthPiles | null = null;
   markers = new Map<string, Marker>();
   labels = document.createElement("div");
   view: View | null = null;
@@ -104,7 +106,7 @@ export class Museum {
     this.scene.add(fill);
     const loader = new GLTFLoader();
     loader.load(
-      `${import.meta.env.BASE_URL}models/museum.glb?v=2.0.1`,
+      `${import.meta.env.BASE_URL}models/museum.glb?v=3.0.0`,
       (gltf) => {
         this.room = gltf.scene;
         this.configure(this.room);
@@ -116,7 +118,7 @@ export class Museum {
           "POST_Painting",
           "VaultDoorPivot",
           "CameraPivot",
-          ...Array.from({ length: 4 }, (_, i) => `PROP_Bag_${i}`),
+          ...Array.from({ length: 4 }, (_, i) => `PROP_Wealth_${i}`),
         ]) {
           const o = this.room.getObjectByName(name);
           if (o) {
@@ -143,6 +145,10 @@ export class Museum {
       undefined,
       () => this.error("Les personnages n’ont pas chargé. Recharge la page."),
     );
+    loader.load(`${import.meta.env.BASE_URL}models/wealth.glb`, (gltf) => {
+      this.wealth = new WealthPiles(this.scene, gltf.scene);
+      this.update(this.view, this.roster, this.selection);
+    });
     const canvas = this.renderer.domElement;
     let down: { x: number; y: number } | null = null;
     canvas.addEventListener(
@@ -162,6 +168,14 @@ export class Museum {
         this.camera,
       );
       for (const hit of this.ray.intersectObjects(this.scene.children, true)) {
+        const owner =
+          hit.instanceId === undefined
+            ? undefined
+            : hit.object.userData.wealthOwners?.[hit.instanceId];
+        if (owner) {
+          this.choose(`player:${owner}`);
+          return;
+        }
         let o: T.Object3D | null = hit.object;
         while (o) {
           if (o.userData.pick) {
@@ -345,7 +359,7 @@ export class Museum {
                 ? "POST_Painting"
                 : finding.choice.action === "secure"
                   ? "POST_Security"
-                  : `PROP_Bag_${players.findIndex((p) => p.id === finding.choice.target)}`;
+                  : `PROP_Wealth_${players.findIndex((p) => p.id === finding.choice.target)}`;
         const obj = this.objects[key];
         if (obj) {
           obj.getWorldPosition(a.target);
@@ -358,12 +372,17 @@ export class Museum {
           a.target.y = 0.15;
         }
       }
-      const bag = this.objects[`PROP_Bag_${i}`];
+      const bag = this.objects[`PROP_Wealth_${i}`];
       if (bag) {
         bag.userData.pick = `player:${p.id}`;
         bag.scale.setScalar(selected?.target === p.id ? 1.15 : 1);
       }
     });
+    this.wealth?.update(
+      players,
+      players.map((_, i) => this.objects[`PROP_Wealth_${i}`]),
+      selected?.target,
+    );
     this.nextLayout = 0;
   }
   resize() {
@@ -385,11 +404,18 @@ export class Museum {
     const actor = choice?.target
       ? this.actors.find((a) => a.id === choice.target)
       : null;
-    const point = actor
-      ? actor.root
-          .getWorldPosition(new T.Vector3())
-          .add(new T.Vector3(0, 1.1, 0))
-      : marker?.object?.localToWorld(marker.anchor.clone());
+    const purse = choice?.target
+      ? this.objects[
+          `PROP_Wealth_${this.roster.findIndex((p) => p.id === choice.target)}`
+        ]
+      : undefined;
+    const point = purse
+      ? purse.getWorldPosition(new T.Vector3()).add(new T.Vector3(0, 0.6, 0))
+      : actor
+        ? actor.root
+            .getWorldPosition(new T.Vector3())
+            .add(new T.Vector3(0, 1.1, 0))
+        : marker?.object?.localToWorld(marker.anchor.clone());
     if (!point) return { x: 50, y: 50 };
     point.project(this.camera);
     return {
@@ -522,7 +548,7 @@ export class Museum {
                 ? "POST_Loot"
                 : finding.choice.action === "painting"
                   ? "POST_Painting"
-                  : `PROP_Bag_${this.roster.findIndex((p) => p.id === finding.choice.target)}`;
+                  : `PROP_Wealth_${this.roster.findIndex((p) => p.id === finding.choice.target)}`;
         const aim = this.objects[key]?.getWorldPosition(new T.Vector3());
         if (aim)
           yaw = Math.atan2(
@@ -545,6 +571,13 @@ export class Museum {
       );
     const cam = this.objects.CameraPivot;
     if (cam && !this.reduced.matches) cam.rotation.y = Math.sin(t * 0.45) * 0.3;
+    this.wealth?.animate(dt, this.reduced.matches);
+    this.container.dataset.wealthCoins = JSON.stringify(
+      this.wealth?.shown.map((n) => Math.round(n * 100) / 100) ?? [],
+    );
+    this.container.dataset.wealthUnits = JSON.stringify(
+      this.wealth?.counts ?? [],
+    );
     this.renderer.render(this.scene, this.camera);
     if (t > this.nextLayout) {
       this.layout();
