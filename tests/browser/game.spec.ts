@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 const evidence = "test-results/visual";
 async function ready(page: Page) {
-  await page.goto("/");
+  await page.goto(process.env.PF_TEST_URL || "/");
   await expect(page.locator("#scene")).toHaveAttribute(
     "data-triangles",
     /\d+/,

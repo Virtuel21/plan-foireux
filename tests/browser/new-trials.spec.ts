@@ -22,7 +22,7 @@ test("landscape touchscreen: precise canvas cutting and three rotary radio frequ
         return original.call(this);
       };
     });
-    await page.goto("/");
+    await page.goto(process.env.PF_TEST_URL || "/");
     await page.getByRole("button", { name: "Essayer les épreuves" }).tap();
     await page.locator('[data-practice="painting"]').tap();
     const board = page.locator(".cut-board");

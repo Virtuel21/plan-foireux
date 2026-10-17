@@ -11,7 +11,7 @@ test("landscape mobile: real touch hold and release completes drill and pocket; 
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
   try {
-    await page.goto("/");
+    await page.goto(process.env.PF_TEST_URL || "/");
     await page.getByRole("button", { name: "Essayer les épreuves" }).tap();
     for (const action of ["drill", "pocket", "loot"]) {
       await page.locator(`[data-practice="${action}"]`).tap();

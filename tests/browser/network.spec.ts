@@ -12,8 +12,10 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
     ),
   );
   const pages = await Promise.all(contexts.map((c) => c.newPage()));
+  const errors: string[] = [];
+  pages.forEach((p) => p.on("pageerror", (e) => errors.push(e.message)));
   try {
-    await pages[0].goto("/");
+    await pages[0].goto(process.env.PF_TEST_URL || "/");
     await pages[0]
       .getByRole("button", { name: "Inviter mes complices" })
       .click();
@@ -54,6 +56,7 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
       "promise",
       { timeout: 10000 },
     );
+    await expect(pages[0].locator('[data-post="painting"]')).toBeVisible();
     await Promise.all(
       pages.map((p, i) =>
         p
@@ -260,6 +263,7 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
     await pages[0].screenshot({
       path: "test-results/targeted-radio-reveal.png",
     });
+    expect(errors).toEqual([]);
   } finally {
     await Promise.all(contexts.map((c) => c.close()));
   }
