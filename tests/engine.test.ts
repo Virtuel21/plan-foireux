@@ -143,49 +143,67 @@ test("normalization falls back to a legal promise, otherwise security; transitio
   assert.equal(g.deadline, 118600);
   assert.equal(g.phase, "minigame");
 });
-test("alarm is resolved simultaneously, trace survives a net decrease", () => {
+test("alarm adds time and each effective failure, then subtracts all security simultaneously", () => {
   const g = game();
   g.alarm = 4;
-  const r = round(g, ["drill", "secure", "loot", "loot"]);
+  const r = round(
+    g,
+    ["drill", "secure", "loot", "painting"],
+    [false, true, true, true],
+    false,
+  );
   assert.equal(g.alarm, 4);
-  assert.equal(g.result, null);
-  assert.equal(r.trace, "vault");
-  assert.equal(r.jam, 1);
+  assert.equal(r.failures, 1);
+  assert.equal(r.security, 1);
+  assert.equal(r.trace, null);
+  assert.equal(r.jam, 0);
   const h = game();
-  h.alarm = 3;
-  const rr = round(h, ["secure", "secure", "loot", "secure"]);
-  assert.equal(h.alarm, 0);
-  assert.equal(rr.trace, "entry");
-  assert.equal(h.players[3].money, 6);
+  h.alarm = 4;
+  round(
+    h,
+    ["secure", "secure", "loot", "painting"],
+    [true, true, false, false],
+    false,
+  );
+  assert.equal(h.alarm, 3);
 });
-test("simultaneous drillers all earn six even at the cap; completed vault never recedes", () => {
+test("simultaneous drillers share twelve even at the cap; completed vault never recedes", () => {
   const g = game();
   g.vault = 6;
   round(g, ["drill", "drill", "drill", "drill"]);
   assert.equal(g.vault, 8);
   assert.deepEqual(
     g.players.map((p) => p.money),
-    [6, 6, 6, 6],
+    [3, 3, 3, 3],
   );
   assert.equal(legal(g, "0", { action: "drill" }), false);
 });
-test("loot stock is 12 globally, shared only between successes", () => {
-  for (let n = 1; n <= 4; n++) {
-    const g = game();
+test("each of the four posts pays 12, 6, 4, 3 based on attendance; failed shares are lost", () => {
+  for (const action of ["drill", "secure", "loot", "painting"] as const) {
+    for (let n = 1; n <= 4; n++) {
+      const g = game();
+      round(
+        g,
+        [0, 1, 2, 3].map((i) =>
+          i < n ? action : { action: "pocket", target: String((i + 1) % 4) },
+        ),
+        [true, true, true, true],
+        false,
+      );
+      assert.equal(g.players[0].money, 12 / n);
+    }
+    const h = game();
     round(
-      g,
-      ["loot", "loot", "loot", "loot"],
-      [0, 1, 2, 3].map((i) => i < n),
+      h,
+      [action, action, action, action],
+      [true, false, false, false],
       false,
     );
-    assert.equal(
-      g.players.reduce((s, p) => s + p.money, 0),
-      12,
-    );
-    assert.equal(g.players[0].money, 12 / n);
+    assert.equal(h.players[0].money, 3);
+    assert.equal(h.report?.failures, 3);
   }
 });
-test("zero successes gives zero money and no extra alarm", () => {
+test("four failed challenges give zero money and five alarms including time", () => {
   const g = game();
   round(
     g,
@@ -196,7 +214,7 @@ test("zero successes gives zero money and no extra alarm", () => {
     g.players.map((p) => p.money),
     [0, 0, 0, 0],
   );
-  assert.equal(g.alarm, 1);
+  assert.equal(g.alarm, 5);
 });
 test("three thieves share four in integers; remainder stays with victim", () => {
   const g = game();
@@ -207,7 +225,7 @@ test("three thieves share four in integers; remainder stays with victim", () => 
   ]);
   assert.deepEqual(
     g.players.map((p) => p.money),
-    [13, 1, 1, 1],
+    [19, 1, 1, 1],
   );
 });
 test("two thieves on three coins take one each, gains this turn cannot be stolen", () => {
@@ -221,7 +239,7 @@ test("two thieves on three coins take one each, gains this turn cannot be stolen
   ]);
   assert.deepEqual(
     g.players.map((p) => p.money),
-    [7, 1, 1, 12],
+    [13, 1, 1, 12],
   );
   const h = game();
   round(h, ["secure", { action: "pocket", target: "0" }, "loot", "drill"]);
@@ -268,7 +286,7 @@ test("resolution is idempotent and replayed or duplicate results rejected", () =
   resolve(g);
   assert.deepEqual(g, saved);
 });
-test("votes private until tally; three votes spend one charge, two or pass spend none", () => {
+test("live aggregate votes are public, individual votes stay private; majority spends one charge", () => {
   for (const [votes, spent] of [
     [{ "0": "3", "1": "3", "2": "3" }, 1],
     [{ "0": "3", "1": "3", "2": "2", "3": "2" }, 0],
@@ -282,6 +300,11 @@ test("votes private until tally; three votes spend one charge, two or pass spend
       publicView(g, "1").myVote,
       votes["1" as keyof typeof votes] ?? null,
     );
+    assert.equal(
+      publicView(g, "0").voteCounts["3"],
+      Object.values(votes).filter((t) => t === "3").length,
+    );
+    assert.equal(Object.hasOwn(publicView(g, "0"), "votes"), false);
     advance(g, 100000);
     assert.equal(g.charges, 2 - spent);
     assert.equal(g.watched, spent ? "3" : null);
@@ -317,7 +340,7 @@ test("no surveillance left keeps debate available but rejects suspect and pass",
   assert.equal(g.watched, null);
   assert.equal(g.charges, 0);
 });
-test("5 alarms beats a full vault; opening vault does not cause early escape", () => {
+test("5 alarms beats a full vault; otherwise opening it ends the heist immediately", () => {
   const g = game();
   g.vault = 8;
   g.alarm = 5;
@@ -330,8 +353,8 @@ test("5 alarms beats a full vault; opening vault does not cause early escape", (
   h.vault = 8;
   phase(h, "reveal");
   advance(h, 100000);
-  assert.equal(h.phase, "debate");
-  assert.equal(h.result, null);
+  assert.equal(h.phase, "ended");
+  assert.equal(h.result?.kind, "escape");
 });
 test("fifth round incomplete vault loses; escape rewards all burglars and tied kings, ignores FBI wallet", () => {
   const g = game();
@@ -353,52 +376,86 @@ test("fifth round incomplete vault loses; escape rewards all burglars and tied k
     [18, 18, 18, 999],
   );
 });
-test("brief five-round numerical example reproduced exactly", () => {
+test("successful targeted FBI radio overrides even a finished challenge without disclosing the jammer", () => {
   const g = game();
-  round(g, ["drill", "loot", "loot", "loot"]);
-  assert.deepEqual(
-    [g.vault, g.alarm, ...g.players.map((p) => p.money)],
-    [2, 2, 6, 4, 4, 4],
+  g.jamTargets["3"] = "0";
+  g.alarm = 2;
+  const r = round(g, ["drill", "secure", "loot", "painting"]);
+  assert.equal(r.findings[0].success, false);
+  assert.equal(r.findings[0].gain, 0);
+  assert.equal(g.vault, 0);
+  assert.equal(r.failures, 1);
+  assert.equal(g.alarm, 2);
+  assert.equal(r.trace, null);
+  assert.equal(r.jam, 0);
+  const other = publicView(g, "1");
+  assert.equal(other.myJamTarget, null);
+  for (const key of ["jamTargets", "jams", "trials", "successes"])
+    assert.equal(Object.hasOwn(other, key), false);
+  assert.equal(JSON.stringify(r).includes("radio"), false);
+});
+test("failed or watched radio cannot sabotage, target validation and private trial substitution", () => {
+  const g = game();
+  phase(g, "secret");
+  for (const target of [undefined, "3", "missing"])
+    assert.equal(
+      apply(g, "3", { type: "jam", enabled: true, target, turn: g.turn }, 1),
+      false,
+    );
+  assert.equal(
+    apply(g, "0", { type: "jam", enabled: true, target: "1", turn: g.turn }, 1),
+    false,
   );
+  assert.ok(
+    apply(g, "3", { type: "jam", enabled: true, target: "0", turn: g.turn }, 1),
+  );
+  advance(g, g.deadline);
+  assert.equal(g.trials["3"].action, "radio");
+  assert.equal(g.trials["0"].action, "secure");
+  g.successes = { "0": true, "1": true, "2": true, "3": false };
+  resolve(g);
+  assert.equal(g.report?.findings[0].success, true);
+  const h = game();
+  h.jamTargets["3"] = "0";
+  h.watched = "3";
+  const r = round(h, ["drill", "secure", "loot", "painting"]);
+  assert.equal(r.findings[0].success, true);
+});
+test("pocket picking is legal only as a secret choice, never a public promise", () => {
+  const g = game();
+  phase(g, "promise");
+  const choice: Choice = { action: "pocket", target: "1" };
+  assert.equal(
+    apply(g, "0", { type: "promise", choice, turn: g.turn }, 1),
+    false,
+  );
+  assert.equal(g.players[0].promise, null);
+  phase(g, "secret");
+  assert.equal(
+    apply(g, "0", { type: "choose", choice, turn: g.turn }, 1),
+    true,
+  );
+});
+test("three cooperative rounds escape early, rewards split and theft competes with a crowded post", () => {
+  const g = game();
+  round(g, ["drill", "secure", "loot", "painting"], undefined, false);
   next(g);
   round(
     g,
-    ["drill", "secure", { action: "pocket", target: "0" }, "loot"],
-    [true, false, true, true],
-  );
-  assert.deepEqual(
-    [g.vault, g.alarm, ...g.players.map((p) => p.money)],
-    [4, 4, 8, 4, 8, 16],
-  );
-  next(g, "0");
-  round(g, ["drill", "secure", "loot", "loot"], undefined, false);
-  assert.deepEqual(
-    [g.vault, g.alarm, ...g.players.map((p) => p.money)],
-    [6, 3, 14, 10, 14, 22],
-  );
-  next(g, "3");
-  round(
-    g,
-    ["loot", { action: "pocket", target: "0" }, "drill", "secure"],
-    [true, true, true, false],
-  );
-  assert.deepEqual(
-    [g.vault, g.alarm, ...g.players.map((p) => p.money)],
-    [8, 4, 22, 14, 20, 22],
+    ["drill", "secure", { action: "pocket", target: "0" }, "painting"],
+    undefined,
+    false,
   );
   next(g);
-  round(g, ["loot", "secure", "loot", "loot"]);
-  assert.deepEqual(
-    [g.vault, g.alarm, ...g.players.map((p) => p.money)],
-    [8, 4, 26, 20, 24, 26],
-  );
+  round(g, ["drill", "secure", "drill", "painting"], undefined, false);
   next(g);
+  assert.equal(g.round, 3);
   assert.equal(g.result?.kind, "escape");
+  assert.equal(g.vault, 8);
   assert.deepEqual(
     g.players.map((p) => p.money),
-    [34, 28, 32, 26],
+    [34, 44, 30, 36],
   );
-  assert.deepEqual(g.result?.kings, ["0"]);
 });
 test("disconnect freezes all phases, resumes exact remaining time, expires without ranking", () => {
   for (const name of [

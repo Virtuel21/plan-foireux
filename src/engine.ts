@@ -2,7 +2,13 @@ import { newTrial, type Trial } from "./trial";
 import { CONFIG } from "../config/rules";
 export { CONFIG } from "../config/rules";
 export const COLORS = ["#ecac32", "#28aaa5", "#ee7836", "#9d65b2"];
-export const ACTIONS = ["drill", "secure", "loot", "pocket"] as const;
+export const ACTIONS = [
+  "drill",
+  "secure",
+  "loot",
+  "painting",
+  "pocket",
+] as const;
 export type Action = (typeof ACTIONS)[number];
 export type Role = "burglar" | "agent";
 export type Phase = keyof typeof CONFIG.durations | "ended";
@@ -34,6 +40,7 @@ export type Report = {
   alarmBefore: number;
   alarmAfter: number;
   jam: number;
+  failures: number;
   security: number;
   vaultAdded: number;
   trace: "vault" | "entry" | null;
@@ -58,6 +65,7 @@ export type Game = {
   roles: Record<string, Role>;
   choices: Record<string, Choice>;
   jams: Record<string, boolean>;
+  jamTargets: Record<string, string>;
   votes: Record<string, string>;
   trials: Record<string, Trial>;
   successes: Record<string, boolean>;
@@ -103,6 +111,8 @@ export type View = Pick<
   myRole: Role;
   myChoice: Choice | null;
   myJam: boolean;
+  myJamTarget: string | null;
+  voteCounts: Record<string, number>;
   myVote: string | null;
   myTrial: Trial | null;
   mySuccess: boolean | null;
@@ -156,6 +166,7 @@ export function createGame(
     ),
     choices: {},
     jams: {},
+    jamTargets: {},
     votes: {},
     trials: {},
     successes: {},
@@ -201,6 +212,16 @@ export function publicView(g: Game, id: string, now = Date.now()): View {
     myRole: g.roles[id] ?? "burglar",
     myChoice: g.choices[id] ?? null,
     myJam: g.jams[id] ?? false,
+    myJamTarget: g.jamTargets[id] ?? null,
+    voteCounts:
+      g.phase === "debate"
+        ? Object.fromEntries(
+            [...g.players.map((p) => p.id), "pass"].map((target) => [
+              target,
+              Object.values(g.votes).filter((v) => v === target).length,
+            ]),
+          )
+        : {},
     myVote: g.votes[id] ?? null,
     myTrial: g.trials[id] ?? null,
     mySuccess: g.successes[id] ?? null,
@@ -225,7 +246,7 @@ export function legal(
     Object.keys(c).every((k) => ["action", "target"].includes(k)) &&
     ACTIONS.includes(c.action) &&
     !(c.action === "drill" && g.vault >= CONFIG.vault) &&
-    !(g.watched === id && (c.action === "loot" || c.action === "pocket")) &&
+    !(g.watched === id && !["drill", "secure"].includes(c.action)) &&
     (c.action !== "pocket"
       ? c.target === undefined
       : typeof c.target === "string" &&
@@ -256,7 +277,7 @@ export function apply(
   const fields: Record<Command["type"], string[]> = {
     promise: ["choice"],
     choose: ["choice"],
-    jam: ["enabled"],
+    jam: ["enabled", "target"],
     vote: ["target"],
     progress: ["trial"],
     result: ["success"],
@@ -266,7 +287,12 @@ export function apply(
     Object.keys(c).some((k) => !["type", "turn", ...fields[c.type]].includes(k))
   )
     return false;
-  if (c.type === "promise" && g.phase === "promise" && legal(g, id, c.choice)) {
+  if (
+    c.type === "promise" &&
+    g.phase === "promise" &&
+    c.choice?.action !== "pocket" &&
+    legal(g, id, c.choice)
+  ) {
     g.players.find((p) => p.id === id)!.promise = structuredClone(c.choice);
     return true;
   }
@@ -279,9 +305,15 @@ export function apply(
     g.phase === "secret" &&
     g.roles[id] === "agent" &&
     g.watched !== id &&
-    typeof c.enabled === "boolean"
+    typeof c.enabled === "boolean" &&
+    (!c.enabled ||
+      (typeof c.target === "string" &&
+        c.target !== id &&
+        g.players.some((p) => p.id === c.target)))
   ) {
     g.jams[id] = c.enabled;
+    if (c.enabled) g.jamTargets[id] = c.target!;
+    else delete g.jamTargets[id];
     return true;
   }
   if (
@@ -333,7 +365,22 @@ function validProgress(
     Number.isInteger(t.stage) &&
     t.stage >= 0 &&
     t.stage <= 3 &&
-    [t.needle, t.progress, t.cooldown, t.cursor].every(Number.isFinite) &&
+    Number.isInteger(t.panel) &&
+    t.panel >= 0 &&
+    t.panel <= 2 &&
+    Number.isInteger(t.cutIndex) &&
+    t.cutIndex >= 0 &&
+    t.cutIndex <= 81 &&
+    Number.isFinite(t.cutErrors) &&
+    t.cutErrors >= 0 &&
+    t.cutErrors <= 10000 &&
+    Number.isFinite(t.cutSamples) &&
+    t.cutSamples >= 0 &&
+    t.cutSamples <= 10000 &&
+    t.cutErrors <= t.cutSamples &&
+    [t.needle, t.progress, t.cooldown, t.cursor, t.cutX, t.cutY].every(
+      Number.isFinite,
+    ) &&
     t.needle >= 0 &&
     t.needle <= 1 &&
     t.progress >= 0 &&
@@ -368,7 +415,7 @@ function finish(g: Game) {
       ? "Le casse est réussi. Tous les braqueurs s’échappent !"
       : g.alarm >= CONFIG.alarm
         ? "La police entre dans le musée. Le FBI gagne."
-        : "Le van arrive, mais le coffre est incomplet. Le FBI gagne.",
+        : "Le temps est écoulé, mais le coffre est incomplet. Le FBI gagne.",
   };
   g.players.forEach((p) => (p.exposed = g.roles[p.id]));
   g.phase = "ended";
@@ -380,30 +427,41 @@ export function resolve(g: Game): Report {
   const before = { ...g.wallets },
     gains: Record<string, number> = {},
     losses: Record<string, number> = {};
+  // A successful radio hides behind an ordinary failed task. Never project its target.
+  const effective = { ...g.successes };
+  for (const p of g.players) {
+    const target = g.jamTargets[p.id];
+    if (
+      g.roles[p.id] === "agent" &&
+      g.jams[p.id] &&
+      g.watched !== p.id &&
+      g.successes[p.id] &&
+      target &&
+      target !== p.id
+    )
+      effective[target] = false;
+  }
   let drills = 0,
-    secure = 0,
-    jam = 0,
-    trace: Report["trace"] = null;
-  const looters = g.players.filter(
-    (p) => g.choices[p.id]?.action === "loot" && g.successes[p.id],
-  );
+    secure = 0;
+  const pools = {
+    drill: CONFIG.cooperation,
+    secure: CONFIG.cooperation,
+    loot: CONFIG.loot,
+    painting: CONFIG.painting,
+  };
   for (const p of g.players) {
     gains[p.id] = 0;
     losses[p.id] = 0;
     const c = g.choices[p.id];
-    if (!c || !g.successes[p.id]) continue;
-    if (c.action === "drill") {
-      drills++;
-      gains[p.id] += CONFIG.cooperation;
-    }
-    if (c.action === "secure") {
-      secure++;
-      gains[p.id] += CONFIG.cooperation;
-    }
-    if (c.action === "loot") gains[p.id] += CONFIG.loot / looters.length;
-    if (g.roles[p.id] === "agent" && g.jams[p.id] && g.watched !== p.id) {
-      jam = 1;
-      trace = c.action === "drill" || c.action === "loot" ? "vault" : "entry";
+    if (!c || !effective[p.id]) continue;
+    if (c.action === "drill") drills++;
+    if (c.action === "secure") secure++;
+    if (c.action !== "pocket") {
+      // All participants occupy a share; failed shares are lost, never redistributed.
+      const count = g.players.filter(
+        (x) => g.choices[x.id]?.action === c.action,
+      ).length;
+      gains[p.id] = Math.floor(pools[c.action] / count);
     }
   }
   for (const victim of g.players) {
@@ -411,7 +469,7 @@ export function resolve(g: Game): Report {
       (p) =>
         g.choices[p.id]?.action === "pocket" &&
         g.choices[p.id]?.target === victim.id &&
-        g.successes[p.id],
+        effective[p.id],
     );
     if (!thieves.length) continue;
     const share = Math.floor(
@@ -427,23 +485,30 @@ export function resolve(g: Game): Report {
       id: p.id,
       choice: g.choices[p.id] ?? { action: "secure" },
       promise: p.promise,
-      success: !!g.successes[p.id],
+      success: !!effective[p.id],
       gain: gains[p.id],
       loss: losses[p.id],
       betrayed:
         !!p.promise &&
         (p.promise.action !== g.choices[p.id]?.action ||
           p.promise.target !== g.choices[p.id]?.target),
-      zone: ["drill", "loot"].includes(g.choices[p.id]?.action)
+      zone: ["drill", "loot", "painting"].includes(g.choices[p.id]?.action)
         ? "vault"
         : "entry",
     })),
     alarmBefore: g.alarm,
-    alarmAfter: Math.max(0, g.alarm + 1 + jam - 2 * secure),
-    jam,
+    alarmAfter: Math.max(
+      0,
+      g.alarm +
+        1 +
+        g.players.filter((p) => !effective[p.id]).length -
+        2 * secure,
+    ),
+    jam: 0,
+    failures: g.players.filter((p) => !effective[p.id]).length,
     security: secure,
     vaultAdded: Math.min(CONFIG.vault - g.vault, 2 * drills),
-    trace,
+    trace: null,
   };
   g.players.forEach((p) => (p.money += gains[p.id] - losses[p.id]));
   g.alarm = report.alarmAfter;
@@ -505,7 +570,12 @@ export function advance(
           ? { ...p.promise! }
           : { action: "secure" };
       g.trials[p.id] = newTrial(
-        g.choices[p.id].action,
+        g.roles[p.id] === "agent" &&
+          g.jams[p.id] &&
+          g.jamTargets[p.id] &&
+          g.watched !== p.id
+          ? "radio"
+          : g.choices[p.id].action,
         Math.floor(privateRandom() * 0xffffffff),
       );
       g.wallets[p.id] = p.money;
@@ -516,7 +586,11 @@ export function advance(
     resolve(g);
     next = "reveal";
   } else if (g.phase === "reveal") {
-    if (g.alarm >= CONFIG.alarm || g.round === CONFIG.rounds) {
+    if (
+      g.alarm >= CONFIG.alarm ||
+      g.vault >= CONFIG.vault ||
+      g.round === CONFIG.rounds
+    ) {
       finish(g);
       return;
     }
@@ -536,6 +610,7 @@ export function advance(
     g.round++;
     g.choices = {};
     g.jams = {};
+    g.jamTargets = {};
     g.votes = {};
     g.trials = {};
     g.successes = {};
@@ -561,7 +636,7 @@ export function botAct(g: Game, p: Player, now = Date.now()) {
     if (index === g.round % 4) return { action: "secure" };
     if (g.vault < CONFIG.vault && g.round >= 3 && index === (g.round + 1) % 4)
       return { action: "drill" };
-    return { action: "loot" };
+    return { action: index % 2 ? "painting" : "loot" };
   };
   if (now - g.phaseStarted < 1400 + index * 350) return;
   if (g.phase === "promise" && !p.promise)
@@ -581,7 +656,18 @@ export function botAct(g: Game, p: Player, now = Date.now()) {
       now,
     );
     if (g.roles[p.id] === "agent")
-      apply(g, p.id, { type: "jam", enabled: r() < 0.8, turn: g.turn }, now);
+      apply(
+        g,
+        p.id,
+        {
+          type: "jam",
+          enabled: r() < 0.65,
+          target: g.players.filter((x) => x.id !== p.id)[Math.floor(r() * 3)]
+            .id,
+          turn: g.turn,
+        },
+        now,
+      );
   }
   if (
     g.phase === "minigame" &&
@@ -592,7 +678,7 @@ export function botAct(g: Game, p: Player, now = Date.now()) {
   if (g.phase === "debate" && !(p.id in g.votes)) {
     const suspects =
       g.report?.findings
-        .filter((f) => g.report?.trace === f.zone)
+        .filter((f) => !f.success || f.betrayed)
         .map((f) => f.id) ?? [];
     const target =
       suspects.length && r() < 0.75

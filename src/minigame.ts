@@ -1,5 +1,9 @@
 import {
   connect,
+  cutAt,
+  cutPath,
+  cutAccuracy,
+  radioSignal,
   gaze,
   lever,
   pin,
@@ -14,10 +18,14 @@ import { LABELS } from "./scene";
 import { soundBank } from "./audio";
 import { COLORS } from "./engine";
 export const INSTRUCTIONS = {
-  secure: "Relie les trois circuits au bon symbole, puis abaisse le levier.",
+  secure: "Relie les bons symboles, puis valide. Deux panneaux à réparer.",
   drill:
-    "Maintiens pour accélérer, relâche pour refroidir. Stabilise trois points.",
+    "Maintiens pour accélérer, relâche pour refroidir. Stabilise trois points dans la zone verte étroite.",
   loot: "Arrête le curseur dans les trois encoches.",
+  radio:
+    "Tourne les boutons. Stabilise le signal VERT trois fois pour brouiller ta cible.",
+  painting:
+    "Découpe tout le contour depuis le repère. Précision minimale : 85 %.",
   pocket:
     "Avance quand la cible regarde ailleurs. Relâche quand elle se retourne.",
 };
@@ -36,6 +44,10 @@ export class Minigame {
   suppressClick = false;
   previousCooldown = 0;
   previousStage = 0;
+  drawing = false;
+  knobY = 0;
+  knobValue = 0;
+  lastDots = "";
   constructor(
     public root: HTMLElement,
     trial: Trial,
@@ -51,16 +63,31 @@ export class Minigame {
         drill:
           "1. Maintiens le bouton · 2. Relâche avant le rouge. Espace fonctionne aussi.",
         loot: "1. Observe le passage · 2. Touche quand le curseur est dans l’encoche. Ou Espace.",
+        radio:
+          "Glisse un bouton vers le haut/bas, ou utilise les flèches sur le bouton. Rouge : loin · orange : proche · vert : reste stable.",
+        painting:
+          "Glisse le doigt sur le contour en partant du point blanc. Tu peux relever le doigt. Au clavier : flèches sur la toile.",
         pocket:
           "1. Maintiens pendant « Ailleurs » · 2. Relâche dès « Se retourne ». Ou Espace.",
       };
-    root.innerHTML = `<div class="trial-head"><div><span class="eyebrow">${practice ? "ENTRAÎNEMENT · SANS ENJEU" : "ÉPREUVE PRIVÉE"}</span><h2>${LABELS[t.action]} <small class="trial-reward">${t.action === "drill" ? "Coffre +2 · Vous +6" : t.action === "secure" ? "Alarme −2 · Vous +6" : t.action === "loot" ? "12 pièces à partager" : "Jusqu’à 4 pièces volées"}</small></h2></div><div class="trial-dots" aria-label="Progression"></div></div><p class="trial-instruction">${INSTRUCTIONS[t.action]}</p><div class="trial-stage ${t.action}">${t.action === "secure" ? this.wires() : this.mechanism()}</div><div class="trial-bottom"><span class="trial-status" role="status">À toi de jouer</span>${t.action === "secure" ? '<button class="primary lever">Abaisser le levier</button>' : `<button class="primary operate">${t.action === "loot" ? "Arrêter le curseur" : t.action === "drill" ? "Maintenir pour forer" : "Maintenir pour avancer"}</button>`}</div><p class="gesture-example"><span class="demo-dot"></span>${hints[t.action]}</p>`;
+    const reward =
+      t.action === "radio"
+        ? "La cible échoue si tu réussis"
+        : t.action === "pocket"
+          ? "Jusqu’à 4 pièces volées"
+          : "12 pièces à partager";
+    root.innerHTML = `<div class="trial-head"><div><span class="eyebrow">${practice ? "ENTRAÎNEMENT · SANS ENJEU" : "ÉPREUVE PRIVÉE"}</span><h2>${LABELS[t.action]} <small class="trial-reward">${reward}</small></h2></div><div class="trial-dots" aria-label="Progression"></div></div><p class="trial-instruction">${INSTRUCTIONS[t.action]}</p><div class="trial-stage ${t.action}">${t.action === "secure" ? this.wires() : t.action === "radio" ? this.radio() : t.action === "painting" ? this.painting() : this.mechanism()}</div><div class="trial-bottom"><span class="trial-status" role="status">À toi de jouer</span>${t.action === "secure" ? '<button class="primary lever">Valider les circuits</button>' : t.action === "painting" ? '<button class="subtle restart-cut">Recommencer la découpe</button>' : t.action === "radio" ? '<span class="radio-private">Transmission privée · 3 fréquences</span>' : `<button class="primary operate">${t.action === "loot" ? "Arrêter le curseur" : t.action === "drill" ? "Maintenir pour forer" : "Maintenir pour avancer"}</button>`}</div><p class="gesture-example"><span class="demo-dot"></span>${hints[t.action]}</p>`;
+    this.bindSpecial();
     root.querySelector(".lever")?.addEventListener("click", () => {
       if (this.paused || t.done) return;
       lever(t);
       soundBank.play(t.done ? "current" : "lever");
       this.feedback(
-        t.done ? "Trois circuits validés." : "Corrige les prises libérées.",
+        t.done
+          ? "Les deux panneaux sont réparés."
+          : t.panel
+            ? "Panneau 2 : les bornes ont changé."
+            : "Corrige les prises libérées.",
       );
       this.publish();
       this.draw();
@@ -142,6 +169,105 @@ export class Minigame {
     this.draw();
     this.raf = requestAnimationFrame(this.frame);
   }
+  radio() {
+    return `<div class="walkie"><div class="walkie-antenna"></div><div class="walkie-knobs">${["Canal", "Réglage fin"].map((label, i) => `<div><button class="radio-knob" data-knob="${i}" role="slider" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="12"><span></span></button><small>${label}</small></div>`).join("")}</div><div class="walkie-body"><div class="walkie-brand">FIELDLINK <small>FBI · RX / TX</small></div><div class="radio-screen"><span class="radio-channel">FRÉQUENCE 1 / 3</span><strong class="frequency">117.2 <small>MHz</small></strong><div class="signal-bars">${Array.from({ length: 8 }, (_, i) => `<i style="height:${5 + i * 2}px"></i>`).join("")}</div><span class="signal-label">SIGNAL FAIBLE</span><div class="radio-lock-progress"><i></i></div></div><div class="walkie-speaker">${Array.from({ length: 5 }, () => "<i></i>").join("")}</div></div></div>`;
+  }
+  painting() {
+    const points = cutPath(this.state)
+      .map(([x, y]) => `${x * 500},${y * 300}`)
+      .join(" ");
+    return `<svg class="cut-board" viewBox="0 0 500 300" preserveAspectRatio="none" tabindex="0" role="application" aria-label="Toile à découper. Glissez sur le contour depuis le point blanc, ou utilisez les flèches."><defs><linearGradient id="canvas-paint"><stop stop-color="#164b50"/><stop offset="1" stop-color="#102d36"/></linearGradient><pattern id="canvas-weave" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M0 0h5v5" fill="none" stroke="#e8d2a3" opacity=".09"/></pattern></defs><rect x="8" y="8" width="484" height="284" rx="12" fill="#98662e" stroke="#efd191" stroke-width="8"/><rect x="25" y="25" width="450" height="250" rx="3" fill="url(#canvas-paint)"/><circle cx="220" cy="120" r="62" fill="#d3a450"/><path d="M110 248 275 83 390 250Z" fill="#377d78"/><path d="m180 250 119-136 88 136" fill="#a94932"/><rect x="25" y="25" width="450" height="250" fill="url(#canvas-weave)"/><polyline class="cut-outline" points="${points}"/><polyline class="cut-complete"/><circle class="cut-next" r="8"/><g class="knife-cursor"><path d="m0 0 5-23 7 4-8 22Z" fill="#edf0d9" stroke="#17353d" stroke-width="2"/><path d="m5-23 6-20 10 4-9 20" fill="#ce943d" stroke="#30291b" stroke-width="2"/></g></svg><div class="cut-quality">Contour <b class="cut-percent">0 %</b><span>Précision <b class="cut-accuracy">100 %</b> · 85 % requis</span></div>`;
+  }
+  bindSpecial() {
+    const t = this.state;
+    this.root
+      .querySelectorAll<HTMLButtonElement>("[data-knob]")
+      .forEach((knob) => {
+        const factor = knob.dataset.knob === "0" ? 0.005 : 0.001;
+        knob.addEventListener("pointerdown", (e) => {
+          if (this.paused || t.done) return;
+          e.preventDefault();
+          knob.setPointerCapture(e.pointerId);
+          this.knobY = e.clientY;
+          this.knobValue = t.needle;
+        });
+        knob.addEventListener("pointermove", (e) => {
+          if (!knob.hasPointerCapture(e.pointerId) || this.paused || t.done)
+            return;
+          t.needle = Math.max(
+            0,
+            Math.min(1, this.knobValue + (this.knobY - e.clientY) * factor),
+          );
+          this.draw();
+        });
+        knob.addEventListener("keydown", (e) => {
+          if (
+            !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(
+              e.key,
+            ) ||
+            this.paused ||
+            t.done
+          )
+            return;
+          e.preventDefault();
+          t.needle = Math.max(
+            0,
+            Math.min(
+              1,
+              t.needle +
+                (["ArrowUp", "ArrowRight"].includes(e.key) ? 1 : -1) *
+                  (knob.dataset.knob === "0" ? 0.04 : 0.008),
+            ),
+          );
+          this.draw();
+        });
+      });
+    const board = this.root.querySelector<SVGSVGElement>(".cut-board");
+    const move = (e: PointerEvent) => {
+      if (!this.drawing || this.paused || t.done || !board) return;
+      const r = board.getBoundingClientRect();
+      cutAt(t, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+      this.draw();
+    };
+    board?.addEventListener("pointerdown", (e) => {
+      if (this.paused || t.done) return;
+      board.focus();
+      board.setPointerCapture(e.pointerId);
+      this.drawing = true;
+      move(e);
+    });
+    board?.addEventListener("pointermove", move);
+    board?.addEventListener("pointerup", () => {
+      this.drawing = false;
+      this.publish();
+    });
+    board?.addEventListener("pointercancel", () => (this.drawing = false));
+    board?.addEventListener("keydown", (e) => {
+      if (!e.key.startsWith("Arrow") || this.paused || t.done) return;
+      e.preventDefault();
+      if (t.cutIndex === 0) {
+        const start = cutPath(t)[0];
+        t.cutX = start[0];
+        t.cutY = start[1];
+      }
+      cutAt(
+        t,
+        t.cutX +
+          (e.key === "ArrowRight" ? 0.012 : e.key === "ArrowLeft" ? -0.012 : 0),
+        t.cutY +
+          (e.key === "ArrowDown" ? 0.012 : e.key === "ArrowUp" ? -0.012 : 0),
+      );
+      this.draw();
+    });
+    this.root.querySelector(".restart-cut")?.addEventListener("click", () => {
+      if (this.paused || t.done) return;
+      t.cutIndex = 0;
+      t.cutErrors = 0;
+      t.cutSamples = 0;
+      t.stage = 0;
+      this.draw();
+    });
+  }
   wires() {
     const t = this.state;
     return `<div class="wire-board"><svg viewBox="0 0 600 300" preserveAspectRatio="none" aria-hidden="true">${[0, 1, 2].map((i) => `<path class="cable-shadow" data-shadow="${i}"/><path class="cable-line" data-wire="${i}" stroke="${WIRE_COLORS[i]}"/>`).join("")}</svg>${[0, 1, 2].map((i) => `<span class="circuit-label" style="top:${20 + i * 30}%;--wire:${WIRE_COLORS[i]}">${SYMBOLS[i]}</span><button class="plug" data-cable="${i}" aria-label="Sélectionner l’embout du circuit ${SYMBOLS[i]}" style="--wire:${WIRE_COLORS[i]}">${icon("plus")}</button><button class="terminal" data-terminal="${i}" aria-label="Borne ${SYMBOLS[terminalId(t, i)]}" style="top:${20 + i * 30}%">${SYMBOLS[terminalId(t, i)]}</button>`).join("")}<span class="board-label">CIRCUITS</span><span class="board-label right">BORNES</span></div>`;
@@ -170,7 +296,7 @@ export class Minigame {
     if (
       e.code !== "Space" ||
       this.paused ||
-      this.state.action === "secure" ||
+      ["secure", "radio", "painting"].includes(this.state.action) ||
       (e.target as HTMLElement)?.tagName === "INPUT"
     )
       return;
@@ -187,14 +313,26 @@ export class Minigame {
   };
   draw() {
     const t = this.state;
-    this.root.querySelector(".trial-dots")!.innerHTML = [0, 1, 2]
-      .map(
-        (i) =>
-          `<span class="${i < t.stage ? "on" : ""}">${i < t.stage ? "✓" : i + 1}</span>`,
-      )
-      .join("");
+    const dots = String(t.stage);
+    if (this.lastDots !== dots) {
+      this.lastDots = dots;
+      this.root.querySelector(".trial-dots")!.innerHTML = [0, 1, 2]
+        .map(
+          (i) =>
+            `<span class="${i < t.stage ? "on" : ""}">${i < t.stage ? "✓" : i + 1}</span>`,
+        )
+        .join("");
+    }
     if (t.action === "secure") {
       [0, 1, 2].forEach((i) => {
+        const terminal = this.root.querySelector<HTMLButtonElement>(
+          `[data-terminal="${i}"]`,
+        )!;
+        terminal.textContent = SYMBOLS[terminalId(t, i)];
+        terminal.setAttribute(
+          "aria-label",
+          `Borne ${SYMBOLS[terminalId(t, i)]}`,
+        );
         const freeY = 60 + ((i + 1 + (t.seed % 2)) % 3) * 90,
           endY = t.connections[i] >= 0 ? 60 + t.connections[i] * 90 : freeY,
           endX = t.connections[i] >= 0 ? 528 : 300;
@@ -215,6 +353,57 @@ export class Minigame {
         plug.classList.toggle("correct", t.correct[i]);
         plug.disabled = t.correct[i] || this.paused || t.done;
       });
+    } else if (t.action === "radio") {
+      const signal = radioSignal(t);
+      this.root.querySelector(".radio-screen")!.className =
+        `radio-screen ${signal}`;
+      this.root.querySelector(".radio-channel")!.textContent =
+        `FRÉQUENCE ${Math.min(3, t.stage + 1)} / 3`;
+      this.root.querySelector(".frequency")!.innerHTML =
+        `${(110 + t.needle * 60).toFixed(1)} <small>MHz</small>`;
+      this.root.querySelector(".signal-label")!.textContent =
+        signal === "green"
+          ? "VERT · MAINTIENS LA FRÉQUENCE"
+          : signal === "orange"
+            ? "ORANGE · PRESQUE CALÉ"
+            : "ROUGE · CHERCHE LE SIGNAL";
+      (
+        this.root.querySelector(".radio-lock-progress i") as HTMLElement
+      ).style.width = `${(t.done ? 1 : t.progress) * 100}%`;
+      this.root.querySelectorAll<HTMLElement>(".radio-knob").forEach((k) => {
+        k.style.setProperty("--rotation", `${-135 + t.needle * 270}deg`);
+        k.setAttribute("aria-valuenow", String(Math.round(t.needle * 100)));
+        k.setAttribute(
+          "aria-valuetext",
+          `${(110 + t.needle * 60).toFixed(1)} MHz, signal ${signal}`,
+        );
+      });
+    } else if (t.action === "painting") {
+      const path = cutPath(t);
+      this.root.querySelector(".cut-complete")!.setAttribute(
+        "points",
+        path
+          .slice(0, t.cutIndex)
+          .map(([x, y]) => `${x * 500},${y * 300}`)
+          .join(" "),
+      );
+      const next = path[Math.min(80, t.cutIndex)];
+      this.root
+        .querySelector(".cut-next")!
+        .setAttribute("cx", String(next[0] * 500));
+      this.root
+        .querySelector(".cut-next")!
+        .setAttribute("cy", String(next[1] * 300));
+      this.root
+        .querySelector(".knife-cursor")!
+        .setAttribute(
+          "transform",
+          `translate(${t.cutX * 500} ${t.cutY * 300})`,
+        );
+      this.root.querySelector(".cut-percent")!.textContent =
+        `${Math.round((t.cutIndex / 81) * 100)} %`;
+      this.root.querySelector(".cut-accuracy")!.textContent =
+        `${cutAccuracy(t)} %`;
     } else {
       const band = this.root.querySelector<HTMLElement>(".target-band")!,
         needle = this.root.querySelector<HTMLElement>(".meter-needle")!;
@@ -222,9 +411,9 @@ export class Minigame {
           t.action === "drill"
             ? targetBand(t)
             : t.action === "loot"
-              ? pinBand(t) - 0.18
+              ? pinBand(t) - 0.075
               : 0,
-        width = t.action === "drill" ? 0.23 : t.action === "loot" ? 0.36 : 1;
+        width = t.action === "drill" ? 0.13 : t.action === "loot" ? 0.15 : 1;
       band.style.left = `${start * 100}%`;
       band.style.width = `${width * 100}%`;
       needle.style.left = `${(t.action === "drill" ? t.needle : t.action === "loot" ? t.cursor : (t.stage + t.progress) / 3) * 100}%`;
@@ -257,7 +446,9 @@ export class Minigame {
       this.feedback(
         this.practice
           ? "Réussi ! Prêt pour le casse."
-          : "Réussi. Attends la révélation commune.",
+          : t.action === "radio"
+            ? "Transmission envoyée. La cible échouera à la révélation."
+            : "Réussi. Attends la révélation commune.",
       );
       this.root
         .querySelectorAll<HTMLButtonElement>("button")
@@ -270,7 +461,17 @@ export class Minigame {
             ? "Repéré ! Reprends au dernier point."
             : "Clac… Réessaie cette goupille.",
       );
-    else if (t.action !== "secure")
+    else if (t.action === "painting")
+      this.feedback(
+        t.cutIndex >= 81
+          ? "Découpe trop imprécise : recommence avant le signal."
+          : `${Math.round((t.cutIndex / 81) * 100)} % découpé · Précision ${cutAccuracy(t)} %`,
+      );
+    else if (t.action === "secure")
+      this.feedback(
+        `Panneau ${Math.min(2, t.panel + 1)} / 2 · Relie puis valide les trois circuits.`,
+      );
+    else
       this.feedback(
         `${t.stage} / 3 ${t.action === "loot" ? "goupilles" : "points"} validés`,
       );

@@ -10,22 +10,19 @@ export const choiceText = (c: Choice | null, v?: View) =>
 export const PHASES = {
   role: "Découvrez votre rôle",
   promise: "Annoncez votre poste",
-  secret: "Choisissez ce que vous faites vraiment",
+  secret: "Votre vrai choix reste secret",
   transition: "À vous de jouer…",
   minigame: "Une épreuve. Un seul poste.",
-  reveal: "Les promesses passent aux actes",
-  debate: "Qui surveille-t-on au prochain tour ?",
+  reveal: "Bilan de la manche",
+  debate: "Votez pour une surveillance",
   ended: "Le casse est terminé",
 };
 export function gain(c: Choice | null, v: View) {
   if (!c) return "Touchez un poste dans le musée.";
-  return c.action === "drill"
-    ? "Coffre +2 · Vous +6 pièces"
-    : c.action === "secure"
-      ? "Alarme −2 · Vous +6 pièces"
-      : c.action === "loot"
-        ? "Butin de 12 pièces à partager entre les réussites"
-        : `Jusqu’à ${Math.min(4, v.players.find((p) => p.id === c.target)?.money ?? 0)} volées à ${v.players.find((p) => p.id === c.target)?.name}${v.round === 1 ? " · Poches vides ce tour" : ""}`;
+  if (c.action === "pocket")
+    return `Jusqu’à ${Math.min(4, v.players.find((p) => p.id === c.target)?.money ?? 0)} volées à ${v.players.find((p) => p.id === c.target)?.name} · Secret uniquement`;
+  const count = v.players.filter((p) => p.promise?.action === c.action).length;
+  return `${LABELS[c.action]} · ${c.action === "drill" ? "Coffre +2 · " : c.action === "secure" ? "Alarme −2 · " : ""}12 à partager (${Math.floor(12 / Math.max(1, count))} selon les annonces)`;
 }
 export function hud(v: View) {
   const me = v.players.find((p) => p.id === v.myId)!;
@@ -36,32 +33,28 @@ export function footer(v: View, selected: Choice | null) {
     const covered =
       v.players.filter((p) => p.promise?.action === "drill").length >=
         recommended(v) && v.players.some((p) => p.promise?.action === "secure");
-    return `<div class="selection-info"><span class="eyebrow">${v.phase === "secret" ? "VOTRE CHOIX PRIVÉ" : "VOTRE PROMESSE PUBLIQUE"}</span><strong>${esc(gain(selected, v))}</strong><small>${v.watched === v.myId ? "Surveillance : coffre ou sécurité uniquement ce tour." : v.phase === "secret" ? "Modifiable jusqu’au signal. Les autres ne voient que vos promesses." : covered ? "✓ Le plan couvre les besoins annoncés, si les épreuves réussissent." : "Choix modifiable. Touchez un autre poste ou le personnage d’un rival."}</small></div>${v.phase === "promise" && v.voteResult ? `<button class="subtle" data-action="report" aria-label="Voir les voix du dernier vote">Vote</button>` : ""}${v.myRole === "agent" && v.phase === "secret" ? `<button class="transmitter ${v.myJam ? "armed" : ""}" data-action="jam" aria-pressed="${v.myJam}" ${v.watched === v.myId ? "disabled" : ""}>${icon("flag")}<span>${v.watched === v.myId ? "Brouillage bloqué ce tour" : v.myJam ? "Brouiller · activé" : "Profil bas"}</span></button>` : `<span class="phase-tag">${v.phase === "secret" ? icon("lock") + " Secret" : icon("users") + " Public"}</span>`}`;
+    const target = v.players.find((p) => p.id === v.myJamTarget);
+    return `<div class="selection-info"><span class="eyebrow">${v.phase === "secret" ? "VOTRE CHOIX PRIVÉ" : "VOTRE PROMESSE PUBLIQUE"}</span><strong>${esc(gain(selected, v))}</strong><small>${v.watched === v.myId ? "Surveillance : coffre ou sécurité uniquement." : v.phase === "secret" ? "Les postes encombrés rapportent moins. Volez un rival en touchant son sac ou son portrait." : covered ? "✓ Coffre et sécurité couverts selon les annonces. Vos vrais choix restent libres." : "Annoncez un des quatre postes. Faire les poches se choisit uniquement en secret."}</small></div>${v.myRole === "agent" && v.phase === "secret" ? `<button class="transmitter ${v.myJam ? "armed" : ""}" data-action="jam" aria-pressed="${v.myJam}" ${v.watched === v.myId ? "disabled" : ""}>${icon("flag")}<span>${v.watched === v.myId ? "Brouillage bloqué" : v.myJam ? `Brouiller ${esc(target?.name)} · Modifier` : "FBI · Choisir une cible"}</span></button>` : `<span class="phase-tag">${v.phase === "secret" ? icon("lock") + " Secret" : icon("users") + " Public"}</span>`}`;
   }
-  if (v.phase === "reveal" || v.phase === "debate") {
-    const r = v.report;
-    return `<div class="selection-info"><span class="eyebrow">${v.phase === "debate" ? "DISCUTEZ · VOIX PRIVÉES" : "RÉSOLUTION SIMULTANÉE"}</span><strong>${r?.trace ? `Transmission suspecte : zone ${r.trace === "vault" ? "du coffre" : "de l’entrée"}` : "Aucune transmission suspecte détectée"}</strong><small>${v.phase === "debate" ? (v.charges ? "3 voix sur 4 · Un tour de surveillance · Rôle non révélé" : "Plus de surveillance. Préparez le prochain tour ensemble.") : `${r?.alarmBefore} +1 temps +${r?.jam} brouillage −${(r?.security ?? 0) * 2} sécurité = ${r?.alarmAfter} alarme · Coffre +${r?.vaultAdded}`}</small></div><button data-action="report" class="subtle">${icon("chat")}<span>Bilan</span></button>${v.phase === "debate" ? `<button data-action="pass" class="${v.myVote === "pass" ? "selected" : "subtle"}" ${!v.charges ? "disabled" : ""}>Passer</button>` : ""}`;
-  }
-  return `<p class="quiet">Ouvrez le coffre avant la fin du tour 5. À 5 alarmes, la police gagne.</p>`;
+  if (v.phase === "reveal" || v.phase === "debate")
+    return `<div class="selection-info"><span class="eyebrow">${v.phase === "debate" ? "VOTES EN DIRECT" : "RÉSOLUTION SIMULTANÉE"}</span><strong>${v.vault >= 8 ? "Coffre ouvert : la fuite est lancée !" : v.alarm >= 5 ? "La police est alertée." : `Coffre : encore ${8 - v.vault} points · ${5 - v.round} manches maximum`}</strong><small>${v.phase === "debate" ? "3 voix sur 4 · Un tour de surveillance · Rôle non révélé" : `Alarme : ${v.report?.alarmBefore} +1 temps +${v.report?.failures ?? 0} échec(s) −${(v.report?.security ?? 0) * 2} sécurité = ${v.report?.alarmAfter}`}</small></div><button data-action="report" class="subtle">${icon("chat")}<span>${v.phase === "debate" ? "Bilan et vote" : "Pourquoi l’alarme ?"}</span></button>`;
+  return `<p class="quiet">Ouvrez le coffre pour fuir. Au plus tard manche 5. À 5 alarmes, le FBI gagne.</p>`;
 }
 export function report(v: View) {
   const r = v.report;
   if (!r) return "<p>Aucun bilan pour le moment.</p>";
-  return `<span class="eyebrow">TOUR ${r.round} · INFORMATIONS PUBLIQUES</span><h2>Bilan du casse</h2><p class="report-math">Alarme : ${r.alarmBefore} +1 temps +${r.jam} signal −${r.security * 2} sécurité = <strong>${r.alarmAfter}</strong><br>Coffre : +${r.vaultAdded} points</p>${r.trace ? `<p class="trace">${icon("flag")}Transmission suspecte dans la zone ${r.trace === "vault" ? "du coffre" : "de l’entrée"}.</p>` : ""}<div class="report-list">${r.findings
-    .map((f) => {
-      const p = v.players.find((p) => p.id === f.id)!;
-      return `<div><span class="report-player" style="--player:${p.color}">${esc(p.name)}</span><span><strong>${esc(choiceText(f.choice, v))} · ${f.success ? "Réussi" : "Raté"}</strong><small>${f.betrayed ? `Promis : ${esc(choiceText(f.promise, v))} → Fait : ${esc(choiceText(f.choice, v))}` : f.promise ? "Promesse tenue" : "Aucun poste promis"}<br>Zone ${f.zone === "vault" ? "du coffre" : "de l’entrée"}</small></span><b>+${f.gain}${f.loss ? `<br>−${f.loss}` : ""}</b></div>`;
+  const voting = v.phase === "debate";
+  const failed = r.findings
+    .filter((f) => !f.success)
+    .map((f) => esc(v.players.find((p) => p.id === f.id)?.name));
+  return `<span class="eyebrow">MANCHE ${r.round} · ${voting ? "VOTE EN DIRECT" : "CE QUI VIENT DE SE PASSER"}</span><time class="report-clock" aria-label="Temps restant pour le bilan ou le vote"></time><h2>${voting ? "Qui faut-il surveiller ?" : r.alarmAfter > r.alarmBefore ? "Pourquoi l’alarme a sonné" : "Le bilan des alarmes"}</h2><div class="alarm-explanation"><div><span>Avant</span><b>${r.alarmBefore}</b></div><div><span>Temps écoulé</span><b>+1</b></div><div class="${r.failures ? "danger-text" : ""}"><span>${r.failures} défi${r.failures > 1 ? "s" : ""} raté${r.failures > 1 ? "s" : ""}</span><b>+${r.failures}</b></div><div><span>${r.security} sécurité${r.security > 1 ? "s" : ""} réussie${r.security > 1 ? "s" : ""}</span><b>−${r.security * 2}</b></div><div><span>Alarme finale</span><b>${r.alarmAfter}/5</b></div></div><p class="report-context">${failed.length ? `Défis ratés : ${failed.join(", ")}. Un défi incomplet ou brouillé compte comme un échec. ` : "Tous les défis ont été réussis. "}${v.vault >= 8 ? (r.alarmAfter < 5 ? "Coffre ouvert : vous fuyez dès la fin de ce bilan." : "Coffre ouvert, mais la police arrive : la priorité reste à l’alarme.") : `Coffre +${r.vaultAdded} : ${v.vault}/8. Il reste ${5 - v.round} manche${5 - v.round > 1 ? "s" : ""} maximum pour l’ouvrir.`}</p><div class="vote-grid">${v.players
+    .map((p, i) => {
+      const f = r.findings.find((f) => f.id === p.id)!;
+      const n = v.voteCounts[p.id] ?? 0;
+      return `<article class="vote-card ${v.myVote === p.id ? "voted" : ""}" style="--player:${p.color}"><div class="vote-person"><img src="${import.meta.env.BASE_URL}portraits/${i}.png" alt=""><div><strong>${esc(p.name)}${p.id === v.myId ? " · vous" : ""}</strong><b>${p.money} pièces</b></div></div><div class="finding-action ${f.success ? "success-text" : "danger-text"}">${esc(choiceText(f.choice, v))} · ${f.success ? "Réussi" : "Raté · +1 alarme"}</div><p>${f.promise ? `Promis : ${esc(choiceText(f.promise, v))}` : "Aucun poste promis"}<br>${f.betrayed ? "Promesse changée" : "Promesse tenue"} · Gain +${f.gain}${f.loss ? ` · Volé −${f.loss}` : ""}</p>${voting ? `<button data-vote="${esc(p.id)}" aria-pressed="${v.myVote === p.id}" ${!v.charges ? "disabled" : ""}><span>${v.myVote === p.id ? "Votre vote" : "Surveiller"}</span><b data-count="${esc(p.id)}">${n} / 4</b></button>` : ""}</article>`;
     })
-    .join("")}</div>${
-    v.voteResult
-      ? `<p class="quiet">Dernier vote : ${v.players
-          .map((p) => [p.id, v.voteResult!.votes[p.id] ?? "pass"] as const)
-          .map(
-            ([id, target]) =>
-              `${esc(v.players.find((p) => p.id === id)?.name)} → ${target === "pass" ? "Passer" : esc(v.players.find((p) => p.id === target)?.name)}`,
-          )
-          .join(" · ")}</p>`
-      : ""
-  }`;
+    .join(
+      "",
+    )}</div>${voting ? `<div class="vote-footer"><p>${v.charges ? `<b>3 voix pour la même personne.</b> ${v.charges}/2 surveillances restantes.<br>Au prochain tour : coffre ou sécurité, brouilleur bloqué. Aucun rôle révélé.` : "Plus de surveillance. Discutez du prochain plan."}</p><button data-action="pass" class="${v.myVote === "pass" ? "selected" : "subtle"}" ${!v.charges ? "disabled" : ""}>Passer · ${v.voteCounts.pass ?? 0}/4</button></div><p class="vote-live" role="status" aria-atomic="true">${v.players.map((p) => `${esc(p.name)} : ${v.voteCounts[p.id] ?? 0} voix`).join(" · ")}. Votes modifiables jusqu’au signal.</p>` : '<p class="quiet">Les quatre vrais postes et résultats sont révélés ensemble. Le vote suit si le casse continue.</p>'}`;
 }
-export const rules = `<span class="eyebrow">LE PLAN EN TROIS PHRASES</span><h2>Fuyez ensemble.<br>Gardez une longueur d’avance.</h2><p>Ouvrez le coffre avant la fin du tour 5. À 5 alarmes, la police gagne. Coopérez pour fuir, enrichissez-vous pour devenir Roi des Voleurs ; un FBI est parmi vous.</p><div class="rule-grid"><p><b>Forer</b>Une réussite : coffre +2, vous +6.</p><p><b>Sécuriser</b>Une réussite : alarme −2, vous +6.</p><p><b>Casiers</b>12 pièces partagées entre ceux qui réussissent.</p><p><b>Faire les poches</b>Jusqu’à 4 pièces de la poche initiale d’un rival. Ses gains du tour restent à lui.</p></div><p>Chaque tour : 20 s de promesses, 12 s de choix secrets, 18 s d’épreuve, 12 s de révélation et 30 s de débat. Le temps ajoute 1 alarme. Un FBI qui réussit peut en ajouter 1 et laisse une trace de zone.</p><p><b>Surveillance :</b> 3 voix sur 4, deux utilisations communes. Au prochain tour seulement, le suspect doit forer ou sécuriser ; son brouillage est bloqué. Personne n’est éliminé, aucun rôle n’est révélé.</p><p><b>La fuite attend la fin du tour 5.</b> Coffre à 8 et alarme sous 5 : les trois braqueurs gagnent, chacun reçoit 8 pièces. Le plus riche devient Roi des Voleurs, même en cas d’égalité.</p>`;
+export const rules = `<span class="eyebrow">LE PLAN</span><h2>Ouvrez. Enrichissez-vous. Fuyez.</h2><p>Le coffre à 8/8 lance la fuite immédiatement après le bilan, si l’alarme reste sous 5. Vous avez cinq manches maximum. À 5 alarmes ou si le temps manque, le FBI gagne.</p><div class="rule-grid"><p><b>Forer</b>Chaque réussite ouvre le coffre de 2 points.</p><p><b>Sécuriser</b>Chaque réussite retire 2 alarmes.</p><p><b>Casiers & toile</b>Deux autres façons de gagner des pièces.</p><p><b>Chaque poste : 12 pièces à partager</b>Seul : 12. À deux : 6. À trois : 4. À quatre : 3. Les participants qui ratent perdent leur part.</p><p><b>Faire les poches · Secret uniquement</b>Volez jusqu’à 4 pièces à un rival, soit un écart de 8. Plusieurs voleurs partagent ce montant. Seul l’argent du début de manche est volable.</p><p><b>Alarme</b>+1 par manche, +1 pour chaque défi raté, −2 par sécurité réussie. Tout est calculé ensemble.</p></div><p>Le FBI choisit une cible privée et remplace son défi par un talkie-walkie à régler sur trois fréquences. S’il réussit, son poste de couverture réussit aussi et la cible apparaît comme ayant raté son défi. Aucun nom de brouilleur n’est dévoilé.</p><p>Votez après chaque manche qui continue : 3 voix sur 4 imposent coffre ou sécurité et bloquent le brouilleur un tour. Deux surveillances communes. Tous les braqueurs gagnent la fuite et 8 pièces de bonus ; le plus riche devient Roi des Voleurs.</p>`;

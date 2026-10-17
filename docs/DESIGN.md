@@ -1,4 +1,4 @@
-# Direction artistique et UX — v1
+# Direction artistique et UX — v2
 
 Le dernier brief fourni le 17 octobre remplace les cartes d’actions, l’éjection et les inspections des versions 0.x.
 
@@ -20,8 +20,16 @@ Le portrait reste utilisable avec un cadrage et une hiérarchie spécifiques. La
 
 Épreuves en 2D, temps basé sur le delta de simulation, progression sérialisée toutes les 250 ms. Les câbles permettent le glisser ou deux clics/taps et les boutons sont accessibles au clavier. Les trois autres épreuves utilisent un grand bouton et Espace. Les bons points restent acquis après une erreur. La transition ferme le musée puis ouvre l’épreuve pendant 600 ms ; les 18 secondes et les entrées démarrent ensuite. La préférence reduced-motion retire l’iris.
 
-L’exemple de gestes est présent dans chaque épreuve, avec deux étapes et un repère animé discret. Il ne montre pas la bonne borne du puzzle réel. Le salon offre les quatre entraînements. Une réussite anticipée reste dans l’épreuve jusqu’à l’échéance commune.
+L’exemple de gestes est présent dans chaque épreuve, avec deux étapes et un repère animé discret. Il ne montre pas la bonne borne du puzzle réel. Le salon offre les six entraînements. Une réussite anticipée reste dans l’épreuve jusqu’à l’échéance commune.
 
 ## Vérification
 
-La recette automatique relève les dimensions et intersections des sept repères, vérifie l’absence de débordement horizontal, les zones de 44 pixels, le choix sélectionné et les erreurs JavaScript. Les quatre épreuves sont terminées par leurs vrais contrôles, les câbles aussi par glisser et clavier. Les formats, résultats et limites physiques sont consignés dans `VALIDATION.md`.
+La recette automatique relève les dimensions et intersections des huit repères, vérifie l’absence de débordement horizontal, les zones de 44 pixels, le choix sélectionné et les erreurs JavaScript. Les quatre épreuves sont terminées par leurs vrais contrôles, les câbles aussi par glisser et clavier. Les formats, résultats et limites physiques sont consignés dans `VALIDATION.md`.
+
+## Corrections v2
+
+Les quatre postes affichent les portraits et noms de leurs participants annoncés, en plus du compte et du partage prévu. Les avatars restent neutres pendant les promesses. Faire les poches n’est accessible que pendant le choix secret.
+
+La fenêtre de bilan s’ouvre automatiquement : calcul explicite des alarmes, puis quatre portraits avec promesse, action, résultat, poche, gains et pertes. Si la partie continue, la fenêtre de vote s’ouvre ; les quatre compteurs sont visibles en direct. La recherche UI/UX Pro Max `live vote count feedback` a fourni la règle de mise à jour contextualisée : une seule région de statut annonce l’ensemble des voix sans déplacer le focus.
+
+Le talkie est un objet 2D dessiné pour le jeu : antenne, boîtier, grille de haut-parleur, écran LCD, deux boutons rotatifs. Glisser verticalement tourne le bouton ; les flèches ajustent aussi la valeur. Couleurs du signal doublées de texte. La toile utilise un tracé ordonné et montre longueur découpée et précision ; le doigt, la souris et les flèches sont pris en charge.

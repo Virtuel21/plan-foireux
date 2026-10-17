@@ -56,7 +56,8 @@ function render(s: Snapshot) {
     if (modal) closeModal();
     sound(v.phase);
     if (v.phase === "reveal") {
-      if (v.report?.trace) soundBank.play("signal");
+      if (v.report && v.report.alarmAfter > v.report.alarmBefore)
+        soundBank.play("siren");
       else if (v.report?.findings.some((f) => f.gain)) soundBank.play("coin");
     }
     if (v.phase === "ended")
@@ -76,14 +77,15 @@ function render(s: Snapshot) {
   document.body.dataset.phase = v?.phase ?? "lobby";
   document.body.classList.toggle("in-game", !!v);
   soundBank.loop("ambience", !!v && v.pausedAt === null && v.phase !== "ended");
+  soundBank.music(!!v && v.phase !== "ended", !!v && v.pausedAt !== null);
   $("#top").innerHTML =
     `<a class="brand" href="${location.pathname}" aria-label="Plan Foireux, accueil">${icon("mask")}<span>PLAN <b>FOIREUX</b><small>UN CASSE PRESQUE PARFAIT</small></span></a>${v ? `<div class="hud">${hud(v)}</div>` : '<span class="edition">LE MUSÉE DES MAUVAISES IDÉES · VOL. 01</span>'}<nav aria-label="Options"><button class="icon-button" data-action="sound" aria-label="${muted ? "Activer" : "Couper"} les sons">${icon(muted ? "mute" : "sound")}</button>${v ? `<button class="icon-button" data-action="role" aria-label="Revoir mon rôle en privé">${icon("mask")}</button>` : ""}<button class="icon-button" data-action="fullscreen" aria-label="Plein écran">${icon("grid")}</button><button class="icon-button" data-action="rules" aria-label="Règles du jeu">${icon("help")}</button></nav>`;
   $("#phase").innerHTML = v
     ? `<div class="phase-copy"><span class="round">TOUR <b>${v.round}</b><span>/ 5</span></span><h1>${PHASES[v.phase]}</h1>${v.phase === "secret" ? '<span class="private-label">PRIVÉ</span>' : ""}</div><time id="countdown" aria-label="Temps restant">00:00</time>`
-    : '<span class="location">MUSÉE BELLEVUE · 23:47</span><span class="quiet landscape-hint">4 complices · 1 écran chacun · 8 à 10 min</span>';
+    : '<span class="location">MUSÉE BELLEVUE · 23:47</span><span class="quiet landscape-hint">4 complices · 1 écran chacun · 5 manches maximum</span>';
   $("#footer").innerHTML = v
     ? footer(v, selected)
-    : '<span class="quiet">Promettez le meilleur. Préparez le pire.</span><span class="quiet">v1.0 · 5 tours · Un FBI parmi vous</span>';
+    : '<span class="quiet">Promettez le meilleur. Préparez le pire.</span><span class="quiet">v2.0 · Fuite dès l’ouverture · Un FBI parmi vous</span>';
   if (!v) lobby(s);
   else $("#lobby").innerHTML = "";
   museum?.update(v, s.players, selected);
@@ -102,7 +104,7 @@ function render(s: Snapshot) {
       trialRound = v.round;
       $("#trial-root").hidden = false;
       $("#trial-root").innerHTML =
-        `<div class="trial-shell"><div class="trial-meta"><span>TOUR ${v.round} · ${v.myJam ? "ÉMETTEUR ARMÉ · " : ""}${v.watched === v.myId ? "SURVEILLANCE · " : ""}18 SECONDES</span><time class="trial-clock"></time></div><div id="trial"></div></div>`;
+        `<div class="trial-shell"><div class="trial-meta"><span>TOUR ${v.round} · ${v.myJam ? `CIBLE : ${esc(v.players.find((p) => p.id === v.myJamTarget)?.name)} · ` : ""}${v.watched === v.myId ? "SURVEILLANCE · " : ""}18 SECONDES</span><time class="trial-clock"></time></div><div id="trial"></div></div>`;
       const targetIndex = v.players.findIndex(
         (p) => p.id === v.myChoice?.target,
       );
@@ -135,6 +137,9 @@ function render(s: Snapshot) {
   } else document.body.classList.remove("iris");
   if (v?.phase === "role" && !modal) openModal("role");
   if (v?.phase === "ended" && changed) openModal("result");
+  if (v && changed && ["reveal", "debate"].includes(v.phase))
+    openModal("report");
+  else if (v && modal === "report") refreshReport();
   const pause = (v?.pausedAt !== null && !!v) || s.status === "reconnecting";
   $("#pause-root").hidden = !pause;
   if (pause) {
@@ -150,7 +155,7 @@ function lobby(s: Snapshot) {
     nameFocus = document.activeElement === nameInput,
     position = nameInput?.selectionStart;
   $("#lobby").innerHTML =
-    `<section class="lobby-panel"><span class="eyebrow">LE PLAN ÉTAIT POURTANT SIMPLE.</span><h1>Un coffre.<br>Quatre alibis.<br><em>Zéro confiance.</em></h1><p class="lobby-description">Coopérez pour fuir.<br>Enrichissez-vous pour régner.<br>Et gardez un œil sur le FBI.</p><div class="lobby-actions">${s.room ? `<div class="room-heading"><span>SALON ${esc(s.room.toUpperCase())}</span><button data-action="invite" class="icon-button" aria-label="Copier le lien d’invitation">${icon("copy")}</button></div><div class="lobby-roster">${s.players.map((p) => `<span style="--player:${p.color}"><i></i>${esc(p.name)}<b>${p.ready ? "Prêt" : p.online ? "Attend" : "Absent"}</b></span>`).join("")}<small>${s.players.length}/4 complices · ${s.players.filter((p) => p.ready).length}/4 prêts</small></div><button data-action="ready" class="primary" ${s.status !== "online" ? "disabled" : ""}>${s.players.find((p) => p.id === s.myId)?.ready ? "Je ne suis plus prêt" : "Je suis prêt"}</button>${s.host ? `<button data-action="start" ${s.players.length < 4 || !s.players.every((p) => p.ready && p.online) ? "disabled" : ""}>Lancer le casse</button>` : ""}` : `<label class="name-label" for="nickname">Votre prénom<input id="nickname" autocomplete="nickname" maxlength="18" value="${esc(session.name)}"></label><button data-action="solo" class="primary">Jouer avec les bots ${icon("arrow")}</button><button data-action="network">${invite.get("room") ? "Rejoindre les complices" : "Inviter mes complices"} ${icon("users")}</button><button data-action="practice" class="text-button">Essayer les quatre épreuves</button>`}${s.room ? `<button data-action="leave" class="text-button">Quitter le salon</button>` : ""}<p class="network-error" role="status">${esc(s.error || (s.status === "connecting" ? "Connexion au salon…" : ""))}</p></div></section><div class="museum-caption"><span class="caption-line"></span><small>COLLECTION PERMANENTE</small><strong>La cupidité est un art.</strong></div>`;
+    `<section class="lobby-panel"><span class="eyebrow">LE PLAN ÉTAIT POURTANT SIMPLE.</span><h1>Un coffre.<br>Quatre alibis.<br><em>Zéro confiance.</em></h1><p class="lobby-description">Coopérez pour fuir.<br>Enrichissez-vous pour régner.<br>Et gardez un œil sur le FBI.</p><div class="lobby-actions">${s.room ? `<div class="room-heading"><span>SALON ${esc(s.room.toUpperCase())}</span><button data-action="invite" class="icon-button" aria-label="Copier le lien d’invitation">${icon("copy")}</button></div><div class="lobby-roster">${s.players.map((p) => `<span style="--player:${p.color}"><i></i>${esc(p.name)}<b>${p.ready ? "Prêt" : p.online ? "Attend" : "Absent"}</b></span>`).join("")}<small>${s.players.length}/4 complices · ${s.players.filter((p) => p.ready).length}/4 prêts</small></div><button data-action="ready" class="primary" ${s.status !== "online" ? "disabled" : ""}>${s.players.find((p) => p.id === s.myId)?.ready ? "Je ne suis plus prêt" : "Je suis prêt"}</button>${s.host ? `<button data-action="start" ${s.players.length < 4 || !s.players.every((p) => p.ready && p.online) ? "disabled" : ""}>Lancer le casse</button>` : ""}` : `<label class="name-label" for="nickname">Votre prénom<input id="nickname" autocomplete="nickname" maxlength="18" value="${esc(session.name)}"></label><button data-action="solo" class="primary">Jouer avec les bots ${icon("arrow")}</button><button data-action="network">${invite.get("room") ? "Rejoindre les complices" : "Inviter mes complices"} ${icon("users")}</button><button data-action="practice" class="text-button">Essayer les épreuves</button>`}${s.room ? `<button data-action="leave" class="text-button">Quitter le salon</button>` : ""}<p class="network-error" role="status">${esc(s.error || (s.status === "connecting" ? "Connexion au salon…" : ""))}</p></div></section><div class="museum-caption"><span class="caption-line"></span><small>COLLECTION PERMANENTE</small><strong>La cupidité est un art.</strong></div>`;
   if (nameFocus) {
     const input = document.querySelector<HTMLInputElement>("#nickname")!;
     input.focus();
@@ -172,12 +177,18 @@ function select(id: string) {
   const c: Choice = id.startsWith("player:")
     ? { action: "pocket", target: id.slice(7) }
     : { action: id as Action };
+  if (v.phase === "promise" && c.action === "pocket") {
+    notify(
+      "Faire les poches se choisit uniquement en secret. Annoncez un poste de couverture.",
+    );
+    return;
+  }
   if (!legal(v, v.myId, c)) {
     notify(
       v.watched === v.myId
         ? "Surveillé ce tour : choisissez le coffre ou la sécurité."
         : id === "drill"
-          ? "Le coffre est terminé. La fuite aura lieu à la fin du tour 5."
+          ? "Le coffre est ouvert : la fuite est lancée si l’alarme reste sous 5."
           : "Choisissez un autre joueur.",
     );
     return;
@@ -197,13 +208,15 @@ function openModal(kind: string) {
   if (kind === "rules") content = rules;
   if (kind === "report" && v) content = report(v);
   if (kind === "role" && v)
-    content = `<div class="role-card ${v.myRole}">${icon(v.myRole === "agent" ? "shield" : "mask")}<span class="eyebrow">À GARDER POUR VOUS</span><h2>${v.myRole === "agent" ? "Vous êtes le FBI." : "Vous êtes braqueur."}</h2><p>${v.myRole === "agent" ? "Faites atteindre 5 alarmes, ou empêchez l’ouverture du coffre avant la fin du tour 5. Réussissez votre épreuve avec Brouiller activé pour envoyer un signal secret. Votre travail normal compte aussi." : "Ouvrez le coffre, gardez l’alarme sous 5 et survivez jusqu’à la fin du tour 5. Tous les braqueurs gagnent la fuite. Le plus riche devient Roi des Voleurs."}</p><small>Votre apparence ne révèle rien. Vous pouvez revoir cette carte avec le masque en haut de l’écran.</small><button data-action="close" class="primary">Je garde mon rôle secret</button></div>`;
+    content = `<div class="role-card ${v.myRole}">${icon(v.myRole === "agent" ? "shield" : "mask")}<span class="eyebrow">À GARDER POUR VOUS</span><h2>${v.myRole === "agent" ? "Vous êtes le FBI." : "Vous êtes braqueur."}</h2><p>${v.myRole === "agent" ? "Faites atteindre 5 alarmes, ou gardez le coffre fermé pendant cinq manches. En choix secret, sélectionnez une cible avec le brouilleur : votre défi devient un talkie-walkie. Réglez trois fréquences pour faire échouer sa tâche. Votre poste de couverture réussit aussi. Profil bas vous laisse jouer le défi normal." : "Ouvrez le coffre en cinq manches maximum, avec l’alarme sous 5 : la fuite démarre dès l’ouverture. Tous les braqueurs gagnent la fuite. Le plus riche devient Roi des Voleurs."}</p><small>Votre apparence ne révèle rien. Vous pouvez revoir cette carte avec le masque en haut de l’écran.</small><button data-action="close" class="primary">Je garde mon rôle secret</button></div>`;
   if (kind === "practice")
-    content = `<span class="eyebrow">SANS ARGENT · SANS ALARME</span><h2>Préparez vos petits talents.</h2><p>Essayez les gestes avant le casse. Chaque épreuve dure 18 secondes.</p><div class="practice-actions">${(["secure", "drill", "loot", "pocket"] as Action[]).map((a) => `<button data-practice="${a}">${icon(a === "secure" ? "laser" : a === "drill" ? "wrench" : a === "loot" ? "lock" : "bag")}${LABELS[a]}</button>`).join("")}</div>`;
+    content = `<span class="eyebrow">SANS ARGENT · SANS ALARME</span><h2>Préparez vos petits talents.</h2><p>Essayez les gestes avant le casse. Chaque épreuve dure 18 secondes.</p><div class="practice-actions">${(["secure", "drill", "loot", "painting", "pocket", "radio"] as const).map((a) => `<button data-practice="${a}">${icon(a === "secure" ? "laser" : a === "drill" ? "wrench" : a === "loot" ? "lock" : "bag")}${LABELS[a]}</button>`).join("")}</div>`;
+  if (kind === "jam" && v)
+    content = `<span class="eyebrow">FBI · CHOIX STRICTEMENT PRIVÉ</span><h2>Qui vas-tu brouiller ?</h2><p>Ton épreuve sera le talkie-walkie. Trouve et stabilise trois fréquences : la cible échouera à son défi, même si elle l’avait terminé. Son échec ajoutera une alarme. Les autres verront seulement un défi raté.</p><div class="jam-targets">${v.players.map((p, i) => (p.id === v.myId ? "" : `<button data-jam-target="${esc(p.id)}" aria-pressed="${v.myJamTarget === p.id}" class="${v.myJamTarget === p.id ? "selected" : ""}"><img src="${import.meta.env.BASE_URL}portraits/${i}.png" alt=""><strong>${esc(p.name)}</strong><small>${p.money} pièces</small></button>`)).join("")}</div><button data-action="jam-off" class="subtle">Profil bas · Faire mon défi normal</button>`;
   if (kind === "result" && v?.result) {
     const agentIndex = v.players.findIndex((p) => p.exposed === "agent"),
       agent = v.players[agentIndex];
-    content = `<span class="eyebrow">${v.result.kind === "escape" ? "LE VAN N’ATTEND PLUS" : v.result.kind === "aborted" ? "PARTIE INTERROMPUE" : "FIN DU PLAN"}</span><h2>${esc(v.result.text)}</h2>${
+    content = `<span class="eyebrow">${v.result.kind === "escape" ? "COFFRE OUVERT · FUITE RÉUSSIE" : v.result.kind === "aborted" ? "PARTIE INTERROMPUE" : "FIN DU PLAN"}</span><h2>${esc(v.result.text)}</h2>${
       v.result.kind !== "aborted"
         ? `<div class="agent-reveal"><img src="${import.meta.env.BASE_URL}portraits/${agentIndex}.png" alt="${esc(agent?.name)}"><div><span class="eyebrow">L’AGENT INFILTRÉ</span><strong>${esc(agent?.name)}</strong><small>FBI · Portefeuille exclu du classement</small></div></div><div class="ranking">${v.players
             .filter((p) => p.exposed === "burglar")
@@ -219,11 +232,29 @@ function openModal(kind: string) {
     }${snapshot.host ? '<button class="primary" data-action="lobby">Retour au salon · Rejouer</button>' : v.result.kind === "aborted" ? `<button class="primary" data-action="leave">Retour à l’accueil</button>` : "<p>L’hôte peut ramener les quatre joueurs au salon.</p>"}`;
   }
   $("#modal-root").innerHTML =
-    `<div class="modal-backdrop"><section class="modal ${kind}" role="dialog" aria-modal="true" aria-label="${kind === "role" ? "Carte de rôle privée" : kind === "result" ? "Résultats du casse" : "Plan Foireux"}"><button class="icon-button modal-close" data-action="close" aria-label="Fermer">${icon("close")}</button>${content}</section></div>`;
+    `<div class="modal-backdrop"><section class="modal ${kind}" role="dialog" aria-modal="true" aria-label="${kind === "role" ? "Carte de rôle privée" : kind === "result" ? "Résultats du casse" : "Plan Foireux"}"><button class="icon-button modal-close" data-action="close" aria-label="Fermer">${icon("close")}</button><div class="modal-content">${content}</div></section></div>`;
   $("#app").inert = true;
   $("#modal-root")
     .querySelector<HTMLElement>("button,input")
     ?.focus({ preventScroll: true });
+}
+function refreshReport() {
+  const el = document.querySelector(".modal.report .modal-content");
+  if (!el || !snapshot.view) return;
+  const content = report(snapshot.view);
+  if (el.innerHTML === content) return;
+  const active = document.activeElement as HTMLElement;
+  const vote = active?.dataset.vote,
+    action = active?.dataset.action;
+  el.innerHTML = content;
+  if (vote)
+    el.querySelector<HTMLElement>(`[data-vote="${CSS.escape(vote)}"]`)?.focus({
+      preventScroll: true,
+    });
+  else if (action)
+    el.querySelector<HTMLElement>(
+      `[data-action="${CSS.escape(action)}"]`,
+    )?.focus({ preventScroll: true });
 }
 function closeModal() {
   modal = "";
@@ -238,7 +269,7 @@ function disposeTrial() {
   $("#trial-root").hidden = true;
   $("#trial-root").innerHTML = "";
 }
-function startPractice(action: Action) {
+function startPractice(action: Parameters<typeof newTrial>[0]) {
   closeModal();
   practice = true;
   disposeTrial();
@@ -276,13 +307,42 @@ document.addEventListener("input", (e) => {
     localStorage.setItem("pf-name", session.name);
   }
 });
+function endPractice() {
+  if (!practice) return;
+  practice = false;
+  disposeTrial();
+  openModal("practice");
+}
+// A completed touch drawing may suppress the following compatibility click.
+document.addEventListener("pointerup", (e) => {
+  if (
+    e.pointerType === "touch" &&
+    (e.target as HTMLElement).closest<HTMLElement>("[data-action]")?.dataset
+      .action === "end-practice"
+  )
+    endPractice();
+});
 document.addEventListener("click", async (e) => {
   const button = (e.target as HTMLElement).closest<HTMLElement>(
-    "[data-action],[data-practice]",
+    "[data-action],[data-practice],[data-vote],[data-jam-target]",
   );
   if (!button || (button as HTMLButtonElement).disabled) return;
   if (button.dataset.practice) {
-    startPractice(button.dataset.practice as Action);
+    startPractice(button.dataset.practice as Parameters<typeof newTrial>[0]);
+    return;
+  }
+  if (button.dataset.vote) {
+    session.command({ type: "vote", target: button.dataset.vote });
+    sound("click");
+    return;
+  }
+  if (button.dataset.jamTarget) {
+    session.command({
+      type: "jam",
+      enabled: true,
+      target: button.dataset.jamTarget,
+    });
+    closeModal();
     return;
   }
   const action = button.dataset.action;
@@ -301,9 +361,12 @@ document.addEventListener("click", async (e) => {
   else if (action === "leave") {
     closeModal();
     session.leave();
-  } else if (action === "jam")
-    session.command({ type: "jam", enabled: !snapshot.view?.myJam });
-  else if (action === "pass") session.command({ type: "vote", target: "pass" });
+  } else if (action === "jam") openModal("jam");
+  else if (action === "jam-off") {
+    session.command({ type: "jam", enabled: false });
+    closeModal();
+  } else if (action === "pass")
+    session.command({ type: "vote", target: "pass" });
   else if (action === "ready")
     session.ready(!snapshot.players.find((p) => p.id === snapshot.myId)?.ready);
   else if (action === "start") session.start();
@@ -311,13 +374,12 @@ document.addEventListener("click", async (e) => {
     closeModal();
     session.lobby();
   } else if (action === "end-practice") {
-    practice = false;
-    disposeTrial();
-    openModal("practice");
+    endPractice();
   } else if (action === "sound") {
     muted = !muted;
     soundBank.muted = muted;
     if (muted) soundBank.silence();
+    else soundBank.unlock();
     localStorage.setItem("pf-muted", muted ? "1" : "0");
     sound("click");
     render(snapshot);
@@ -337,7 +399,7 @@ document.addEventListener("click", async (e) => {
       notify("Le plein écran n’est pas disponible dans ce navigateur.");
     }
   } else if (action === "invite") {
-    const url = `${location.origin}${location.pathname}#room=${session.room}`;
+    const url = `${location.origin}${location.pathname}?v=2.0.0#room=${session.room}`;
     try {
       await navigator.clipboard.writeText(url);
       notify("Invitation copiée.");
@@ -377,6 +439,9 @@ function updateTimer() {
     text = `00:${String(seconds).padStart(2, "0")}`;
   const el = document.getElementById("countdown");
   if (el) el.textContent = text;
+  document
+    .querySelectorAll(".report-clock")
+    .forEach((el) => (el.textContent = text));
   if (!practice) {
     const trial = document.querySelector(".trial-clock");
     if (trial) trial.textContent = text;
@@ -388,6 +453,6 @@ session.resume();
 if (
   !session.authority &&
   !!invite.get("room") &&
-  invite.get("room") === sessionStorage.getItem("pf-v1-joined")
+  invite.get("room") === sessionStorage.getItem("pf-v2-joined")
 )
   session.join(invite.get("room")!);

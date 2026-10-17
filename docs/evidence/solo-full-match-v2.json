@@ -1,0 +1,106 @@
+{
+  "elapsedSeconds": 255.812,
+  "phases": [
+    {
+      "phase": "role",
+      "heading": "TOUR\n1\n/ 5\nDécouvrez votre rôle\n00:07",
+      "seconds": 0.018
+    },
+    {
+      "phase": "promise",
+      "heading": "TOUR\n1\n/ 5\nAnnoncez votre poste\n00:20",
+      "seconds": 6.984
+    },
+    {
+      "phase": "secret",
+      "heading": "TOUR\n1\n/ 5\nVotre vrai choix reste secret\nPRIVÉ\n00:12",
+      "seconds": 27.057
+    },
+    {
+      "phase": "transition",
+      "heading": "TOUR\n1\n/ 5\nÀ vous de jouer…\n00:01",
+      "seconds": 39.186
+    },
+    {
+      "phase": "minigame",
+      "heading": "TOUR\n1\n/ 5\nUne épreuve. Un seul poste.\n00:18",
+      "seconds": 39.756
+    },
+    {
+      "phase": "reveal",
+      "heading": "TOUR\n1\n/ 5\nBilan de la manche\n00:12",
+      "seconds": 57.861
+    },
+    {
+      "phase": "debate",
+      "heading": "TOUR\n1\n/ 5\nVotez pour une surveillance\n00:30",
+      "seconds": 69.877
+    },
+    {
+      "phase": "promise",
+      "heading": "TOUR\n2\n/ 5\nAnnoncez votre poste\n00:20",
+      "seconds": 99.977
+    },
+    {
+      "phase": "secret",
+      "heading": "TOUR\n2\n/ 5\nVotre vrai choix reste secret\nPRIVÉ\n00:12",
+      "seconds": 120.08
+    },
+    {
+      "phase": "transition",
+      "heading": "TOUR\n2\n/ 5\nÀ vous de jouer…\n00:01",
+      "seconds": 132.183
+    },
+    {
+      "phase": "minigame",
+      "heading": "TOUR\n2\n/ 5\nUne épreuve. Un seul poste.\n00:18",
+      "seconds": 132.789
+    },
+    {
+      "phase": "reveal",
+      "heading": "TOUR\n2\n/ 5\nBilan de la manche\n00:12",
+      "seconds": 150.795
+    },
+    {
+      "phase": "debate",
+      "heading": "TOUR\n2\n/ 5\nVotez pour une surveillance\n00:30",
+      "seconds": 162.782
+    },
+    {
+      "phase": "promise",
+      "heading": "TOUR\n3\n/ 5\nAnnoncez votre poste\n00:20",
+      "seconds": 192.879
+    },
+    {
+      "phase": "secret",
+      "heading": "TOUR\n3\n/ 5\nVotre vrai choix reste secret\nPRIVÉ\n00:12",
+      "seconds": 212.941
+    },
+    {
+      "phase": "transition",
+      "heading": "TOUR\n3\n/ 5\nÀ vous de jouer…\n00:01",
+      "seconds": 225.095
+    },
+    {
+      "phase": "minigame",
+      "heading": "TOUR\n3\n/ 5\nUne épreuve. Un seul poste.\n00:18",
+      "seconds": 225.688
+    },
+    {
+      "phase": "reveal",
+      "heading": "TOUR\n3\n/ 5\nBilan de la manche\n00:12",
+      "seconds": 243.768
+    },
+    {
+      "phase": "ended",
+      "heading": "TOUR\n3\n/ 5\nLe casse est terminé\n00:00",
+      "seconds": 255.749
+    }
+  ],
+  "result": "COFFRE OUVERT · FUITE RÉUSSIE\nLe casse est réussi. Tous les braqueurs s’échappent !\nL’AGENT INFILTRÉ\nLéa\nFBI · Portefeuille exclu du classement\nJulien\nRoi des Voleurs\n26 pièces\nSarah\nRoi des Voleurs\n26 pièces\nMax\n14 pièces\n\nLes trois braqueurs gagnent. Bonus personnel de 8 pièces inclus.\n\nRetour au salon · Rejouer",
+  "musicSources": [
+    "http://127.0.0.1:5173/music/sneaky-museum-heist.mp3",
+    "http://127.0.0.1:5173/music/sneaking-motif-1.mp3"
+  ],
+  "errors": []
+}
