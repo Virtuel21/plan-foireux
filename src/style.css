@@ -1967,11 +1967,11 @@ nav {
 }
 @keyframes scene-iris {
   0% {
-    clip-path: circle(100% at 50% 50%);
+    clip-path: circle(100% at var(--iris-x, 50%) var(--iris-y, 50%));
   }
   50%,
   100% {
-    clip-path: circle(0 at 50% 50%);
+    clip-path: circle(0 at var(--iris-x, 50%) var(--iris-y, 50%));
   }
 }
 .marker-leader {

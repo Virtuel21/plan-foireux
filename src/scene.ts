@@ -377,6 +377,23 @@ export class Museum {
     this.renderer.setSize(w, h);
     this.nextLayout = 0;
   }
+  transitionFocus(choice: Choice | null) {
+    const marker = choice ? this.markers.get(choice.action) : null;
+    const actor = choice?.target
+      ? this.actors.find((a) => a.id === choice.target)
+      : null;
+    const point = actor
+      ? actor.root
+          .getWorldPosition(new T.Vector3())
+          .add(new T.Vector3(0, 1.1, 0))
+      : marker?.object?.localToWorld(marker.anchor.clone());
+    if (!point) return { x: 50, y: 50 };
+    point.project(this.camera);
+    return {
+      x: T.MathUtils.clamp((point.x * 0.5 + 0.5) * 100, 5, 95),
+      y: T.MathUtils.clamp((0.5 - point.y * 0.5) * 100, 5, 95),
+    };
+  }
   layout() {
     const w = this.container.clientWidth,
       h = this.container.clientHeight;

@@ -125,8 +125,14 @@ function render(s: Snapshot) {
       s.status === "reconnecting";
     $("#trial-root").classList.toggle("entering", v.phase === "transition");
   } else if (!practice && minigame) disposeTrial();
-  if (v?.phase === "transition") document.body.classList.add("iris");
-  else document.body.classList.remove("iris");
+  if (v?.phase === "transition") {
+    const focus = museum?.transitionFocus(v.myChoice);
+    if (focus) {
+      $("#playfield").style.setProperty("--iris-x", `${focus.x}%`);
+      $("#playfield").style.setProperty("--iris-y", `${focus.y}%`);
+    }
+    document.body.classList.add("iris");
+  } else document.body.classList.remove("iris");
   if (v?.phase === "role" && !modal) openModal("role");
   if (v?.phase === "ended" && changed) openModal("result");
   const pause = (v?.pausedAt !== null && !!v) || s.status === "reconnecting";
