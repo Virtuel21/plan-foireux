@@ -2,17 +2,18 @@
 
 Un musée, un trésor, un agent infiltré. Un petit jeu de braquage et de bluff entre amis, directement dans le navigateur.
 
-**[Jouer](https://virtuel21.github.io/plan-foireux/)** · Prototype 0.1
+**[Jouer](https://virtuel21.github.io/plan-foireux/?v=0.2)** · Prototype 0.2
 
 ## Jouer
 
 1. Choisissez un pseudo. Lancez une partie avec les bots, ou créez un salon et copiez l'invitation.
-2. Dans chaque salle, annoncez publiquement un poste puis verrouillez votre action secrète. Changer d'avis sera visible à la révélation.
-3. Chaque poste assuré rapporte 4 pièces. Les fouilleurs se partagent 12 pièces. Un poste incomplet ajoute 1 alarme ; à 3, la police arrive.
-4. Votez pour éjecter un suspect, ou passez. Il faut la majorité absolue. Le rôle de l'éjecté est révélé et son argent est retiré.
-5. Retrouvez les trois indices, ouvrez le coffre, puis fuyez. Le plus riche des braqueurs survivants gagne. Tous les gains sont provisoires jusqu'à la fuite.
+2. Dans chaque salle, négociez vos postes puis verrouillez un choix secret parmi six : poste A, poste B, vol, fouille, réparation ou couverture.
+3. Un poste rapporte 3 ; les voleurs se partagent 18 (+1 alarme et −8 au sac). Un poste incomplet ajoute 2 alarmes. À 6, la police entre. Réparer retire 2 alarmes ; couvrir peut sauver un poste.
+4. Cliquez les objets du musée et manipulez le cadre, les tiroirs ou la statue pour trouver une enveloppe. Lire son chiffre privé consomme votre action. La première découverte rapporte 6 au total ; une nouvelle vérification rapporte 2. Vous pouvez annoncer un faux chiffre ou garder le silence.
+5. Regardez les promesses rompues, les gains et les dégâts pendant la révélation, puis validez le récapitulatif. Votez pour éjecter un suspect, ou passez. Il faut la majorité absolue. Le rôle de l'éjecté est révélé et son argent est retiré.
+6. Composez les trois chiffres sur le clavier du coffre. Un mauvais code ne l'ouvre pas. Le forcer coûte +2 alarme et −18 au sac ; l'ouvrir rapporte 48 au sac commun. Fuyez ensuite : le plus riche des braqueurs survivants gagne. Tous les gains restent provisoires jusqu'à la fuite.
 
-L'agent FBI gagne en faisant monter l'alarme à 3 sans être éjecté, ou en restant seul face à un braqueur. Le jeu comprend quatre salles et une fuite. Jusqu'à 6 humains ; des bots complètent l'équipe jusqu'à 4 participants.
+L'agent FBI gagne en faisant monter l'alarme à 6 sans être éjecté, ou en restant seul face à un braqueur. Il dispose des mêmes gestes que les autres, peut mentir sur ses indices et se cacher parmi les gourmands. Le jeu comprend quatre salles et une fuite. Jusqu'à 6 humains ; des bots complètent l'équipe jusqu'à 4 participants.
 
 ## Développer
 

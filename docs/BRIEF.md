@@ -1,5 +1,13 @@
 # Plan Foireux
 
+## Correction prioritaire du 17 octobre 2026
+
+Le retour utilisateur après essai de 0.1 prévaut : les petits écarts de gains et les trois choix ne donnent pas assez de raisons de trahir. Il faut des actions concrètes dans le décor, une récompense de découverte, des chiffres privés qu'on peut cacher ou falsifier, un code de coffre réellement manipulé, et une révélation qui montre clairement qui a fait quoi et gagné combien. La parenté avec Among Us sert à étudier tâches, alibis et information incomplète, sans reprendre un meurtre ni supprimer la compétition entre braqueurs.
+
+Le contrat de 0.2 est décrit dans [GAMEPLAY_V2.md](GAMEPLAY_V2.md). Il remplace l'économie, la fouille publique et le seuil d'alarme de 0.1 : six actions, alarme sur 6, fouille consommatrice d'action et information privée, annonces non certifiées et révélation persistante. Tous les gains restent provisoires jusqu'à la fuite.
+
+## Contexte du concept initial
+
 Source du brief fourni par Julien : https://chatgpt.com/s/cx_6ad32eb0637c819190b42cb273fbde0f (consulté le 17 octobre 2026).
 
 La dernière version prévaut : un braquage de quatre salles puis une fuite, avec un agent FBI infiltré. Les braqueurs doivent s'échapper ; le plus riche des braqueurs survivants gagne. L'agent gagne si l'alarme atteint trois tant qu'il est dans le groupe, ou s'il ne reste que lui et un braqueur. Un agent éjecté perd. Tous les gains sont provisoires jusqu'à la fuite. Le butin d'un éjecté est retiré, jamais redistribué.

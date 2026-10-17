@@ -1,4 +1,6 @@
 const paths:Record<string,string>={
+  wrench:'<path d="m14 4 3 3 4-2a6 6 0 0 1-7 8l-7 8-4-4 8-7a6 6 0 0 1 3-6Z"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 6 10 7L22 6"/>',
   mask:'<path d="M3 8c3-2 5-2 9 0 4-2 6-2 9 0v5c0 4-5 6-9 1-4 5-9 3-9-1Z"/><ellipse cx="7" cy="11" rx="2" ry="1.5"/><ellipse cx="17" cy="11" rx="2" ry="1.5"/>',
   coin:'<circle cx="12" cy="12" r="9"/><path d="M12 6v12m3-9c-5-3-8 3-3 3s2 6-3 3"/>',
   users:'<circle cx="9" cy="7" r="3"/><path d="M3 20v-4c0-5 12-5 12 0v4m1-16a3 3 0 0 1 0 6m3 3c3 0 3 4 3 7"/>',

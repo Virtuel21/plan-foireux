@@ -1,6 +1,6 @@
 {
   "name": "plan-foireux",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,6 +9,15 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "tsx --test tests/*.test.ts"
   },
-  "dependencies": { "three": "^0.180.0", "peerjs": "^1.5.5" },
-  "devDependencies": { "@types/three": "^0.180.0", "typescript": "~5.9.3", "vite": "^7.1.12", "tsx": "^4.20.6", "@types/node": "^22.18.0" }
+  "dependencies": {
+    "three": "^0.180.0",
+    "peerjs": "^1.5.5"
+  },
+  "devDependencies": {
+    "@types/three": "^0.180.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.12",
+    "tsx": "^4.20.6",
+    "@types/node": "^22.18.0"
+  }
 }
