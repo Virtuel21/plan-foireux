@@ -16,7 +16,7 @@ def material(name, color, roughness=.65, metallic=0):
 skin=material('Skin',(.69,.36,.16),.68)
 cloth=material('Cloth',(.95,.52,.055),.88)
 knit=cloth
-dark=material('Mask',(.022,.028,.033),.45)
+dark=material('Mask',(.006,.009,.013),.98)
 bag=material('Backpack',(.10,.12,.13),.85)
 edge=material('BagTrim',(.17,.19,.19),.76)
 pants=material('Trousers',(.055,.074,.095),.95)
@@ -81,23 +81,23 @@ for s in [-1,1]:
     verts=[]; faces=[]
     for radius in [1,.65]:
         for i in range(32):
-            a=i*math.tau/32;x=cx+math.cos(a)*.19*radius;z=.07+math.sin(a)*.125*radius
-            y=-.324+abs(x)**2*.35
+            a=i*math.tau/32;x=cx+math.cos(a)*.203*radius;z=.07+math.sin(a)*.138*radius
+            y=-.34+abs(x)**2*.30
             verts.append((x,y,z))
     for i in range(32):faces.append((i,(i+1)%32,(i+1)%32+32,i+32))
     mesh=bpy.data.meshes.new('MaskRing');mesh.from_pydata(verts,[],faces);mesh.materials.append(dark)
     o=bpy.data.objects.new('DominoMask',mesh);bpy.context.collection.objects.link(o);o.parent=head
-    mod=o.modifiers.new('MaskThickness','SOLIDIFY');mod.thickness=.018
-    sphere('EyeWhite',(cx,-.323,.075),(.112,.035,.072),white,head)
-    sphere('Iris',(cx+.018,-.356,.075),(.044,.014,.052),iris,head)
-    sphere('Pupil',(cx+.022,-.369,.075),(.023,.008,.037),dark,head,16)
-    sphere('EyeShine',(cx+.009,-.378,.095),(.011,.005,.014),white,head,12)
+    mod=o.modifiers.new('MaskThickness','SOLIDIFY');mod.thickness=.003
+    sphere('EyeWhite',(cx,-.334,.075),(.104,.013,.045),white,head)
+    sphere('Iris',(cx+.018,-.347,.075),(.033,.007,.037),iris,head)
+    sphere('Pupil',(cx+.022,-.354,.075),(.019,.004,.028),dark,head,16)
+    sphere('EyeShine',(cx+.009,-.360,.092),(.008,.003,.010),white,head,12)
     curve('Brow',[(cx-.09,-.29,.235),(cx,-.327,.255),(cx+.085,-.291,.235)],.022,dark,head)
-cube('MaskBridge',(0,-.34,.075),(.15,.026,.065),dark,head,.02)
+cube('MaskBridge',(0,-.35,.075),(.15,.026,.078),dark,head,.02)
 curve('MaskStrap',[(-.36,-.12,.07),(-.39,.10,.07),(0,.31,.07),(.39,.10,.07),(.36,-.12,.07)],.028,dark,head)
-sphere('Nose',(0,-.347,-.045),(.095,.103,.10),skin,head)
-sphere('Smile',(0,-.285,-.213),(.19,.044,.093),lip,head)
-sphere('Teeth',(0,-.323,-.188),(.155,.019,.038),white,head)
+sphere('Nose',(0,-.353,-.045),(.079,.078,.081),skin,head)
+sphere('Smile',(0,-.280,-.210),(.165,.029,.076),lip,head)
+sphere('Teeth',(0,-.306,-.185),(.133,.012,.025),white,head)
 curve('Cheek',[(-.21,-.281,-.16),(-.225,-.278,-.20)],.011,lip,head)
 curve('Cheek',[(.21,-.281,-.16),(.225,-.278,-.20)],.011,lip,head)
 # Oversized knitted beanie, folded cuff and individual soft ribs.
@@ -127,3 +127,24 @@ for o in bpy.context.scene.objects:
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT,'art','burglar.blend'))
 bpy.ops.export_scene.gltf(filepath=os.path.join(ROOT,'public','models','burglar.glb'),export_format='GLB',export_animations=False)
 print('PLAN_FOIREUX_CHARACTER_EXPORTED')
+
+# Portraits of the exact same model for the player list, with no second asset design.
+portrait_dir=os.path.join(ROOT,'public','portraits');os.makedirs(portrait_dir,exist_ok=True)
+scene=bpy.context.scene;scene.render.resolution_x=160;scene.render.resolution_y=192;scene.render.resolution_percentage=100
+scene.render.film_transparent=True
+formats=[i.identifier for i in scene.render.image_settings.bl_rna.properties['file_format'].enum_items]
+scene.render.image_settings.file_format=next(i for i in formats if i=='PNG')
+scene.render.image_settings.color_mode='RGBA'
+scene.world.color=(.28,.28,.28)
+bpy.ops.object.camera_add(location=(2.6,-7.5,3.5))
+camera=bpy.context.object;camera.rotation_euler=(Vector((0,0,1.88))-camera.location).to_track_quat('-Z','Y').to_euler();camera.data.type='ORTHO';camera.data.ortho_scale=1.42;scene.camera=camera
+for loc,power,size in [((-3,-4,6),450,4),((4,1,5),600,3)]:
+    bpy.ops.object.light_add(type='AREA',location=loc);light=bpy.context.object;light.data.energy=power;light.data.shape='DISK';light.data.size=size
+    light.rotation_euler=(Vector((0,0,1.5))-light.location).to_track_quat('-Z','Y').to_euler()
+colors=['ecac32','28aaa5','ee7836','9d65b2','5f8ce1','df647c']
+for i,color in enumerate(colors):
+    srgb=[int(color[k:k+2],16)/255 for k in (0,2,4)]
+    rgb=[c/12.92 if c<=.04045 else ((c+.055)/1.055)**2.4 for c in srgb]
+    next(n for n in cloth.node_tree.nodes if n.type=='BSDF_PRINCIPLED').inputs['Base Color'].default_value=(*rgb,1)
+    scene.render.filepath=os.path.join(portrait_dir,f'{i}.png');bpy.ops.render.render(write_still=True)
+print('PLAN_FOIREUX_PORTRAITS_RENDERED')

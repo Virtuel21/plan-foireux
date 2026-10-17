@@ -9,6 +9,7 @@ export class Museum {
   scene=new T.Scene(); camera:T.OrthographicCamera; renderer:T.WebGLRenderer; world=new T.Group(); props=new T.Group(); crew=new T.Group();
   actors:{root:T.Object3D;parts:Record<string,T.Object3D>;target:T.Vector3;label:HTMLDivElement;index:number}[]=[];
   base:T.Group|null=null; view:View|null=null; clock=new T.Clock(); lastLayout=''; labels:HTMLDivElement; zoom=1;
+  roster:Player[]=this.previewPlayers();guard:T.Group|null=null;
   reduced=matchMedia('(prefers-reduced-motion: reduce)').matches; ready=false;
   gold=mat('#d8a345',.65,.32); stone=mat('#ba9c7a'); iron=mat('#34434a',.6,.48); red=mat('#743b40'); black=mat('#202c36');
   constructor(public container:HTMLElement) {
@@ -24,7 +25,7 @@ export class Museum {
     const sun=new T.DirectionalLight('#ffe0a1',4.4);sun.position.set(-4,10,6);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-10,right:10,top:10,bottom:-10,near:1,far:30});sun.shadow.bias=-.0003;sun.shadow.normalBias=.04;this.scene.add(sun);
     const fill=new T.DirectionalLight('#8eacdf',1.7);fill.position.set(6,5,-4);this.scene.add(fill);
     this.buildRoom();new ResizeObserver(()=>this.resize()).observe(container);this.resize();
-    new GLTFLoader().load(`${import.meta.env.BASE_URL}models/burglar.glb`,g=>{this.base=g.scene;this.ready=true;this.setPlayers(this.view?.players??this.previewPlayers());},undefined,()=>{container.insertAdjacentHTML('beforeend','<p class="scene-error">Le modèle n’a pas chargé. Recharge la page pour réessayer.</p>');});
+    new GLTFLoader().load(`${import.meta.env.BASE_URL}models/burglar.glb`,g=>{this.base=g.scene;this.ready=true;this.setPlayers(this.view?.players??this.roster);this.addGuard();},undefined,()=>{container.insertAdjacentHTML('beforeend','<p class="scene-error">Le modèle n’a pas chargé. Recharge la page pour réessayer.</p>');});
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)this.clock.getDelta();});this.animate();
   }
   previewPlayers():Player[]{return ['Julien','Léa','Max','Sarah'].map((name,i)=>({id:String(i),name,color:COLORS[i],bot:true,online:true,active:true,money:0,promise:null,ready:false,exposed:null}));}
@@ -84,28 +85,35 @@ export class Museum {
   buildProps(layout:number) {
     this.clearProps();const offset=[0,-1.15,1.1][layout];
     // Vault and grille as separate objects placed on valid module anchors.
-    const vault=this.group(this.props,offset,.05,-3.22);this.box(vault,0,1.3,0,2.5,2.6,1.7,mat('#7a7d77',.6,.42),.14);this.box(vault,0,1.38,.9,2.17,2.25,.13,mat('#b4aa8f',.65,.36),.06);this.box(vault,0,1.38,.99,1.9,2.0,.07,mat('#676e6b',.7,.3));
-    const ring=new T.Mesh(new T.TorusGeometry(.48,.045,8,32),this.gold);ring.position.set(0,1.5,1.07);vault.add(ring);
-    for(let i=0;i<5;i++){const a=i*Math.PI*2/5;this.rod(vault,[0,1.5,1.09],[Math.sin(a)*.47,1.5+Math.cos(a)*.47,1.09],.028,this.gold);}
-    this.ball(vault,0,1.5,1.1,.1,this.gold);for(const x of [-.95,.95])for(const y of [.48,2.25])this.ball(vault,x,y,1.06,.055,this.gold);
+    const vault=this.group(this.props,offset,.05,-3.22);this.box(vault,0,1.3,0,2.5,2.6,1.7,mat('#7a7d77',.6,.42),.14);
+    const door=this.group(vault,-1.10,1.38,.9);door.name='VaultDoor';this.box(door,1.10,0,0,2.17,2.25,.13,mat('#b4aa8f',.65,.36),.06);this.box(door,1.10,0,.09,1.9,2.0,.07,mat('#676e6b',.7,.3));
+    const ring=new T.Mesh(new T.TorusGeometry(.48,.045,8,32),this.gold);ring.position.set(1.1,.12,.17);door.add(ring);
+    for(let i=0;i<5;i++){const a=i*Math.PI*2/5;this.rod(door,[1.1,.12,.19],[1.1+Math.sin(a)*.47,.12+Math.cos(a)*.47,.19],.028,this.gold);}
+    this.ball(door,1.1,.12,.2,.1,this.gold);for(const x of [.15,2.05])for(const y of [-.9,.87])this.ball(door,x,y,.16,.055,this.gold);
     const gate=this.group(this.props,offset,0,-1.9);for(const x of [-1.62,1.62]){this.box(gate,x,1.65,0,.4,3.3,.5,this.stone);this.box(gate,x,3.3,0,.61,.26,.65,this.stone);}this.box(gate,0,3.25,0,3.1,.30,.5,this.stone);
-    for(let x=-1.33;x<1.5;x+=.33)this.box(gate,x,1.55,0,.065,2.95,.10,this.iron,.01);
-    for(const y of [.4,2.6])this.box(gate,0,y,.02,2.85,.14,.15,this.iron);
+    const bars=this.group(gate,0,0,0);bars.name='GateBars';
+    for(let x=-1.33;x<1.5;x+=.33)this.box(bars,x,1.55,0,.065,2.95,.10,this.iron,.01);
+    for(const y of [.4,2.6])this.box(bars,0,y,.02,2.85,.14,.15,this.iron);
     // Emissive laser beams and emitters.
     const beam=new T.MeshBasicMaterial({color:'#ff354c'});
-    for(const y of [.8,1.45,2.1]){this.box(gate,-1.43,y,.24,.18,.19,.24,this.iron);this.rod(gate,[-1.32,y,.26],[1.32,y,.26],.014,beam);this.ball(gate,-1.32,y,.26,.04,beam);}
+    const lasers=this.group(gate,0,0,0);lasers.name='Lasers';
+    for(const y of [.8,1.45,2.1]){this.box(gate,-1.43,y,.24,.18,.19,.24,this.iron);this.rod(lasers,[-1.32,y,.26],[1.32,y,.26],.014,beam);this.ball(lasers,-1.32,y,.26,.04,beam);}
     const panel=this.group(this.props,offset+2.15,0,-1.6,-.1);this.box(panel,0,.65,0,.46,1.3,.35,this.iron);this.box(panel,0,1.4,.05,.66,.8,.18,this.black);this.box(panel,0,1.57,.16,.45,.19,.02,new T.MeshBasicMaterial({color:'#a9c574'}));for(let i=0;i<6;i++)this.ball(panel,((i%3)-1)*.13,1.32-Math.floor(i/3)*.12,.18,.038,i===1?beam:this.gold);
     // Glass case, crown and loot separate from the vault.
     const exhibit=this.group(this.props,layout===1?3.5:4,0,-.5);
     this.box(exhibit,0,.6,0,1.2,1.2,1.0,this.stone);this.box(exhibit,0,1.25,0,1.4,.18,1.2,this.stone);
     const glass=new T.MeshPhysicalMaterial({color:'#b8e1df',transparent:true,opacity:.12,roughness:.10,metalness:0,depthWrite:false});this.box(exhibit,0,1.82,0,1.15,1.0,.95,glass,.01);
     for(const x of [-.56,.56])for(const z of [-.46,.46])this.rod(exhibit,[x,1.3,z],[x,2.3,z],.018,this.gold);
-    const crown=new T.Mesh(new T.CylinderGeometry(.29,.26,.18,20,1,true),this.gold);crown.position.set(0,1.53,0);exhibit.add(crown);
-    for(let i=0;i<7;i++){const a=i*Math.PI*2/7;const point=new T.Mesh(new T.ConeGeometry(.07,.24,5),this.gold);point.position.set(Math.cos(a)*.25,1.73,Math.sin(a)*.25);exhibit.add(point);this.ball(exhibit,Math.cos(a)*.26,1.57,Math.sin(a)*.26,.047,mat(i%2?'#d83035':'#1b92ae',.4,.3));}
+    const treasure=this.group(exhibit,0,0,0);treasure.name='Treasure';const objective=this.view?.rooms[this.view.roomIndex].objective??'la Couronne du roi';
+    if(objective.includes('Diamant')){const gem=new T.Mesh(new T.OctahedronGeometry(.34),new T.MeshPhysicalMaterial({color:'#29b3db',metalness:.35,roughness:.12}));gem.position.set(0,1.65,0);gem.scale.y=1.25;treasure.add(gem);}
+    else if(objective.includes('Masque')){this.ball(treasure,0,1.65,0,.28,this.gold,[.85,1.25,.35]);for(const s of [-1,1])this.ball(treasure,s*.10,1.73,.08,.055,this.black,[1,.45,.5]);}
+    else {const crown=new T.Mesh(new T.CylinderGeometry(.29,.26,.18,20,1,true),this.gold);crown.position.set(0,1.53,0);treasure.add(crown);
+      for(let i=0;i<7;i++){const a=i*Math.PI*2/7;const point=new T.Mesh(new T.ConeGeometry(.07,.24,5),this.gold);point.position.set(Math.cos(a)*.25,1.73,Math.sin(a)*.25);treasure.add(point);this.ball(treasure,Math.cos(a)*.26,1.57,Math.sin(a)*.26,.047,mat(i%2?'#d83035':'#1b92ae',.4,.3));}}
     const bag=this.group(this.props,3.0,.05,2.1);this.ball(bag,0,.33,0,.32,mat('#29363d'),[1,1.2,.8]);this.rod(bag,[-.12,.58,0],[.12,.58,0],.035,this.gold);
     for(let i=0;i<6;i++){this.box(this.props,2.6+i*.13,.075,2.7+Math.sin(i)*.13,.11,.05,.08,this.gold,.015);}
   }
   setPlayers(players:Player[]) {
+    this.roster=players;
     if(!this.base)return;
     this.crew.clear();this.labels.innerHTML='';this.actors=[];
     players.forEach((p,i)=>{
@@ -116,11 +124,19 @@ export class Museum {
       this.actors.push({root,parts,target:start.clone(),label,index:i});
     });
   }
+  addGuard(){if(!this.base)return;this.guard=this.base.clone(true);this.guard.scale.setScalar(.85);this.guard.position.set(-4.8,.07,-2.5);this.guard.rotation.y=.4;
+    this.guard.traverse(o=>{if(o instanceof T.Mesh){o.castShadow=true;if(o.material.name==='Cloth'){o.material=o.material.clone();o.material.color.set('#39627d');}if(/DominoMask|MaskBridge|MaskStrap|Backpack|PackPocket|PackFlap|PackHandle|ShoulderStrap|StrapBuckle/.test(o.name))o.visible=false;}});this.world.add(this.guard);
+  }
   idlePosition(i:number) {return new T.Vector3([-2.1,.1,2.5,3.9,-3.2,1.4][i],.08,[1.25,2.05,1.2,2.25,2.5,3.0][i]);}
   update(v:View|null) {
     const old=this.view;this.view=v;
     if(v&&(!old||v.players.map(p=>`${p.id}:${p.name}`).join()!==old.players.map(p=>`${p.id}:${p.name}`).join()))this.setPlayers(v.players);
-    if(!v)return;const key=`${v.rooms[v.roomIndex].layout}:${v.roomIndex}`;if(key!==this.lastLayout){this.lastLayout=key;this.buildProps(v.rooms[v.roomIndex].layout);}
+    if(!v)return;const key=`${v.rooms[v.roomIndex].layout}:${v.roomIndex}`;if(key!==this.lastLayout){this.lastLayout=key;this.buildProps(v.rooms[v.roomIndex].layout);if(this.guard)this.guard.position.set([-4.8,-3.8,4.8][v.rooms[v.roomIndex].layout],.07,-2.8);}
+    const door=this.props.getObjectByName('VaultDoor');if(door)door.rotation.y=v.objective?-1.45:0;
+    const treasure=this.props.getObjectByName('Treasure');if(treasure)treasure.visible=!v.objective;
+    const room=v.rooms[v.roomIndex],revealed=v.phase==='reveal'||v.phase==='ended';
+    const succeeded=(short:string)=>revealed&&v.report&&!v.report.incidents.some(i=>i.startsWith(short+' :'));
+    for(const task of [room.a,room.b]){if(task.icon==='grid'){const bars=this.props.getObjectByName('GateBars');if(bars)bars.position.y=succeeded(task.short)?1.6:0;}if(task.icon==='laser'){const lasers=this.props.getObjectByName('Lasers');if(lasers)lasers.visible=!succeeded(task.short);}}
     this.actors.forEach((actor,i)=>{
       const p=v.players[i];actor.label.style.opacity=p.active?'1':'.35';actor.root.visible=p.active;actor.target.copy(this.idlePosition(i));
       if((v.phase==='reveal'||v.phase==='ended')&&v.report){const f=v.report.findings.find(f=>f.id===p.id);if(f){const x=[0,-1.15,1.1][v.rooms[v.roomIndex].layout];const others=v.report.findings.filter(a=>a.action===f.action),n=others.findIndex(a=>a.id===p.id);actor.target.set(f.action==='a'?x-1+n*.85:f.action==='b'?x+2.1+n*.8:3.2+n*.55,.08,f.action==='loot'?.45:-.15);}}
