@@ -201,7 +201,7 @@ function select(id: string) {
   if (!legal(v, v.myId, c)) {
     notify(
       v.watched === v.myId
-        ? "Surveillé ce tour : choisissez le coffre ou la sécurité."
+        ? "Surveillé ce tour : choisissez le coffre ou les caméras."
         : id === "drill"
           ? "Le coffre est ouvert : la fuite est lancée si l’alarme reste sous 5."
           : "Choisissez un autre joueur.",

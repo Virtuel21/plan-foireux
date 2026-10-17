@@ -8,15 +8,17 @@ Choisissez un prénom, jouez avec trois bots ou invitez vos complices. L’hôte
 
 Ouvrez le coffre pour fuir, en cinq manches maximum. À 5 alarmes, la police gagne. La fuite suit immédiatement la manche qui ouvre le coffre, avec priorité à la police si l’alarme atteint aussi 5.
 
-Annoncez publiquement un poste parmi Forer, Sécuriser, Casiers ou Voler la toile. Les portraits et noms montrent qui promet quoi. En secret, choisissez votre vrai poste ou faites les poches d’un rival : le vol ne peut jamais être annoncé. Les phases durent 20 s de promesses, 12 s de secret, 18 s d’épreuve et 12 s de bilan. Un débat de 30 s suit chaque manche qui continue.
+Annoncez publiquement un poste parmi Forer, Désactiver les caméras, Casiers ou Voler la toile. Les portraits et noms montrent qui promet quoi. En secret, choisissez votre vrai poste ou faites les poches d’un rival : le vol ne peut jamais être annoncé. Les phases durent 20 s de promesses, 12 s de secret, 18 s d’épreuve et 12 s de bilan. Un débat de 30 s suit chaque manche qui continue.
 
-Chaque poste partage **12 pièces entre tous ses participants réels** : seul 12, à deux 6, à trois 4, à quatre 3 ; une part ratée est perdue. Forer ajoute aussi 2 au coffre ; Sécuriser retire 2 alarmes. Le vol prend presque tout le gain de la manche d’un rival : **11 sur 12** pour un voleur seul, au moins une pièce laissée à la cible. Sans gain, jusqu’à 4 pièces de sa réserve. Plusieurs voleurs partagent ce montant. Reprendre la même cible à la manche suivante rend le défi beaucoup plus difficile. Voler la toile accepte **70 % de précision**, avec une marge de tracé élargie pour le doigt.
+Chaque poste partage **12 pièces entre tous ses participants réels** : seul 12, à deux 6, à trois 4, à quatre 3 ; une part ratée est perdue. Forer ajoute aussi 2 au coffre ; Désactiver les caméras retire 2 alarmes. Le vol prend presque tout le gain de la manche d’un rival : **11 sur 12** pour un voleur seul, au moins une pièce laissée à la cible. Sans gain, jusqu’à 4 pièces de sa réserve. Plusieurs voleurs partagent ce montant. Reprendre la même cible à la manche suivante rend le défi beaucoup plus difficile. Voler la toile accepte **70 % de précision**, avec une marge de tracé élargie pour le doigt.
 
 L’alarme ajoute 1 pour le temps et 1 par défi raté, puis retire 2 par joueur qui désactive les alarmes. Le bilan automatique explique ce calcul **seulement si l’alarme monte** et présente les statistiques des quatre portraits. Le vote affiche les nombres de voix en direct : 3/4 imposent un tour de surveillance, deux charges communes, aucun rôle révélé. **La quatrième réponse termine immédiatement le vote**, y compris Passer. Une grande annonce centrale signale les promesses et les choix secrets. Le butin est représenté par des piles de lingots et de billets qui grandissent et diminuent avec les portefeuilles.
 
 Le FBI choisit une cible privée et joue un talkie-walkie à trois fréquences : rouge, orange, vert. S’il réussit, la cible apparaît comme ayant raté son défi et son propre poste de couverture réussit. Un joueur surveillé ne peut pas brouiller. Tous les détails sont dans `docs/BRIEF.md`, les règles précédentes dans `docs/BRIEF-v1-archive.md`.
 
 L’entraînement propose six épreuves : les quatre postes, le vol et le talkie FBI. Les trois musiques fournies par Julien sont intégrées : thème d’accueil et deux thèmes alternés en partie. Téléphone paysage prioritaire, gestes et alternatives clavier, cibles de 44 pixels CSS minimum.
+
+Les modèles Meshy natifs et leurs textures originales remplacent le décor et les avatars procéduraux. Deux bases partagées donnent quatre couleurs de joueur ; trois animations sont conservées : attendre, marcher, forer. Le vrai coffre est généré directement dans Meshy-T2.5 à environ 3 000 triangles. La géométrie et les cartes PBR des sources Meshy ne sont pas simplifiées après coup. Le poste « Désactiver les caméras » est attaché à la caméra, avec une petite boîte fermée ; le grand boîtier est réservé au mini-jeu de câbles. Les écarts aux concepts et la provenance figurent dans `docs/ASSETS.md`.
 
 ## Développer
 
@@ -46,9 +48,9 @@ Les coupures silencieuses sont détectées par heartbeat, avec un délai de dét
 - `src/engine.ts`, `config/rules.ts` : règles pures, résolution simultanée, surveillance, délais et pause.
 - `src/host.ts`, `src/session.ts` : autorité locale, identités et transport WebRTC.
 - `src/trial.ts`, `src/minigame.ts` : état sérialisable et six manipulations 2D.
-- `src/scene.ts`, `src/animation.ts` : diorama, repères accessibles, clips procéduraux du modèle partagé.
+- `src/scene.ts`, `src/meshy.ts`, `src/animation.ts` : modèles Meshy natifs, repères accessibles et trois animations squelettiques partagées.
 - `scenes/layouts/` : trois dispositions préparées, zones stables.
-- `art/source/`, `art/build_museum.py`, `art/finish_assets.py` : sources Blender et exports mobiles reproductibles.
+- `art/assemble_meshy.py`, `art/review_meshy.py`, `art/meshy-provenance.json` : assemblage sans perte des sources Meshy et scènes Blender de revue. Les scripts et sources procédurales historiques restent archivés dans `art/`.
 - `audio/build_audio.py` : banque de sons originaux synthétisés.
 - `docs/ASSETS.md`, `docs/DESIGN.md`, `docs/VALIDATION.md` : provenance, décisions UX et vérifications.
 

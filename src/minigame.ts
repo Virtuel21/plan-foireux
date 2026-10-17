@@ -18,7 +18,8 @@ import { LABELS } from "./scene";
 import { soundBank } from "./audio";
 import { COLORS } from "./engine";
 export const INSTRUCTIONS = {
-  secure: "Relie les bons symboles, puis valide. Deux panneaux à réparer.",
+  secure:
+    "Rebranche les bons câbles dans le boîtier pour désactiver les caméras. Deux panneaux à terminer.",
   drill:
     "Maintiens pour accélérer, relâche pour refroidir. Stabilise trois points dans la zone verte étroite.",
   loot: "Arrête le curseur dans les trois encoches.",
@@ -84,7 +85,7 @@ export class Minigame {
       soundBank.play(t.done ? "current" : "lever");
       this.feedback(
         t.done
-          ? "Les deux panneaux sont réparés."
+          ? "Circuits rebranchés : caméras désactivées."
           : t.panel
             ? "Panneau 2 : les bornes ont changé."
             : "Corrige les prises libérées.",
@@ -279,7 +280,7 @@ export class Minigame {
   }
   wires() {
     const t = this.state;
-    return `<div class="wire-board"><svg viewBox="0 0 600 300" preserveAspectRatio="none" aria-hidden="true">${[0, 1, 2].map((i) => `<path class="cable-shadow" data-shadow="${i}"/><path class="cable-line" data-wire="${i}" stroke="${WIRE_COLORS[i]}"/>`).join("")}</svg>${[0, 1, 2].map((i) => `<span class="circuit-label" style="top:${20 + i * 30}%;--wire:${WIRE_COLORS[i]}">${SYMBOLS[i]}</span><button class="plug" data-cable="${i}" aria-label="Sélectionner l’embout du circuit ${SYMBOLS[i]}" style="--wire:${WIRE_COLORS[i]}">${icon("plus")}</button><button class="terminal" data-terminal="${i}" aria-label="Borne ${SYMBOLS[terminalId(t, i)]}" style="top:${20 + i * 30}%">${SYMBOLS[terminalId(t, i)]}</button>`).join("")}<span class="board-label">CIRCUITS</span><span class="board-label right">BORNES</span></div>`;
+    return `<div class="wire-board"><img class="junction-box-art" src="${import.meta.env.BASE_URL}images/electrical-board.png" alt="" aria-hidden="true"><svg viewBox="0 0 600 300" preserveAspectRatio="none" aria-hidden="true">${[0, 1, 2].map((i) => `<path class="cable-shadow" data-shadow="${i}"/><path class="cable-line" data-wire="${i}" stroke="${WIRE_COLORS[i]}"/>`).join("")}</svg>${[0, 1, 2].map((i) => `<span class="circuit-label" style="top:${20 + i * 30}%;--wire:${WIRE_COLORS[i]}">${SYMBOLS[i]}</span><button class="plug" data-cable="${i}" aria-label="Sélectionner l’embout du circuit ${SYMBOLS[i]}" style="--wire:${WIRE_COLORS[i]}">${icon("plus")}</button><button class="terminal" data-terminal="${i}" aria-label="Borne ${SYMBOLS[terminalId(t, i)]}" style="top:${20 + i * 30}%">${SYMBOLS[terminalId(t, i)]}</button>`).join("")}<span class="board-label">CIRCUITS</span><span class="board-label right">BORNES CAMÉRAS</span></div>`;
   }
   mechanism() {
     const t = this.state;

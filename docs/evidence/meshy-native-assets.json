@@ -1,0 +1,211 @@
+{
+  "initial": {
+    "clips": [
+      [
+        {
+          "name": "idle",
+          "duration": 4.0333333015441895
+        },
+        {
+          "name": "walk",
+          "duration": 1.066666603088379
+        },
+        {
+          "name": "drill",
+          "duration": 3.9666666984558105
+        }
+      ],
+      [
+        {
+          "name": "idle",
+          "duration": 4.0333333015441895
+        },
+        {
+          "name": "walk",
+          "duration": 1.066666603088379
+        },
+        {
+          "name": "drill",
+          "duration": 3.9666666984558105
+        }
+      ],
+      [
+        {
+          "name": "idle",
+          "duration": 4.0333333015441895
+        },
+        {
+          "name": "walk",
+          "duration": 1.066666603088379
+        },
+        {
+          "name": "drill",
+          "duration": 3.9666666984558105
+        }
+      ],
+      [
+        {
+          "name": "idle",
+          "duration": 4.0333333015441895
+        },
+        {
+          "name": "walk",
+          "duration": 1.066666603088379
+        },
+        {
+          "name": "drill",
+          "duration": 3.9666666984558105
+        }
+      ]
+    ],
+    "independent": true,
+    "bones": [
+      24,
+      24,
+      24,
+      24
+    ],
+    "triangles": 190278,
+    "calls": 15
+  },
+  "security": {
+    "positions": [
+      [
+        5.2,
+        0.15,
+        -3.3
+      ],
+      [
+        5.2,
+        0.15,
+        -3.3
+      ],
+      [
+        5.2,
+        0.15,
+        -3.3
+      ]
+    ],
+    "closedBox": true,
+    "label": "D\u00c3\u00a9sactiver les cam\u00c3\u00a9rasAlarme \u00e2\u02c6\u20192 \u00c2\u00b7 12 \u00c3\u00a0 partager0/1 conseill\u00c3\u00a9Personne d\u00e2\u20ac\u2122annonc\u00c3\u00a9"
+  },
+  "nativeSafe": {
+    "sharedPositions": true,
+    "sharedNormals": true,
+    "sharedUV": true,
+    "triangles": 3026,
+    "bodyMatrix": [
+      2.2658102343283955,
+      0,
+      0,
+      0,
+      0,
+      2.2658102343283955,
+      0,
+      0,
+      0,
+      0,
+      2.2658102343283955,
+      0,
+      -5.219447127542091,
+      1.1011057111526135,
+      -1.2110811653580993,
+      1
+    ]
+  },
+  "walking": [
+    "walk",
+    "walk",
+    "walk",
+    "walk"
+  ],
+  "drilling": {
+    "clips": [
+      "drill",
+      "idle",
+      "idle",
+      "idle"
+    ],
+    "tool": true
+  },
+  "door": {
+    "angle": -1.3495389346237676,
+    "target": -1.384,
+    "bodyMatrix": [
+      2.2658102343283955,
+      0,
+      0,
+      0,
+      0,
+      2.2658102343283955,
+      0,
+      0,
+      0,
+      0,
+      2.2658102343283955,
+      0,
+      -5.219447127542091,
+      1.1011057111526135,
+      -1.2110811653580993,
+      1
+    ]
+  },
+  "reduced": [
+    "idle",
+    "idle",
+    "idle",
+    "idle"
+  ],
+  "errors": [],
+  "checks": [
+    "four independent 24-joint skeletons",
+    "exactly idle/walk/drill clips",
+    "idle and drill skeletons actually change",
+    "walk while moving",
+    "idle for other stations",
+    "held drill visible",
+    "native safe door opens while housing stays fixed",
+    "native safe positions normals UV shared without edits",
+    "camera challenge fixed in all three layouts",
+    "camera and closed box clickable in 3D",
+    "mobile landscape render",
+    "reduced-motion stable pose"
+  ],
+  "engineTests": {
+    "passed": 45,
+    "failed": 0
+  },
+  "uiViewports": [
+    [
+      1440,
+      900
+    ],
+    [
+      844,
+      390
+    ],
+    [
+      740,
+      360
+    ],
+    [
+      667,
+      375
+    ],
+    [
+      390,
+      844
+    ],
+    [
+      320,
+      740
+    ]
+  ],
+  "uiViewportsPassed": 6,
+  "cableInteractionScenarioPassed": true,
+  "browserScenariosPassed": 7,
+  "buildPassed": true,
+  "formatPassed": true,
+  "latestCreditsSpent": 15,
+  "balance": 1845
+}
