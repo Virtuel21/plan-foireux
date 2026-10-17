@@ -1,0 +1,271 @@
+{
+  "production": {
+    "status": "original Meshy geometry and full-resolution textures restored",
+    "meshyModel": "meshy-7.1 standard",
+    "paidCredits": 250,
+    "initialCredits": 2110,
+    "balanceAfterProduction": 1860,
+    "additionalCreditsForCorrection": 0,
+    "approvedCharacterAnimations": [
+      "idle",
+      "walk",
+      "drill"
+    ],
+    "sources": [
+      "character-male",
+      "character-female",
+      "museum-complete",
+      "vault",
+      "lockers",
+      "electrical-box",
+      "guard"
+    ],
+    "packaging": "native GLBs; lossless clip bundling; Blender scenes use parent transforms only",
+    "qualityProof": "quality-preservation.json",
+    "limitations": [
+      "Max and Sarah share the two native body/head models; only clothing hue differs in the game.",
+      "Sarah retains the female source bun, not the beanie and hair of the concept.",
+      "Meshy generated an arched vault facade, rather than the square safe in the concept.",
+      "Native Meshy rigging and animations are retained; no skin weights were repaired.",
+      "No physical-device or Safari/iOS performance validation; no claim of exact concept identity."
+    ]
+  },
+  "paidJobs": [
+    {
+      "asset": "character-male",
+      "stage": "model",
+      "type": "image-to-3d",
+      "task_id": "01a14b02-e199-77d4-9447-9ef289315a56",
+      "authorized_credits": 30
+    },
+    {
+      "asset": "vault",
+      "stage": "preview",
+      "type": "text-to-3d",
+      "task_id": "01a14b03-426b-70ec-967f-c866f8969090",
+      "authorized_credits": 20
+    },
+    {
+      "asset": "lockers",
+      "stage": "preview",
+      "type": "text-to-3d",
+      "task_id": "01a14b03-4a9c-7755-9264-d63e660ca80c",
+      "authorized_credits": 20
+    },
+    {
+      "asset": "guard",
+      "stage": "preview",
+      "type": "text-to-3d",
+      "task_id": "01a14b03-5404-7671-b297-fe632ba8ecea",
+      "authorized_credits": 20
+    },
+    {
+      "asset": "character-female",
+      "stage": "model",
+      "type": "image-to-3d",
+      "task_id": "01a14b03-fa4b-704e-8908-88fcccea2ba3",
+      "authorized_credits": 30
+    },
+    {
+      "asset": "electrical-box",
+      "stage": "model",
+      "type": "image-to-3d",
+      "task_id": "01a14b04-e4df-7461-8abe-711862da1c0c",
+      "authorized_credits": 30
+    },
+    {
+      "asset": "vault",
+      "stage": "refine",
+      "type": "text-to-3d",
+      "task_id": "01a14b06-2105-766a-97c7-73e791ffb93d",
+      "parent_task_id": "01a14b03-426b-70ec-967f-c866f8969090",
+      "authorized_credits": 10
+    },
+    {
+      "asset": "lockers",
+      "stage": "refine",
+      "type": "text-to-3d",
+      "task_id": "01a14b06-243d-76c3-be22-5fc1eb15f48b",
+      "parent_task_id": "01a14b03-4a9c-7755-9264-d63e660ca80c",
+      "authorized_credits": 10
+    },
+    {
+      "asset": "guard",
+      "stage": "refine",
+      "type": "text-to-3d",
+      "task_id": "01a14b06-2755-7378-8330-94b135c9cfda",
+      "parent_task_id": "01a14b03-5404-7671-b297-fe632ba8ecea",
+      "authorized_credits": 10
+    },
+    {
+      "asset": "museum-complete",
+      "stage": "model",
+      "type": "image-to-3d",
+      "task_id": "01a14b07-2bbf-77d1-be38-6cadcbc4e2c5",
+      "authorized_credits": 30
+    },
+    {
+      "asset": "shared",
+      "stage": "drill-motion",
+      "type": "text-to-motion",
+      "task_id": "01a14b07-e2c0-76f6-a477-829befe9e7a8",
+      "authorized_credits": 10
+    },
+    {
+      "asset": "character-male",
+      "stage": "rig",
+      "type": "rigging",
+      "task_id": "01a14b08-4c36-726b-beb0-bba71c32c8b0",
+      "parent_task_id": "01a14b02-e199-77d4-9447-9ef289315a56",
+      "authorized_credits": 5
+    },
+    {
+      "asset": "character-female",
+      "stage": "rig",
+      "type": "rigging",
+      "task_id": "01a14b08-7371-723b-91aa-111bc6d8f4f2",
+      "parent_task_id": "01a14b03-fa4b-704e-8908-88fcccea2ba3",
+      "authorized_credits": 5
+    },
+    {
+      "asset": "character-male",
+      "stage": "idle",
+      "type": "animation",
+      "task_id": "01a14b0a-0cc4-7402-9f55-35bfc0ff5287",
+      "parent_task_id": "01a14b08-4c36-726b-beb0-bba71c32c8b0",
+      "authorized_credits": 3
+    },
+    {
+      "asset": "character-male",
+      "stage": "drill",
+      "type": "animation",
+      "task_id": "01a14b0a-10ef-71cc-9a1d-429ec719769c",
+      "parent_task_id": "01a14b08-4c36-726b-beb0-bba71c32c8b0",
+      "authorized_credits": 3
+    },
+    {
+      "asset": "character-female",
+      "stage": "idle",
+      "type": "animation",
+      "task_id": "01a14b0a-15ae-730a-b6b5-d15c72c4a52c",
+      "parent_task_id": "01a14b08-7371-723b-91aa-111bc6d8f4f2",
+      "authorized_credits": 3
+    },
+    {
+      "asset": "character-female",
+      "stage": "drill",
+      "type": "animation",
+      "task_id": "01a14b0a-19e6-72c7-8dfb-5a3c488db74d",
+      "parent_task_id": "01a14b08-7371-723b-91aa-111bc6d8f4f2",
+      "authorized_credits": 3
+    },
+    {
+      "asset": "guard",
+      "stage": "rig",
+      "type": "rigging",
+      "task_id": "01a14b0a-2039-7452-b188-d946a294ed52",
+      "parent_task_id": "01a14b06-2755-7378-8330-94b135c9cfda",
+      "authorized_credits": 5
+    },
+    {
+      "asset": "guard",
+      "stage": "idle",
+      "type": "animation",
+      "task_id": "01a14b0b-1de5-766d-a221-0d02a809d950",
+      "parent_task_id": "01a14b0a-2039-7452-b188-d946a294ed52",
+      "authorized_credits": 3
+    }
+  ],
+  "preservation": [
+    {
+      "file": "male.glb",
+      "source": "character-male-rig.glb",
+      "allOriginalBufferViewsIdentical": true,
+      "animationDataUnchanged": [
+        {
+          "clip": "idle",
+          "copiedBufferViews": 67,
+          "bytesUnchanged": true
+        },
+        {
+          "clip": "walk",
+          "copiedBufferViews": 67,
+          "bytesUnchanged": true
+        },
+        {
+          "clip": "drill",
+          "copiedBufferViews": 73,
+          "bytesUnchanged": true
+        }
+      ],
+      "bytes": 28082768,
+      "sha256": "c68a12fa703fdefae869411d537ec1a5813733dcc771a7fea2001adf5a798a48"
+    },
+    {
+      "file": "female.glb",
+      "source": "character-female-rig.glb",
+      "allOriginalBufferViewsIdentical": true,
+      "animationDataUnchanged": [
+        {
+          "clip": "idle",
+          "copiedBufferViews": 67,
+          "bytesUnchanged": true
+        },
+        {
+          "clip": "walk",
+          "copiedBufferViews": 67,
+          "bytesUnchanged": true
+        },
+        {
+          "clip": "drill",
+          "copiedBufferViews": 73,
+          "bytesUnchanged": true
+        }
+      ],
+      "bytes": 26638280,
+      "sha256": "543157d0a121c1a9971c67df0b95949dcb84632ae53ad1a0b7a65064e2b7271b"
+    },
+    {
+      "file": "guard.glb",
+      "source": "guard-rig.glb",
+      "allOriginalBufferViewsIdentical": true,
+      "animationDataUnchanged": [
+        {
+          "clip": "idle",
+          "copiedBufferViews": 67,
+          "bytesUnchanged": true
+        }
+      ],
+      "bytes": 18159832,
+      "sha256": "19061500b69dfe6c534a4bb39ed55e0755945614cb9c6396fa963cab11556918"
+    },
+    {
+      "file": "museum.glb",
+      "source": "museum-complete.glb",
+      "entireFileIdentical": true,
+      "sha256": "9c1306a8af28d5ecfe249338196c19f487caaf1a8f3416a81f1d95d6aaa855dd",
+      "bytes": 39109756
+    },
+    {
+      "file": "vault.glb",
+      "source": "vault.glb",
+      "entireFileIdentical": true,
+      "sha256": "7fad57390501cea1ab76fe17c4bedcdff71c8bbb8f0ea8b6292c60e3bab7671e",
+      "bytes": 17926892
+    },
+    {
+      "file": "lockers.glb",
+      "source": "lockers.glb",
+      "entireFileIdentical": true,
+      "sha256": "f982608fb82f79b2e060f16c202fdf617399bfd685e1caf195feb5f5abb93efa",
+      "bytes": 15945240
+    },
+    {
+      "file": "electrical-box.glb",
+      "source": "electrical-box.glb",
+      "entireFileIdentical": true,
+      "sha256": "96ed6159f9a34944fea46457b4bcb971e9e7508b6cc14f2f47796dfb4213014e",
+      "bytes": 30194656
+    }
+  ]
+}

@@ -8,7 +8,9 @@ import {
   type View,
 } from "./engine";
 import { icon } from "./icons";
-import { pose, type Clip } from "./animation";
+import { CharacterAnimation, type Clip } from "./animation";
+import { clone as cloneSkeleton } from "three/addons/utils/SkeletonUtils.js";
+import { clothingVariant, loadMeshyCharacters, loadMeshyMuseum } from "./meshy";
 import gallery from "../scenes/layouts/grande-galerie.json";
 import cabinet from "../scenes/layouts/cabinet-curiosites.json";
 import reserve from "../scenes/layouts/reserve-royale.json";
@@ -29,7 +31,7 @@ type Actor = {
   target: T.Vector3;
   button: HTMLButtonElement;
   parts: Record<string, T.Object3D>;
-  poses: Record<string, T.Euler>;
+  animation: CharacterAnimation;
 };
 type Marker = {
   button: HTMLButtonElement;
@@ -43,6 +45,8 @@ export class Museum {
   renderer: T.WebGLRenderer;
   actors: Actor[] = [];
   model: T.Object3D | null = null;
+  templates: { scene: T.Object3D; animations: T.AnimationClip[] }[] = [];
+  roomMixer: T.AnimationMixer | null = null;
   drill: T.Object3D | null = null;
   room: T.Object3D | null = null;
   wealth: WealthPiles | null = null;
@@ -105,10 +109,13 @@ export class Museum {
     fill.position.set(7, 5, -6);
     this.scene.add(fill);
     const loader = new GLTFLoader();
-    loader.load(
-      `${import.meta.env.BASE_URL}models/museum.glb?v=3.0.0`,
-      (gltf) => {
+    loadMeshyMuseum(loader)
+      .then((gltf) => {
         this.room = gltf.scene;
+        this.roomMixer = new T.AnimationMixer(this.room);
+        gltf.animations.forEach((clip) =>
+          this.roomMixer!.clipAction(clip).play(),
+        );
         this.configure(this.room);
         this.scene.add(this.room);
         for (const name of [
@@ -132,19 +139,18 @@ export class Museum {
         this.addMarker("painting", "POST_Painting", new T.Vector3(0, 2.9, 0.1));
         this.ready = true;
         this.update(this.view, this.roster, this.selection);
-      },
-      undefined,
-      () => this.error("Le musée n’a pas chargé. Recharge la page."),
-    );
-    loader.load(
-      `${import.meta.env.BASE_URL}models/burglar.glb`,
-      (gltf) => {
-        this.model = gltf.scene;
+      })
+      .catch(() => this.error("Le musée n’a pas chargé. Recharge la page."));
+    loadMeshyCharacters(loader)
+      .then((templates) => {
+        this.templates = templates;
+        this.model = templates[0].scene;
         this.setPlayers(this.roster);
-      },
-      undefined,
-      () => this.error("Les personnages n’ont pas chargé. Recharge la page."),
-    );
+        this.container.dataset.characterClips = "idle,walk,drill";
+      })
+      .catch(() =>
+        this.error("Les personnages n’ont pas chargé. Recharge la page."),
+      );
     loader.load(`${import.meta.env.BASE_URL}models/wealth.glb`, (gltf) => {
       this.wealth = new WealthPiles(this.scene, gltf.scene);
       this.update(this.view, this.roster, this.selection);
@@ -221,32 +227,28 @@ export class Museum {
   }
   setPlayers(players: Player[]) {
     this.roster = players;
-    if (!this.model) return;
+    if (this.templates.length !== 4) return;
     for (const a of this.actors) {
+      a.animation.dispose();
       this.scene.remove(a.root);
       a.button.remove();
     }
     this.actors = players.map((p, i) => {
-      const root = this.model!.clone(true);
-      root.scale.setScalar(0.7);
-      root.position.set(-3.1 + i * 1.85, 0.16, 1.2);
+      const template = this.templates[i % 4];
+      const root = cloneSkeleton(template.scene);
+      clothingVariant(root, i % 4);
+      root.position.set(-1.8 + i * 1.4, 0.16, 0.7);
       root.userData.pick = `player:${p.id}`;
-      const parts: Record<string, T.Object3D> = {},
-        poses: Record<string, T.Euler> = {};
+      const parts: Record<string, T.Object3D> = {};
       root.traverse((o) => {
-        if (["Head", "ArmL", "ArmR", "LegL", "LegR"].includes(o.name)) {
+        if (["Head", "RightHand", "LeftHand"].includes(o.name))
           parts[o.name] = o;
-          poses[o.name] = o.rotation.clone();
-        }
-        if (
-          o instanceof T.Mesh &&
-          o.material instanceof T.MeshStandardMaterial &&
-          o.material.name === "Cloth"
-        ) {
-          o.material = o.material.clone();
-          o.material.color.set(p.color);
-        }
       });
+      const animation = new CharacterAnimation(
+        root,
+        template.animations,
+        i * 0.47,
+      );
       this.configure(root);
       this.scene.add(root);
       const button = document.createElement("button");
@@ -260,22 +262,27 @@ export class Museum {
         target: root.position.clone(),
         button,
         parts,
-        poses,
+        animation,
       };
     });
     this.actors.forEach((a) => this.attachDrill(a));
     this.update(this.view, players, this.selection);
   }
   attachDrill(a: Actor) {
-    if (!this.drill || !a.parts.ArmR || a.root.getObjectByName("Held_Drill"))
+    if (
+      !this.drill ||
+      !a.parts.RightHand ||
+      a.root.getObjectByName("Held_Drill")
+    )
       return;
     const tool = this.drill.clone(true);
     tool.name = "Held_Drill";
-    tool.position.set(0.13, -0.45, 0.055);
+    tool.scale.setScalar(0.8);
     tool.visible = false;
     this.configure(tool);
-    a.parts.ArmR.add(tool);
+    a.root.add(tool);
   }
+
   update(v: View | null, players: Player[], selected: Choice | null) {
     this.view = v;
     this.selection = selected;
@@ -347,7 +354,7 @@ export class Museum {
             !legal(v, v.myId, { action: "pocket", target: p.id }));
       a.button.hidden =
         !v || ["role", "transition", "minigame", "ended"].includes(v.phase);
-      const home = new T.Vector3(-3.1 + i * 1.85, 0.16, 1.15);
+      const home = new T.Vector3(-1.8 + i * 1.4, 0.16, 0.7);
       a.target.copy(home);
       if (finding) {
         const key =
@@ -368,7 +375,8 @@ export class Museum {
           );
           const n = peers.findIndex((f) => f.id === a.id);
           a.target.x += (n - (peers.length - 1) / 2) * 0.7;
-          a.target.z += 1.1;
+          a.target.z += finding.choice.action === "painting" ? 2.6 : 1.1;
+          if (finding.choice.action === "secure") a.target.x -= 1.1;
           a.target.y = 0.15;
         }
       }
@@ -510,27 +518,22 @@ export class Museum {
         this.reduced.matches ? 1 : Math.min(1, dt * 4),
       );
       const finding = this.view?.report?.findings.find((f) => f.id === a.id);
-      let clip: Clip = walking
+      const clip: Clip = walking
         ? "walk"
-        : this.view?.phase === "reveal" && finding
-          ? finding.success
-            ? finding.choice.action
-            : "failure"
-          : this.view?.phase === "promise" && this.roster[i]?.promise
-            ? "promise"
-            : this.view?.phase === "debate" && this.view.myVote === a.id
-              ? "accuse"
-              : "idle";
-      if (this.view?.phase === "ended")
-        clip = this.view.result?.winners.includes(a.id)
-          ? "celebrate"
-          : "surrender";
-      pose(a.parts, a.poses, clip, t + i, this.reduced.matches);
+        : this.view?.phase === "reveal" && finding?.choice.action === "drill"
+          ? "drill"
+          : "idle";
+      a.animation.update(clip, dt, this.reduced.matches);
+      a.root.userData.activeClip = clip;
       const tool = a.root.getObjectByName("Held_Drill");
       if (tool) {
-        tool.visible =
-          this.view?.phase === "reveal" && finding?.choice.action === "drill";
-        tool.rotation.x = -(a.parts.ArmR?.rotation.x ?? 0);
+        tool.visible = clip === "drill" && !this.reduced.matches;
+        if (tool.visible && a.parts.RightHand) {
+          a.root.updateMatrixWorld(true);
+          a.parts.RightHand.getWorldPosition(tool.position);
+          a.root.worldToLocal(tool.position);
+          tool.position.y += 0.025;
+        }
       }
       let yaw = 0;
       if (walking)
@@ -571,6 +574,7 @@ export class Museum {
       );
     const cam = this.objects.CameraPivot;
     if (cam && !this.reduced.matches) cam.rotation.y = Math.sin(t * 0.45) * 0.3;
+    this.roomMixer?.update(this.reduced.matches ? 0 : dt);
     this.wealth?.animate(dt, this.reduced.matches);
     this.container.dataset.wealthCoins = JSON.stringify(
       this.wealth?.shown.map((n) => Math.round(n * 100) / 100) ?? [],

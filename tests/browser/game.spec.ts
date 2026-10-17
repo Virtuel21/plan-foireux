@@ -8,6 +8,12 @@ async function ready(page: Page) {
     /\d+/,
     { timeout: 15000 },
   );
+  await expect(page.locator("#scene")).toHaveAttribute(
+    "data-character-clips",
+    "idle,walk,drill",
+    { timeout: 30000 },
+  );
+  await expect(page.locator(".post-marker")).toHaveCount(4, { timeout: 30000 });
 }
 async function training(page: Page, action: string) {
   await page.getByRole("button", { name: "Essayer les épreuves" }).click();
@@ -109,7 +115,10 @@ for (const [width, height] of [
     const triangles = Number(
       await page.locator("#scene").getAttribute("data-triangles"),
     );
-    expect(triangles).toBeLessThan(100000);
+    // Native Meshy models retain 213,261 base triangles. The previous 100k
+    // target required the destructive simplification rejected by the artist.
+    expect(triangles).toBeGreaterThan(200000);
+    expect(triangles).toBeLessThan(240000);
   });
 }
 test("landscape cables playable by taps, mouse drag, and keyboard", async ({

@@ -18,6 +18,8 @@ Le FBI choisit une cible privée et joue un talkie-walkie à trois fréquences :
 
 L’entraînement propose six épreuves : les quatre postes, le vol et le talkie FBI. Les trois musiques fournies par Julien sont intégrées : thème d’accueil et deux thèmes alternés en partie. Téléphone paysage prioritaire, gestes et alternatives clavier, cibles de 44 pixels CSS minimum.
 
+Les modèles Meshy natifs et leurs textures originales remplacent le décor et les avatars procéduraux. Deux bases partagées donnent quatre couleurs de joueur ; trois animations sont conservées : attendre, marcher, forer. La géométrie et les cartes PBR ne sont pas simplifiées. Les écarts aux concepts et la provenance figurent dans `docs/ASSETS.md`.
+
 ## Développer
 
 Node 22 :
@@ -46,9 +48,9 @@ Les coupures silencieuses sont détectées par heartbeat, avec un délai de dét
 - `src/engine.ts`, `config/rules.ts` : règles pures, résolution simultanée, surveillance, délais et pause.
 - `src/host.ts`, `src/session.ts` : autorité locale, identités et transport WebRTC.
 - `src/trial.ts`, `src/minigame.ts` : état sérialisable et six manipulations 2D.
-- `src/scene.ts`, `src/animation.ts` : diorama, repères accessibles, clips procéduraux du modèle partagé.
+- `src/scene.ts`, `src/meshy.ts`, `src/animation.ts` : modèles Meshy natifs, repères accessibles et trois animations squelettiques partagées.
 - `scenes/layouts/` : trois dispositions préparées, zones stables.
-- `art/source/`, `art/build_museum.py`, `art/finish_assets.py` : sources Blender et exports mobiles reproductibles.
+- `art/assemble_meshy.py`, `art/review_meshy.py`, `art/meshy-provenance.json` : assemblage sans perte des sources Meshy et scènes Blender de revue. Les scripts et sources procédurales historiques restent archivés dans `art/`.
 - `audio/build_audio.py` : banque de sons originaux synthétisés.
 - `docs/ASSETS.md`, `docs/DESIGN.md`, `docs/VALIDATION.md` : provenance, décisions UX et vérifications.
 

@@ -16,45 +16,45 @@
     },
     {
       "path": "public/models/museum.glb",
-      "bytes": 1226220,
-      "sha256": "93001e2b242cd1ba23163119ecab6779066e283ca6ecc171ad9624cb145bfb1d",
-      "source": "art/build_museum.py and art/finish_assets.py; original geometry"
+      "bytes": 39109756,
+      "sha256": "9c1306a8af28d5ecfe249338196c19f487caaf1a8f3416a81f1d95d6aaa855dd",
+      "source": "Meshy native GLB; art/assemble_meshy.py; original geometry, native PBR maps and rig; art/meshy-provenance.json"
     },
     {
       "path": "public/portraits/0.png",
-      "bytes": 45551,
-      "sha256": "443295f6c8bfc3a923a39bd4dff130429ef0905965e6aa0c49d7194bc7cfe46d",
-      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+      "bytes": 271875,
+      "sha256": "6c47a28a75d7387c0e2ab132b02ca891b7300cc669f6e94734a66d2c5b8ab834",
+      "source": "Direct 512px PNG render of native Meshy game character; scripts/preview-meshy.mjs"
     },
     {
       "path": "public/portraits/1.png",
-      "bytes": 44931,
-      "sha256": "87f81cfd24b76b04f59367577a18c69eb1cf2544e272f044827a5427c846d642",
-      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+      "bytes": 238568,
+      "sha256": "749408ec4caf88c60516479b0c1d85557483f31ef9cf1931ba330f0e216bc033",
+      "source": "Direct 512px PNG render of native Meshy game character; scripts/preview-meshy.mjs"
     },
     {
       "path": "public/portraits/2.png",
-      "bytes": 45383,
-      "sha256": "22e605b90bf3072b70baa029276ff36e215181eb7ef2c0d1edc74932370768e8",
-      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+      "bytes": 267754,
+      "sha256": "07e3c1e9079c94c79675cae2e25e68a17328da09ed048c165ffd51874cc6e2e8",
+      "source": "Direct 512px PNG render of native Meshy game character; scripts/preview-meshy.mjs"
     },
     {
       "path": "public/portraits/3.png",
-      "bytes": 44522,
-      "sha256": "f2d66390b3c11cf6045201519b21fb889af2710ff5623227f57c73072f86ab00",
-      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+      "bytes": 237570,
+      "sha256": "29055a6400895a11e50308c28096ce99d3de1eda6ed029899d77ba4e29bfd164",
+      "source": "Direct 512px PNG render of native Meshy game character; scripts/preview-meshy.mjs"
     },
     {
       "path": "public/portraits/4.png",
       "bytes": 44608,
       "sha256": "320bdc660b4fed7731f2db30838780d1a9fe0874af177f970b414ce8aae06c3e",
-      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+      "source": "Direct 512px PNG render of native Meshy game character; scripts/preview-meshy.mjs"
     },
     {
       "path": "public/portraits/5.png",
       "bytes": 44904,
       "sha256": "257666fa43a6e337bf904576a03a3ff8e0a8bce0a169de0d7c0c1a0b694bc3bd",
-      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+      "source": "Direct 512px PNG render of native Meshy game character; scripts/preview-meshy.mjs"
     },
     {
       "path": "public/fonts/BarlowCondensed-ExtraBold.ttf",
@@ -205,6 +205,42 @@
       "bytes": 36412,
       "sha256": "0750564fe8d875785125edd33ad81a1c1b74132840308e51aaf8bbf9ef73d2cc",
       "source": "art/wealth_units.py; Money Tour authored wealth units reused and optimized for Plan Foireux at Julien request"
+    },
+    {
+      "path": "public/models/electrical-box.glb",
+      "bytes": 30194656,
+      "sha256": "96ed6159f9a34944fea46457b4bcb971e9e7508b6cc14f2f47796dfb4213014e",
+      "source": "Meshy native GLB; art/assemble_meshy.py; original geometry, native PBR maps and rig; art/meshy-provenance.json"
+    },
+    {
+      "path": "public/models/female.glb",
+      "bytes": 26638280,
+      "sha256": "543157d0a121c1a9971c67df0b95949dcb84632ae53ad1a0b7a65064e2b7271b",
+      "source": "Meshy native GLB; art/assemble_meshy.py; original geometry, native PBR maps and rig; art/meshy-provenance.json"
+    },
+    {
+      "path": "public/models/guard.glb",
+      "bytes": 18159832,
+      "sha256": "19061500b69dfe6c534a4bb39ed55e0755945614cb9c6396fa963cab11556918",
+      "source": "Meshy native GLB; art/assemble_meshy.py; original geometry, native PBR maps and rig; art/meshy-provenance.json"
+    },
+    {
+      "path": "public/models/lockers.glb",
+      "bytes": 15945240,
+      "sha256": "f982608fb82f79b2e060f16c202fdf617399bfd685e1caf195feb5f5abb93efa",
+      "source": "Meshy native GLB; art/assemble_meshy.py; original geometry, native PBR maps and rig; art/meshy-provenance.json"
+    },
+    {
+      "path": "public/models/male.glb",
+      "bytes": 28082768,
+      "sha256": "c68a12fa703fdefae869411d537ec1a5813733dcc771a7fea2001adf5a798a48",
+      "source": "Meshy native GLB; art/assemble_meshy.py; original geometry, native PBR maps and rig; art/meshy-provenance.json"
+    },
+    {
+      "path": "public/models/vault.glb",
+      "bytes": 17926892,
+      "sha256": "7fad57390501cea1ab76fe17c4bedcdff71c8bbb8f0ea8b6292c60e3bab7671e",
+      "source": "Meshy native GLB; art/assemble_meshy.py; original geometry, native PBR maps and rig; art/meshy-provenance.json"
     }
   ]
 }

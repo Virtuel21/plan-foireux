@@ -1,55 +1,48 @@
-# Assets originaux et provenance
+# Modèles Meshy natifs — 17 octobre 2026
 
-Production du 17 octobre 2026, pour le dépôt Plan Foireux. Aucun fichier d’Among Us, de No More Room in Hell ou d’un autre jeu n’est intégré. Aucun asset de marketplace n’a été téléchargé.
+Le musée et les personnages du jeu utilisent les sorties Meshy originales. Les simplifications, réductions de textures, poids corrigés manuellement et coiffures remodelées ont été retirés à la demande de Julien. L'ancienne documentation procédurale est conservée dans `ASSETS-v3-procedural.md` ; elle décrit les sources historiques, pas les nouveaux modèles affichés.
 
-## Musée
+## Sources et conservation
 
-`art/build_museum.py` construit un diorama Art déco original : socle, damier en marbre, mur coupé, pilastres, moulures de laiton, trois tableaux géométriques originaux, objets de musée, banc, plantes, corde, coffre à porte pivotante et lingots, groupe de neuf compartiments, terminal, clavier, boîtier, caméra pivotante, quatre plateaux de butin. La voiture a été supprimée en v2 et les sacs en v3.
+`art/meshy-provenance.json` conserve les identifiants des travaux Meshy, les coûts et les empreintes des sept fichiers de jeu. Les concepts ont été fournis par Julien ; quatre images de préparation ont servi aux générations. Les sorties proviennent de son compte Meshy 7.1 standard. Aucune nouvelle licence globale ou qualification CC0 n'est attribuée à ces fichiers.
 
-Les surfaces utilisent des matériaux PBR et des biseaux doux. Les tableaux sont des reliefs géométriques, sans texture distante. Les trois cadres partagent une direction visuelle mais ont des couleurs différentes. Les piles de butin et les postes sont séparés ; les noms, montants et zones de clic restent dans le code.
+| Fichier | Triangles | Traitement |
+| --- | ---: | --- |
+| `museum.glb` | 97 487 | Copie exacte du décor Meshy complet |
+| `vault.glb` | 11 041 | Copie exacte de la façade cintrée Meshy |
+| `lockers.glb` | 7 577 | Copie exacte des casiers |
+| `electrical-box.glb` | 16 186 | Copie exacte du boîtier et de sa porte ouverte |
+| `male.glb` | 16 608 | Rig Meshy natif, trois clips regroupés sans rééchantillonnage |
+| `female.glb` | 16 656 | Rig Meshy natif, trois clips regroupés sans rééchantillonnage |
+| `guard.glb` | 14 442 | Rig Meshy natif, attente de fond |
 
-Sources : `art/source/museum-authoring.blend` (maillages éditables), `art/source/museum.blend` (export optimisé), `public/models/museum.glb` (45 308 triangles). `VaultDoorPivot` et `CameraPivot` restent articulés. Les racines `POST_Vault`, `POST_Loot`, `POST_Security`, `POST_Painting` et `PROP_Wealth_0` à `3` servent aux placements et interactions. Blender travaille en mètres, Z vertical ; glTF convertit vers Y vertical.
+Les PNG PBR intégrés conservent leur résolution d'origine, jusqu'à 4K. Aucun maillage n'est réexporté par Blender pour alimenter le jeu. `art/assemble_meshy.py` copie les décors à l'identique et ajoute les buffers d'animation aux rigs natifs. Le script vérifie l'identité de chaque bufferView original, de la hiérarchie, des matériaux, des images et de tous les buffers de clips copiés. Les translations de racine sont également intactes.
 
-## Lingots et liasses
+## Assemblage et personnages partagés
 
-À la demande de Julien, `art/wealth_units.py` reprend la géométrie d’auteur de son dépôt Money Tour (`scripts/wealth_models.py`, vérifié localement), avec adaptation et réduction pour ce jeu. Aucun téléchargement de modèle de marketplace. Les billets ont huit couches, une bande de papier et des traits d’impression ; le lingot a des biseaux, un poinçon et un sceau. Les deux racines sont `banknote_bundle` et `gold_bar`. Sources éditables `art/source/wealth-authoring.blend`, source optimisée `art/source/wealth.blend`, export `public/models/wealth.glb` : 674 triangles pour les deux unités réunies.
+`src/meshy.ts` place les modèles dans des groupes Three.js : seules les transformations des parents changent. Les quatre postes et les quatre ancres de butin conservent leurs interactions. La porte est un pivot parent de la façade native entière : aucune face n'est découpée. Le décor comprend déjà la statue, les tableaux, plantes, bancs, vitrine, cordons et caméra ; ils n'ont pas été régénérés individuellement.
 
-`src/wealth.ts` regroupe les unités par matériau dans six lots d’instances pour les quatre joueurs. Une unité correspond à trois pièces, jusqu’à douze unités par joueur ; au-delà de 36 pièces, leur hauteur continue d’augmenter. Les variations de solde sont interpolées, ou immédiates en mouvement réduit. Les piles et leurs plateaux restent cliquables pour choisir la cible privée. La provenance est la réutilisation du travail Money Tour demandée par son propriétaire ; aucune nouvelle licence globale du dépôt n’est ajoutée.
+Deux bases partagées fournissent quatre joueurs avec des squelettes indépendants de 24 articulations. Julien et Léa utilisent leurs matériaux natifs. Max et Sarah appliquent uniquement une teinte de vêtement au shader : les cartes 4K et la géométrie restent partagées. Les portraits PNG transparents de 512 px proviennent du même rendu via `scripts/preview-meshy.mjs`.
 
-## Personnage partagé
+Les trois clips visibles sont `idle`, `walk`, `drill`. Ils tournent respectivement en attente, pendant les déplacements et au bilan du forage. Les autres postes restent en attente ; aucun geste spécifique n'est ajouté pendant les mini-jeux 2D où le personnage est invisible. Le gardien possède seulement une attente de fond. `src/animation.ts` gère les transitions et le mouvement réduit.
 
-Le personnage original du dépôt est conservé, avec ses pivots Head/ArmL/ArmR/LegL/LegR et son matériau Cloth. `art/burglar.blend` et `art/build_character.py` sont les sources originales. `art/source/burglar.blend` et `public/models/burglar.glb` sont l’export mobile (9 558 triangles), partagé entre quatre variantes de couleur. Les portraits existants sont des rendus du même personnage.
+## Écarts encore présents
 
-`src/animation.ts` contient 12 clips procéduraux partagés : attente, marche, promesse, forer, sécuriser, piller, découper la toile, fouiller le sac, échec, accusation, célébration et reddition. Ce sont des poses sur un rig à pivots, pas des animations squelettiques MoCap ni des clips Blender exportés. Les couleurs ne révèlent jamais le FBI.
+Sarah conserve le chignon de la base féminine, au lieu des cheveux et du bonnet de son concept. Max partage la tête de Julien. La sortie Meshy du coffre est une façade cintrée plutôt que le coffre carré du concept ; elle est utilisée intacte. Le rig et ses déformations proviennent de Meshy. Le rendu n'est donc pas présenté comme une reproduction identique de chaque concept.
 
-## Reproduire les exports
+## Reproduction
 
-Avec Blender 5.2 :
+Le paquet de production local contient `raw/`, `rigs/`, `sources/`, les références et `quality-preservation.json`. Les originaux sont indispensables pour reconstruire les regroupements :
 
 ```sh
-blender --background --python art/build_museum.py
-blender --background --python art/finish_assets.py
-blender --background --python art/build_drill.py
-blender --background --python art/wealth_units.py
+python art/assemble_meshy.py --sources CHEMIN_DU_PAQUET
+blender --background --factory-startup --python art/review_meshy.py -- CHEMIN_DU_PAQUET
 ```
 
-Le deuxième script part toujours des sources, convertit les courbes, réduit le maillage puis groupe par matériau et parent. Les pivots sont conservés. Pour reconstruire aussi le personnage source et ses portraits, exécuter d’abord `art/build_character.py`.
+Le second script importe les fichiers sans décimation, réduction d'image ou retouche de poids, puis enregistre les scènes de revue Blender. Il n'exporte jamais les GLB du jeu. Les anciens scripts `build_museum.py`, `build_character.py` et `finish_assets.py` concernent les modèles historiques et ne doivent pas écraser les nouveaux fichiers.
 
-La base du musée et de ses quatre avatars compte 83 540 triangles. Les piles ajoutent une quantité variable selon les soldes ; six appels de dessin au maximum pour tout le butin. La perceuse tenue pendant les révélations ajoute 1 468 triangles par foreur. `art/build_drill.py` et `art/source/drill.blend` en conservent la source, `public/models/drill.glb` son export. Les mesures navigateur sont consignées dans `VALIDATION.md`. Le budget de 30 FPS sur un téléphone physique n’est pas validé par ces mesures de bureau.
+Coût effectivement journalisé : **250 crédits** pour sept modèles, trois rigs, la préparation du mouvement de forage et les applications des clips. Aucun crédit supplémentaire pour la restauration et l'assemblage Blender. La proposition initiale de 21 modèles et 14 animations est abandonnée.
 
-## Mini-jeux et interface
+## Ressources conservées
 
-Les câbles SVG, prises HTML, corps de perceuse, mécanisme de serrure, liasses et lingot du mini-jeu de vol, main, talkie-walkie à écran et boutons rotatifs, toile et outil de découpe, jauges, symboles et icônes sont dessinés par le code du projet. Les instructions et symboles complètent les couleurs. Les ombres, dégradés et formes arrondies assurent une direction cohérente avec le musée. Aucune image conceptuelle n’est présentée comme un modèle 3D.
-
-Une banque originale de 16 bruitages et une ambiance est livrée dans `public/audio/`. Le générateur `audio/build_audio.py` utilise seulement la bibliothèque standard Python (ondes, enveloppes et bruit déterministe), sans enregistrement ni échantillon tiers. Sélection, confirmation, refus, fin de phase, perceuse, surchauffe, prise, courant, levier, serrure, pièces, tissu, signal, sirène, van et arrestation ont leurs fichiers WAV. L’ambiance est une discrète tonalité de musée. `src/audio.ts` contrôle le volume, le mute persistant et les boucles privées. Les trois MP3 fournis par Julien sont intégrés dans `public/music/` : Sneaky Museum Heist (accueil), The Sneaking Motif et The Sneaking Motif 2 (alternance en partie). Ils sont copiés sans réencodage depuis le dossier utilisateur `Documents/Plan foireux/songs`. Leur provenance est déclarée comme fourniture utilisateur ; aucune licence tierce supplémentaire n’est déduite. Pas de voix réseau.
-
-Le gardien de fond et les silhouettes de raid ne sont pas ajoutés : la pression et l’arrestation sont portées par l’alarme, les bruitages et le résultat. Ces personnages étaient facultatifs pour la première boucle jouable.
-
-## Polices
-
-Les polices sont livrées localement dans `public/fonts/`, avec leur licence SIL Open Font License 1.1 :
-
-- Barlow Condensed ExtraBold, auteurs du Barlow Project : https://github.com/google/fonts/tree/main/ofl/barlowcondensed ; licence dans `BarlowCondensed-OFL.txt`.
-- DM Sans variable, auteurs du DM Sans Project : https://github.com/google/fonts/tree/main/ofl/dmsans ; licence dans `DMSans-OFL.txt`.
-
-Les licences ont été lues depuis les fichiers officiels du dépôt Google Fonts lors de l’intégration. Les sources du jeu ne reçoivent pas une nouvelle licence globale par cette modification. `art/inventory.json` associe les ressources et leurs empreintes aux usages.
+Les unités de lingots et liasses Money Tour, la perceuse existante, les six mini-jeux 2D, les icônes, les sons synthétisés, les trois musiques fournies par Julien et les polices locales sont conservés. Leur provenance et les sources procédurales restent documentées dans `ASSETS-v3-procedural.md`. `art/inventory.json` donne les tailles et SHA-256 actuels des 40 ressources. Les règles et les échanges de secrets ne changent pas.
