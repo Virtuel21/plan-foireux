@@ -1,5 +1,11 @@
 # Plan Foireux
 
+## Correction 0.3 prioritaire — lisibilité et manipulation
+
+Le dernier retour de Julien du 17 octobre prévaut : rendre les choix compréhensibles sans calcul ni lecture de six cartes équivalentes. Phase publique : annoncer un poste avec gain et besoins visibles. Phase secrète : opposer tenir sa promesse et voler, puis garder les autres aides dans un second niveau. Montrer le gain potentiel et le risque collectif avant validation. Au reveal, les avatars signalent en rouge les vols/promesses rompues et le décor affiche les gains avec pièces d'or. À la fin, révéler clairement le nom et le portrait du FBI, y compris après une fuite réussie.
+
+La fouille devient une inspection d'objet 3D tournable à la souris/tactile/clavier : chercher un chiffre écrit sur une face, avec répartition entre objets et placement renouvelés. L'engagement irréversible précède l'accès à la vue privée. Sur mobile, le portrait bloque le jeu avec une invitation à tourner l'appareil ; l'interface jouable est pensée pour le paysage.
+
 ## Correction prioritaire du 17 octobre 2026
 
 Le retour utilisateur après essai de 0.1 prévaut : les petits écarts de gains et les trois choix ne donnent pas assez de raisons de trahir. Il faut des actions concrètes dans le décor, une récompense de découverte, des chiffres privés qu'on peut cacher ou falsifier, un code de coffre réellement manipulé, et une révélation qui montre clairement qui a fait quoi et gagné combien. La parenté avec Among Us sert à étudier tâches, alibis et information incomplète, sans reprendre un meurtre ni supprimer la compétition entre braqueurs.

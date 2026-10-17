@@ -11,6 +11,7 @@ export const SPOTS = [
 ];
 const REVEAL_MIN_MS = 8_000;
 const REVEAL_TIMEOUT_MS = 30_000;
+const SECRET_TIMEOUT_MS = 60_000;
 
 export type Player = { id: string; name: string; color: string; bot: boolean; online: boolean; active: boolean; money: number; promise: Action | null; ready: boolean; exposed: Role | null };
 export type Task = { name: string; short: string; detail: string; need: number; icon: string };
@@ -19,7 +20,7 @@ export type Finding = { id: string; action: Action; promise: Action | null; gain
 export type Report = { findings: Finding[]; incidents: string[]; alarmAdded: number; text: string; alarmBefore: number; alarmAfter: number; poolBefore: number; poolAfter: number };
 export type Command = { type: string; action?: Action; target?: string; code?: string; step?: number; turn?: number };
 export type Clue = { spotId: string; index: number; value: string };
-export type Search = { spotId: string; opened: number[]; found: boolean };
+export type Search = { spotId: string; opened: number[]; found: boolean; committed: boolean; mark?: number; value?: string };
 export type Discovery = { spotId: string; index: number; ownerId: string };
 export type Claim = { id: string; index: number; value: string };
 export type Choice = { action: Action; target?: string; code?: string };
@@ -30,7 +31,7 @@ export type Game = {
   objective: boolean; report: Report | null; history: { id: string; action: Action; betrayed: boolean }[]; log: string[];
   deadline: number; turn: number; result: Result | null; agentExposed: boolean; rng: () => number;
   discoveries: Discovery[]; claims: Claim[]; privateClues: Record<string, Clue[]>;
-  searches: Record<string, Search>; envelopes: Record<string, number>; discoveryPriority: Record<string, string[]>;
+  searches: Record<string, Search>; spots: typeof SPOTS; envelopes: Record<string, number>; discoveryPriority: Record<string, string[]>;
   revealStarted: number; pendingResult: { kind: Result['kind']; text: string } | null; vaultRetries: number;
 };
 export type View = {
@@ -68,7 +69,7 @@ export function makeRooms(seed: number, count: number): Room[] {
 
 const active = (g: Game) => g.players.filter(p => p.active);
 const isAction = (value: unknown): value is Action => ACTIONS.includes(value as Action);
-const accessibleSpot = (g: Game, id: string | undefined) => SPOTS.find(s => s.id === id && s.unlockRoom <= g.roomIndex && g.roomIndex < 4);
+const accessibleSpot = (g: Game, id: string | undefined) => g.spots.find(s => s.id === id && s.unlockRoom <= g.roomIndex && g.roomIndex < 4);
 
 /** Reducing the crew must not leave a physically impossible mandatory plan. */
 function balanceTasks(g: Game) {
@@ -84,9 +85,13 @@ export function createGame(players: Player[], seed: number, now = Date.now()): G
   const rng = random(seed), agent = Math.floor(rng() * players.length);
   const rooms = makeRooms(Math.floor(rng() * 0xffffffff), players.length);
   const code = String(100 + Math.floor(rng() * 900));
+  const indices = [0, 1, 2];
+  for (let i = indices.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [indices[i], indices[j]] = [indices[j], indices[i]]; }
+  const spots = SPOTS.map((spot, i) => ({ ...spot, clueIndex: indices[i] }));
   const envelopes: Record<string, number> = {}, discoveryPriority: Record<string, string[]> = {};
-  for (const spot of SPOTS) {
-    envelopes[spot.id] = Math.floor(rng() * 3);
+  for (const spot of spots) {
+    // Six faces, two possible inscriptions per face. The placement is secret until committing a search.
+    envelopes[spot.id] = Math.floor(rng() * 12);
     const shuffled = players.map(p => p.id);
     for (let i = shuffled.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; }
     discoveryPriority[spot.id] = shuffled;
@@ -98,20 +103,22 @@ export function createGame(players: Player[], seed: number, now = Date.now()): G
     objective: false, report: null, history: [], log: ['Le musée ferme ses portes. À vous de jouer.'],
     deadline: now + 45_000, turn: 1, result: null, agentExposed: false, rng,
     discoveries: [], claims: [], privateClues: Object.fromEntries(players.map(p => [p.id, []])),
-    searches: {}, envelopes, discoveryPriority, revealStarted: 0, pendingResult: null, vaultRetries: 0,
+    searches: {}, spots, envelopes, discoveryPriority, revealStarted: 0, pendingResult: null, vaultRetries: 0,
   };
 }
 
 /** Only this explicit projection may leave the authority of the host. */
 export function publicView(g: Game, id: string): View {
+  const search = g.searches[id], spot = search?.committed && g.spots.find(s => s.id === search.spotId);
   return structuredClone({
     players: g.players, phase: g.phase, roomIndex: g.roomIndex, rooms: g.rooms,
     alarm: g.alarm, pool: g.pool, objective: g.objective, report: g.report,
     log: g.log, deadline: g.deadline, turn: g.turn, result: g.result, agentExposed: g.agentExposed,
     myRole: g.roles[id] ?? 'burglar', myChoice: g.choices[id]?.action ?? null,
     myVote: g.votes[id] ?? null, voteCount: Object.keys(g.votes).length, myId: id,
-    spots: SPOTS, discoveries: g.discoveries, claims: g.claims, myClues: g.privateClues[id] ?? [],
-    mySearch: g.searches[id] ?? null, myTarget: g.choices[id]?.target ?? null, myCode: g.choices[id]?.code ?? '', vaultRetries: g.vaultRetries,
+    spots: g.spots, discoveries: g.discoveries, claims: g.claims, myClues: g.privateClues[id] ?? [],
+    mySearch: spot ? { ...search, mark: g.envelopes[spot.id], value: g.code[spot.clueIndex] } : null,
+    myTarget: g.choices[id]?.target ?? null, myCode: g.choices[id]?.code ?? '', vaultRetries: g.vaultRetries,
   });
 }
 
@@ -136,7 +143,7 @@ export function apply(g: Game, id: string, command: Command, now = Date.now()): 
   const p = g.players.find(player => player.id === id);
   if (!p?.active || g.phase === 'ended' || !command || typeof command !== 'object' || command.turn !== g.turn) return false;
   if (Object.keys(command).some(key => !['type', 'action', 'target', 'code', 'step', 'turn'].includes(key))) return false;
-  if (typeof command.type !== 'string' || !Number.isInteger(command.turn) || (command.action !== undefined && !isAction(command.action)) || (command.target !== undefined && (typeof command.target !== 'string' || command.target.length > 80)) || (command.code !== undefined && (typeof command.code !== 'string' || command.code.length > 5)) || (command.step !== undefined && (!Number.isInteger(command.step) || command.step < 0 || command.step > 2))) return false;
+  if (typeof command.type !== 'string' || !Number.isInteger(command.turn) || (command.action !== undefined && !isAction(command.action)) || (command.target !== undefined && (typeof command.target !== 'string' || command.target.length > 80)) || (command.code !== undefined && (typeof command.code !== 'string' || command.code.length > 5)) || (command.step !== undefined && (!Number.isInteger(command.step) || command.step < 0 || command.step > 11))) return false;
   const only = (...keys: string[]) => Object.keys(command).every(key => ['type', 'turn', ...keys].includes(key));
 
   if (command.type === 'claim') {
@@ -157,21 +164,25 @@ export function apply(g: Game, id: string, command: Command, now = Date.now()): 
     if (!only('action') || g.phase !== 'promise' || p.ready || !isAction(command.action) || (command.action === 'search' && g.roomIndex === 4)) return false;
     p.promise = command.action; p.ready = true; return true;
   }
-  if (command.type === 'inspect') {
+  if (command.type === 'begin-search') {
     const spot = accessibleSpot(g, command.target);
-    if (!only('target', 'step') || g.phase !== 'secret' || p.ready || !spot || command.step === undefined) return false;
-    const state = g.searches[id]?.spotId === spot.id ? g.searches[id] : { spotId: spot.id, opened: [], found: false };
+    if (!only('target') || g.phase !== 'secret' || p.ready || g.choices[id] || !spot) return false;
+    g.choices[id] = { action: 'search', target: spot.id };
+    g.searches[id] = { spotId: spot.id, opened: [], found: false, committed: true };
+    return true;
+  }
+  if (command.type === 'inspect') {
+    const spot = accessibleSpot(g, command.target), state = g.searches[id];
+    if (!only('target', 'step') || g.phase !== 'secret' || p.ready || !spot || command.step === undefined || !state?.committed || state.spotId !== spot.id || g.choices[id]?.action !== 'search' || g.choices[id]?.target !== spot.id) return false;
     if (state.opened.includes(command.step)) return false;
     state.opened.push(command.step); state.found ||= command.step === g.envelopes[spot.id];
-    g.searches[id] = state; return true;
+    if (state.found) p.ready = true;
+    return true;
   }
   if (command.type === 'choose') {
     if (!only('action', 'target', 'code') || g.phase !== 'secret' || p.ready || g.choices[id] || !isAction(command.action)) return false;
-    if (command.action === 'search') {
-      const spot = accessibleSpot(g, command.target), state = g.searches[id];
-      if (!spot || command.code !== undefined || state?.spotId !== spot.id || !state.found) return false;
-      g.choices[id] = { action: 'search', target: spot.id };
-    } else {
+    if (command.action === 'search') return false;
+    else {
       if (command.target !== undefined) return false;
       const vaultAttempt = g.roomIndex === 3 && command.action === 'a';
       if (vaultAttempt ? !/^(?:\d{3}|FORCE)$/.test(command.code ?? '') : command.code !== undefined && command.code !== '') return false;
@@ -197,7 +208,7 @@ export function resolveRoom(g: Game, now = Date.now()) {
   let alarmDelta = 0;
 
   // Discoveries are resolved as a batch, never in network arrival order.
-  for (const spot of SPOTS) {
+  for (const spot of g.spots) {
     const seekers = ps.filter(p => choice(p.id).action === 'search' && choice(p.id).target === spot.id && g.searches[p.id]?.spotId === spot.id && g.searches[p.id]?.found);
     const fresh = seekers.filter(p => !g.privateClues[p.id].some(clue => clue.index === spot.clueIndex));
     for (const p of seekers) details.set(p.id, 'Indice déjà connu : aucune nouvelle prime.');
@@ -310,7 +321,7 @@ export function advance(g: Game, now = Date.now(), force = false) {
   const allReady = active(g).every(p => p.ready), elapsed = now >= g.deadline;
   if (g.phase === 'promise' && (allReady || elapsed)) {
     for (const p of active(g)) { p.promise ??= 'cover'; p.ready = false; }
-    g.phase = 'secret'; g.turn++; g.deadline = now + 40_000;
+    g.phase = 'secret'; g.turn++; g.deadline = now + SECRET_TIMEOUT_MS;
   } else if (g.phase === 'secret' && (allReady || elapsed)) {
     for (const p of active(g)) g.choices[p.id] ??= timeoutChoice(g, p);
     resolveRoom(g, now);
@@ -324,17 +335,17 @@ export function advance(g: Game, now = Date.now(), force = false) {
   } else if (g.phase === 'vote' && (allReady || elapsed)) resolveVote(g, now);
 }
 
-function botSpot(g: Game, id: string) {
-  return SPOTS.filter(s => s.unlockRoom <= g.roomIndex && g.roomIndex < 4 && !g.privateClues[id].some(clue => clue.index === s.clueIndex)).sort((a, b) => Number(g.discoveries.some(d => d.spotId === a.id)) - Number(g.discoveries.some(d => d.spotId === b.id)) || b.unlockRoom - a.unlockRoom)[0];
+function botSpot(v: View) {
+  return v.spots.filter(s => s.unlockRoom <= v.roomIndex && v.roomIndex < 4 && !v.myClues.some(clue => clue.index === s.clueIndex)).sort((a, b) => Number(v.discoveries.some(d => d.spotId === a.id)) - Number(v.discoveries.some(d => d.spotId === b.id)) || b.unlockRoom - a.unlockRoom)[0];
 }
 
 /** Bots know their own discoveries and unverified announcements, exactly like a player. */
 export function botCommand(g: Game, p: Player): Command | null {
   if (!p.active || p.ready || g.phase === 'ended') return null;
-  const turn = g.turn, room = g.rooms[g.roomIndex], r = g.rng, agent = g.roles[p.id] === 'agent';
+  const v = publicView(g, p.id), turn = g.turn, room = g.rooms[g.roomIndex], r = g.rng, agent = v.myRole === 'agent';
   if (g.phase === 'reveal') return { type: 'continue', turn };
   if (g.phase === 'promise' || g.phase === 'secret' || g.phase === 'vote') {
-    for (const clue of g.privateClues[p.id]) {
+    for (const clue of v.myClues) {
       const value = agent ? String((Number(clue.value) + 1) % 10) : clue.value;
       if (!g.claims.some(claim => claim.id === p.id && claim.index === clue.index && claim.value === value)) return { type: 'claim', target: String(clue.index), code: value, turn };
     }
@@ -342,7 +353,7 @@ export function botCommand(g: Game, p: Player): Command | null {
   if (g.phase === 'promise') {
     const count = (action: Action) => active(g).filter(t => t.promise === action).length;
     const leader = [...active(g)].sort((a, b) => b.money - a.money)[0];
-    const spot = botSpot(g, p.id);
+    const spot = botSpot(v);
     const behindGreedyLeader = leader?.id !== p.id && leader?.promise === 'loot' && leader.money - p.money >= 12;
     const checkingPublicClue = !spot || g.discoveries.some(d => d.spotId === spot.id);
     let action: Action;
@@ -356,20 +367,17 @@ export function botCommand(g: Game, p: Player): Command | null {
     return { type: 'promise', action, turn };
   }
   if (g.phase === 'secret') {
+    if (v.mySearch?.committed) return { type: 'inspect', target: v.mySearch.spotId, step: v.mySearch.mark!, turn };
     let action = p.promise ?? 'cover';
     if (agent && (action === 'a' || action === 'b' || action === 'repair') && r() < .28) action = 'loot';
     else if (!agent && (action === 'a' || action === 'b') && g.alarm === 0 && r() < .08) action = 'loot';
     if (action === 'search') {
-      const spot = botSpot(g, p.id);
-      if (spot) {
-        const search = g.searches[p.id]?.spotId === spot.id ? g.searches[p.id] : null;
-        if (!search?.found) return { type: 'inspect', target: spot.id, step: [0, 1, 2].find(step => !search?.opened.includes(step))!, turn };
-        return { type: 'choose', action, target: spot.id, turn };
-      }
+      const spot = botSpot(v);
+      if (spot) return { type: 'begin-search', target: spot.id, turn };
       action = g.alarm >= 2 ? 'repair' : 'cover';
     }
     if (action === 'a' && g.roomIndex === 3) {
-      const digits = [0, 1, 2].map(index => g.privateClues[p.id].find(clue => clue.index === index)?.value ?? [...g.claims].reverse().find(claim => claim.index === index)?.value);
+      const digits = [0, 1, 2].map(index => v.myClues.find(clue => clue.index === index)?.value ?? [...v.claims].reverse().find(claim => claim.index === index)?.value);
       const known = digits.every(value => value !== undefined);
       const code = known ? digits.join('') : agent ? '000' : 'FORCE';
       return { type: 'choose', action, code, turn };

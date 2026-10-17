@@ -40,14 +40,18 @@ function setupGuest(){
 
 test('accepted private searches reach their guest without exposing them to the host view',()=>{
   const {host,connection,game}=setupGuest(),before=JSON.stringify(publicView(game,'you')),count=connection.sent.length;
-  connection.emit('data',{type:'command',command:{type:'inspect',target:'frame',step:0,turn:game.turn}});
+  connection.emit('data',{type:'command',command:{type:'begin-search',target:'frame',turn:game.turn}});
   assert.equal(connection.sent.length,count+1);
+  const search=connection.snapshot().view!.mySearch!,step=(search.mark!+1)%12;
+  assert.equal(search.committed,true);assert.match(search.value!,/^\d$/);
+  connection.emit('data',{type:'command',command:{type:'inspect',target:'frame',step,turn:game.turn}});
+  assert.equal(connection.sent.length,count+2);
   assert.equal(JSON.stringify(publicView(game,'you')),before);
-  assert.deepEqual(connection.snapshot().view?.mySearch?.opened,[0]);
+  assert.deepEqual(connection.snapshot().view?.mySearch?.opened,[step]);
   const afterCount=connection.sent.length;
   const invalid=[
     {type:'inspect',target:'frame',step:'1',turn:game.turn},
-    {type:'inspect',target:'frame',step:3,turn:game.turn},
+    {type:'inspect',target:'frame',step:12,turn:game.turn},
     {type:'choose',action:'bad',turn:game.turn},
     {type:'clue',turn:game.turn},
     {type:'choose',action:'loot',code:'123456',turn:game.turn},
@@ -62,8 +66,10 @@ test('accepted private searches reach their guest without exposing them to the h
 
 test('command burst accepts fast inspections and claims, independently of chat and pings',()=>{
   const {host,connection,id,game}=setupGuest();
-  for(const step of [0,1,2])connection.emit('data',{type:'command',command:{type:'inspect',target:'frame',step,turn:game.turn}});
-  assert.deepEqual(connection.snapshot().view?.mySearch?.opened,[0,1,2]);
+  connection.emit('data',{type:'command',command:{type:'begin-search',target:'frame',turn:game.turn}});
+  const mark=connection.snapshot().view!.mySearch!.mark!,steps=[(mark+1)%12,(mark+2)%12];
+  for(const step of steps)connection.emit('data',{type:'command',command:{type:'inspect',target:'frame',step,turn:game.turn}});
+  assert.deepEqual(connection.snapshot().view?.mySearch?.opened,steps);
   game.privateClues[id]=[{spotId:'frame',index:0,value:'4'}];
   for(const code of ['4','5','6'])connection.emit('data',{type:'command',command:{type:'claim',target:'0',code,turn:game.turn}});
   assert.equal(game.claims.find(claim=>claim.id===id)?.value,'6','six rapid commands fit in the burst');
@@ -82,10 +88,14 @@ test('command burst accepts fast inspections and claims, independently of chat a
 
 test('reconnection retains seat and private progress while ignoring replaced channels',()=>{
   const {host,connection,id,game}=setupGuest();
-  connection.emit('data',{type:'command',command:{type:'inspect',target:'frame',step:0,turn:game.turn}});
+  connection.emit('data',{type:'command',command:{type:'begin-search',target:'frame',turn:game.turn}});
+  const search=connection.snapshot().view!.mySearch!,step=(search.mark!+1)%12;
+  connection.emit('data',{type:'command',command:{type:'inspect',target:'frame',step,turn:game.turn}});
   const replacement=new Connection();host.accept(replacement.transport());replacement.emit('data',{type:'hello',token:'seat-token',name:'Guest again'});
   assert.equal(connection.open,false);assert.equal(host.connections.get(id),replacement);
-  assert.equal(replacement.snapshot().myId,id);assert.deepEqual(replacement.snapshot().view?.mySearch?.opened,[0]);
+  assert.equal(replacement.snapshot().myId,id);assert.deepEqual(replacement.snapshot().view?.mySearch?.opened,[step]);
+  assert.equal(replacement.snapshot().view?.mySearch?.mark,search.mark);assert.equal(replacement.snapshot().view?.mySearch?.value,search.value);
+  assert.equal(replacement.snapshot().view?.myChoice,'search');assert.equal(publicView(game,'you').mySearch,null);
   const player=game.players.find(p=>p.id===id)!;assert.ok(player.online);assert.equal(host.disconnectedAt.has(id),false);
   game.phase='promise';game.turn++;game.players.forEach(p=>{p.ready=false;p.promise=null;});
   connection.emit('data',{type:'command',command:{type:'promise',action:'a',turn:game.turn}});assert.equal(player.promise,null);

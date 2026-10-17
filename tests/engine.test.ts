@@ -9,7 +9,10 @@ function choices(g: Game, actions: Action[]) {
   for (let i = 0; i < actions.length; i++) { g.players[i].promise = actions[i]; g.choices[g.players[i].id] = { action: actions[i] }; }
 }
 function inspect(g: Game, id: string, spotId: string) {
-  for (let step = 0; step < 3; step++) command(g, id, { type: 'inspect', target: spotId, step });
+  assert.equal(command(g, id, { type: 'begin-search', target: spotId }), true);
+  const mark = publicView(g, id).mySearch!.mark!;
+  assert.equal(command(g, id, { type: 'inspect', target: spotId, step: (mark + 1) % 12 }), true);
+  assert.equal(command(g, id, { type: 'inspect', target: spotId, step: mark }), true);
 }
 function dismiss(g: Game, now = g.revealStarted + 8_000) {
   for (const p of g.players.filter(p => p.active)) assert.equal(command(g, p.id, { type: 'continue' }), true);
@@ -35,50 +38,82 @@ test('seeded rooms remain feasible for 3–6 players and preserve one spare for 
 
 test('public snapshots explicitly omit host secrets and restore only the recipient choice', () => {
   const g = game(); g.phase = 'secret'; inspect(g, 'p0', 'frame');
-  command(g, 'p0', { type: 'choose', action: 'search', target: 'frame' });
   g.choices.p1 = { action: 'a', code: '321' }; g.votes.p1 = 'p2';
   const v = publicView(g, 'p0');
   for (const key of ['roles', 'choices', 'votes', 'code', 'rng', 'history', 'envelopes', 'privateClues', 'searches', 'discoveryPriority', 'pendingResult']) assert.ok(!(key in v));
   assert.equal(v.myChoice, 'search'); assert.equal(v.myTarget, 'frame'); assert.equal(v.myCode, ''); assert.equal(v.myClues.length, 0);
   assert.equal(publicView(g, 'p1').myCode, '321'); assert.equal(publicView(g, 'p1').mySearch, null);
-  v.players[0].money = 999; v.mySearch!.opened.push(4); assert.equal(g.players[0].money, 0); assert.equal(g.searches.p0.opened.length, 3);
+  v.players[0].money = 999; v.mySearch!.opened.push(99); assert.equal(g.players[0].money, 0); assert.equal(g.searches.p0.opened.length, 2);
 });
 
-test('inspection costs no information until committing search; future caches and bad steps are refused', () => {
+test('inspection requires an irreversible search commitment and validates only the inscribed face', () => {
   const g = game();
+  assert.equal(command(g, 'p0', { type: 'begin-search', target: 'frame' }), false);
   assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step: 0 }), false);
   g.phase = 'secret';
+  assert.equal(command(g, 'p0', { type: 'begin-search', target: 'bust' }), false);
+  assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step: 0 }), false);
   assert.equal(command(g, 'p0', { type: 'inspect', target: 'bust', step: 0 }), false);
-  for (const step of [-1, 3, .5, NaN]) assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step }), false);
+  for (const step of [-1, 12, .5, NaN]) assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step }), false);
   assert.equal(command(g, 'p0', { type: 'choose', action: 'search', target: 'frame' }), false);
-  inspect(g, 'p0', 'frame'); assert.equal(publicView(g, 'p0').mySearch!.found, true); assert.deepEqual(publicView(g, 'p0').myClues, []);
-  assert.equal(command(g, 'p0', { type: 'choose', action: 'loot' }), true);
-  choices(g, ['loot', 'a', 'b', 'cover']); resolveRoom(g, 0);
-  assert.deepEqual(g.privateClues.p0, []); assert.equal(g.discoveries.length, 0); assert.equal(g.players[0].money, 18);
+  assert.equal(command(g, 'p0', { type: 'begin-search', target: 'frame' }), true);
+  const v = publicView(g, 'p0'), mark = v.mySearch!.mark!, index = v.spots.find(s => s.id === 'frame')!.clueIndex;
+  assert.equal(v.myChoice, 'search'); assert.equal(v.mySearch!.committed, true); assert.equal(v.mySearch!.value, g.code[index]);
+  assert.equal(g.players[0].ready, false); assert.equal(v.mySearch!.found, false);
+  assert.equal(command(g, 'p0', { type: 'choose', action: 'loot' }), false);
+  assert.equal(command(g, 'p0', { type: 'begin-search', target: 'frame' }), false);
+  g.roomIndex = 2;
+  assert.equal(command(g, 'p0', { type: 'begin-search', target: 'bust' }), false);
+  assert.equal(command(g, 'p0', { type: 'inspect', target: 'bust', step: mark }), false);
+  assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step: (mark + 1) % 12 }), true);
+  assert.equal(g.players[0].ready, false);
+  assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step: mark }), true);
+  assert.equal(publicView(g, 'p0').mySearch!.found, true); assert.equal(g.players[0].ready, true); assert.deepEqual(publicView(g, 'p0').myClues, []);
+  g.choices.p1 = { action: 'a' }; g.choices.p2 = { action: 'b' }; g.choices.p3 = { action: 'cover' }; resolveRoom(g, 0);
+  assert.equal(g.privateClues.p0[0].value, g.code[index]); assert.equal(g.discoveries.length, 1); assert.equal(g.players[0].money, 6);
+});
+
+test('cache indices and twelve inscription positions are seeded, varied and private until commitment', () => {
+  const mappings = new Set<string>(), marks = new Set<number>();
+  for (let seed = 0; seed < 100; seed++) {
+    const g = game(4, seed), same = game(4, seed);
+    assert.deepEqual(g.spots, same.spots); assert.deepEqual(g.envelopes, same.envelopes);
+    assert.deepEqual(g.spots.map(s => s.clueIndex).sort(), [0, 1, 2]);
+    assert.deepEqual(g.spots.map(s => s.unlockRoom), SPOTS.map(s => s.unlockRoom));
+    mappings.add(g.spots.map(s => s.clueIndex).join(''));
+    for (const mark of Object.values(g.envelopes)) { assert.ok(Number.isInteger(mark) && mark >= 0 && mark < 12); marks.add(mark); }
+    assert.equal(publicView(g, 'p0').mySearch, null);
+    g.phase = 'secret'; command(g, 'p0', { type: 'begin-search', target: 'frame' });
+    const owner = publicView(g, 'p0'), other = publicView(g, 'p1');
+    assert.equal(owner.mySearch!.mark, g.envelopes.frame); assert.equal(owner.mySearch!.value, g.code[g.spots[0].clueIndex]);
+    assert.equal(other.mySearch, null); assert.deepEqual(other.myClues, []);
+    assert.ok(!JSON.stringify(other).includes('"mark"')); assert.ok(!JSON.stringify(other).includes('"value"'));
+  }
+  assert.equal(mappings.size, 6); assert.equal(marks.size, 12);
 });
 
 test('simultaneous search awards a single seeded first-discovery bonus independent of arrival order', () => {
   const run = (order: string[]) => {
     const g = game(); g.phase = 'secret';
-    for (const id of order) { inspect(g, id, 'frame'); assert.equal(command(g, id, { type: 'choose', action: 'search', target: 'frame' }), true); }
+    for (const id of order) inspect(g, id, 'frame');
     g.choices.p2 = { action: 'a' }; g.choices.p3 = { action: 'b' }; resolveRoom(g, 0); return g;
   };
   const first = run(['p0', 'p1']), second = run(['p1', 'p0']);
   assert.deepEqual(first.discoveries, second.discoveries); assert.deepEqual(first.players.map(p => p.money), second.players.map(p => p.money));
   assert.equal(first.discoveries.length, 1); assert.equal(first.players[0].money + first.players[1].money, 8);
   assert.equal(first.players.find(p => p.id === first.discoveries[0].ownerId)!.money, 6);
-  assert.equal(publicView(first, 'p0').myClues[0].value, first.code[0]); assert.deepEqual(publicView(first, 'p2').myClues, []);
+  assert.equal(publicView(first, 'p0').myClues[0].value, first.code[first.spots[0].clueIndex]); assert.deepEqual(publicView(first, 'p2').myClues, []);
   assert.equal(first.report!.findings.find(f => f.id === 'p0')!.target, 'frame');
 });
 
 test('a second player can verify a cache privately but an individual cannot farm search money', () => {
-  const g = game(); g.phase = 'secret'; inspect(g, 'p0', 'frame'); command(g, 'p0', { type: 'choose', action: 'search', target: 'frame' });
+  const g = game(); g.phase = 'secret'; inspect(g, 'p0', 'frame');
   g.choices.p1 = { action: 'a' }; g.choices.p2 = { action: 'b' }; g.choices.p3 = { action: 'cover' }; resolveRoom(g, 0);
   g.roomIndex = 2; g.phase = 'secret'; g.choices = {}; g.players.forEach(p => p.ready = false); g.searches = {};
-  for (const id of ['p0', 'p1']) { inspect(g, id, 'frame'); assert.equal(command(g, id, { type: 'choose', action: 'search', target: 'frame' }), true); }
+  for (const id of ['p0', 'p1']) inspect(g, id, 'frame');
   g.choices.p2 = { action: 'a' }; g.choices.p3 = { action: 'b' }; resolveRoom(g, 40_000);
   assert.equal(g.report!.findings.find(f => f.id === 'p0')!.gain, 0); assert.equal(g.report!.findings.find(f => f.id === 'p1')!.gain, 2);
-  assert.equal(g.discoveries.length, 1); assert.equal(g.privateClues.p1[0].value, g.code[0]);
+  assert.equal(g.discoveries.length, 1); assert.equal(g.privateClues.p1[0].value, g.code[g.spots[0].clueIndex]);
 });
 
 test('announcements can lie and stay attributed; owning an index is required to announce it', () => {
@@ -101,7 +136,7 @@ test('commands reject stale, duplicate, unknown, malformed and post-lock mutatio
   assert.equal(command(g, 'p0', { type: 'clue' }), false);
   g.phase = 'secret'; inspect(g, 'p0', 'frame');
   assert.equal(command(g, 'p0', { type: 'choose', action: 'search', target: 'frame', code: '1' }), false);
-  assert.equal(command(g, 'p0', { type: 'choose', action: 'search', target: 'frame' }), true);
+  assert.equal(command(g, 'p0', { type: 'choose', action: 'search', target: 'frame' }), false);
   assert.equal(command(g, 'p0', { type: 'choose', action: 'loot' }), false);
   assert.equal(command(g, 'p0', { type: 'inspect', target: 'frame', step: 0 }), false);
   g.privateClues.p0.push({ spotId: 'frame', index: 0, value: '1' });
@@ -161,6 +196,7 @@ test('continue is a separate acknowledgement and reveal timeout also progresses'
 
 test('successful play banks the common bag only after the final reveal and excludes the agent from winners', () => {
   const g = game();
+  assert.ok(publicView(g, 'p0').players.every(p => p.exposed === null));
   for (let i = 0; i < 5; i++) {
     g.roomIndex = i; g.choices = {}; safeChoices(g); resolveRoom(g, i * 100_000);
     assert.equal(g.alarm, 0); assert.equal(g.result, null); assert.equal(g.phase, 'reveal');
@@ -169,6 +205,9 @@ test('successful play banks the common bag only after the final reveal and exclu
   assert.equal(g.result?.kind, 'escape'); assert.equal(g.objective, true); assert.equal(g.pool, 88);
   assert.ok(g.result!.winners.length > 0); assert.ok(g.result!.winners.every(id => g.roles[id] === 'burglar'));
   assert.ok(g.players.every(p => p.exposed && p.money >= 22)); assert.equal(g.report!.poolAfter, 88);
+  const final = publicView(g, 'p0');
+  assert.ok(final.players.every(p => p.exposed === g.roles[p.id]));
+  assert.deepEqual(final.players.filter(p => p.exposed === 'agent').map(p => p.id), g.players.filter(p => g.roles[p.id] === 'agent').map(p => p.id));
 });
 
 test('an active agent wins an empty-handed escape after its reveal, but an ejected agent cannot', () => {
@@ -197,7 +236,7 @@ test('a failed vault grants exactly one fresh negotiation, search and code attem
   failVault(0); assert.equal(g.roomIndex, 3); assert.equal(g.vaultRetries, 1); assert.equal(publicView(g, 'p0').vaultRetries, 1);
   assert.equal(g.phase, 'promise'); assert.equal(g.objective, false); assert.deepEqual(g.choices, {}); assert.ok(g.players.every(p => !p.ready && p.promise === null));
   assert.match(g.log[0], /Dernière tentative/);
-  g.phase = 'secret'; assert.equal(command(g, 'p2', { type: 'inspect', target: 'frame', step: 0 }), true);
+  g.phase = 'secret'; assert.equal(command(g, 'p2', { type: 'begin-search', target: 'frame' }), true);
   failVault(50_000); assert.equal(g.roomIndex, 4); assert.equal(g.vaultRetries, 1); assert.equal(g.phase, 'promise');
 });
 
@@ -221,15 +260,27 @@ test('votes require absolute majority, erase ejected money and rebalance future 
 });
 
 test('timeouts do not collect untouched clues and never magically solve the vault', () => {
-  const g = game(); advance(g, 45_000); assert.equal(g.phase, 'secret'); advance(g, 85_000);
+  const g = game(); advance(g, 45_000); assert.equal(g.phase, 'secret'); assert.equal(g.deadline, 105_000); advance(g, 105_000);
   assert.equal(g.phase, 'reveal'); assert.equal(g.discoveries.length, 0); assert.ok(Object.values(g.privateClues).every(clues => !clues.length));
   const vault = game(); vault.roomIndex = 3; vault.players[0].promise = 'a'; vault.players[1].promise = 'b';
-  advance(vault, 45_000); advance(vault, 85_000); assert.equal(vault.objective, false); assert.equal(vault.report!.findings[0].gain, 0);
+  advance(vault, 45_000); advance(vault, 105_000); assert.equal(vault.objective, false); assert.equal(vault.report!.findings[0].gain, 0);
+  const abandoned = game(); abandoned.phase = 'secret'; abandoned.players[0].promise = 'loot';
+  command(abandoned, 'p0', { type: 'begin-search', target: 'frame' });
+  const mark = publicView(abandoned, 'p0').mySearch!.mark!;
+  command(abandoned, 'p0', { type: 'inspect', target: 'frame', step: (mark + 1) % 12 });
+  advance(abandoned, abandoned.deadline);
+  assert.equal(abandoned.phase, 'reveal'); assert.equal(abandoned.report!.findings[0].action, 'search');
+  assert.equal(abandoned.report!.findings[0].gain, 0); assert.match(abandoned.report!.findings[0].detail, /Fouille incomplète/);
+  assert.deepEqual(abandoned.privateClues.p0, []); assert.deepEqual(abandoned.discoveries, []);
 });
 
 test('bots inspect and claim through legal commands, and can use false public code without reading host truth', () => {
   const g = game(); const p = g.players.find(p => g.roles[p.id] === 'burglar')!;
   p.promise = 'search'; g.phase = 'secret';
+  const begin = botCommand(g, p)!; assert.equal(begin.type, 'begin-search'); assert.equal(apply(g, p.id, begin), true);
+  const owner = publicView(g, p.id), inspection = botCommand(g, p)!;
+  assert.equal(inspection.type, 'inspect'); assert.equal(inspection.step, owner.mySearch!.mark); assert.equal(inspection.target, owner.mySearch!.spotId);
+  assert.equal(g.players.find(player => player.id === p.id)!.ready, false);
   let inspected = false;
   for (let i = 0; i < 5 && !p.ready; i++) { const cmd = botCommand(g, p)!; inspected ||= cmd.type === 'inspect'; assert.equal(apply(g, p.id, cmd), true); }
   assert.equal(inspected, true); assert.equal(g.choices[p.id].action, 'search'); resolveRoom(g, 0); dismiss(g);

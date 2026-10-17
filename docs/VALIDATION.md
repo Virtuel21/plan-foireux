@@ -1,5 +1,29 @@
 # Vérifications
 
+## Version 0.3 — 17 octobre 2026
+
+### Moteur et compilation exécutés
+
+- 29 tests passent : 23 du moteur et 6 de session avec transport simulé. Compilation TypeScript stricte et build Vite exécutés.
+- Nouveaux cas : engagement irréversible de la fouille, interdiction de changer d'objet/action ensuite, indices et marquages privés au seul joueur engagé, douze emplacements et six permutations d'indices observés sur 100 graines, aucun cadeau au délai si la fouille n'est pas terminée, prime unique simultanée et absence de farming. Le FBI est exposé à la fin, y compris après fuite réussie.
+- Contrôle géométrique Three.js séparé sur 36 configurations (3 objets × 12 marquages) : invisibles initialement, trouvables après rotation, pas de détection à travers l'objet, callback unique. Ce contrôle de géométrie n'est pas un test visuel.
+
+### Parcours navigateur réellement exécutés en local
+
+- Interface publique avec deux postes, besoins d'équipe, avatars des promesses et bouton de confirmation qui nomme le poste et le gain. Phase secrète avec tenir parole/voler, gain potentiel et coût collectif. Le choix secret de vol a donné 18 au joueur ; la promesse rompue était visible ensuite.
+- Portrait simulé 390 × 844 : seule la garde d'orientation est accessible ; le jeu est inerte. Paysage 844 × 390 : musée et décisions côte à côte, confirmation accessible, pas de débordement horizontal.
+- Parcours complet : fouille du cadre (chiffre 2 = 6), du tiroir du bureau (chiffre 3 = 4), puis de la statue (chiffre 1 = 3). Glissement réellement exécuté sur les objets ; captures avant/après du tiroir confirment sa rotation. Les flèches de rotation ont aussi permis de découvrir et lire les chiffres écrits sur leurs surfaces. Chaque première découverte a donné 6 pièces ; la lecture privée a persisté dans le carnet.
+- Les trois vrais chiffres ont été annoncés puis saisis au coffre : 364, code correct, salaire de 3 et coffre ouvert. Le sac est passé de 8 à 64.
+- Une révélation de trois voleurs a affiché trois avatars rouges, l'animation CSS `betrayalPulse` de 1,5 seconde, les étiquettes « Promesse rompue » ou « Vol du butin », et les gains avec pièces dans le décor. Un chevauchement des étiquettes de gains a été repéré et corrigé après ce parcours.
+- Fuite jouée en tenant le volant : une couverture a sauvé la diversion abandonnée. Victoire de Julien avec 40 pièces ; le sac de 64 a ajouté 16 à chacun. Le FBI Léa, encore actif, a été révélé dans la scène et dans la grande carte finale avec portrait et nom. Son score de 40 ne lui a pas donné la victoire des braqueurs.
+- Aucune erreur ni avertissement console lors de ce parcours local complet.
+- Salon WebRTC réel avec deux humains simulés par deux onglets et quatre bots : engagement de fouille invité transmis, rechargement pendant la manipulation, même siège et même fouille irréversible retrouvés. Après rotation, le vrai chiffre 7 est arrivé dans le carnet privé ; l'annonce publique 2 était visible dans le carnet de l'hôte sans la valeur privée. Les deux consoles n'ont relevé ni erreur ni avertissement.
+- Après correction du cinéma trop haut, révélation à 740 × 360 : 6 étiquettes de gain sur 6 visibles, aucune intersection entre leurs rectangles DOM, liens vers les personnages et six avatars sur une seule rangée. La liste d'avatars est recentrée au début de chaque phase pour éviter de conserver le défilement d'une ancienne consultation du carnet.
+
+### Limites
+
+Ces parcours vérifient le fonctionnement et la lisibilité des états, sans prouver la compréhension d'un nouveau joueur ni l'amusement d'un groupe humain. Pas d'essai sur téléphone physique ou Safari/iOS. La garde portrait est vérifiable en navigateur ; la rotation matérielle et l'API de verrouillage paysage ne sont pas garanties sur chaque appareil. Les restrictions réseau et l'hôte de confiance décrits plus bas restent applicables.
+
 ## Version 0.2 — 17 octobre 2026
 
 ### Exécuté localement

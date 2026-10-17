@@ -5,7 +5,7 @@ export type Snapshot={players:Player[];view:View|null;myId:string;host:boolean;r
 type MessageBudget={tokens:number;updated:number};
 const uid=()=>crypto.randomUUID();
 const PING_INTERVAL=5000, HEARTBEAT_TIMEOUT=18000, DISCONNECT_GRACE=20000, REVEAL_MIN=8000;
-const COMMAND_TYPES=['promise','choose','vote','inspect','claim','continue'];
+const COMMAND_TYPES=['promise','choose','vote','begin-search','inspect','claim','continue'];
 const COMMAND_FIELDS=['type','action','target','code','step','turn'];
 function readCommand(raw:unknown):Command|null {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
@@ -14,7 +14,7 @@ function readCommand(raw:unknown):Command|null {
   if(c.action!==undefined&&(typeof c.action!=='string'||!ACTIONS.includes(c.action as Command['action']&string)))return null;
   if(c.target!==undefined&&(typeof c.target!=='string'||c.target.length>80))return null;
   if(c.code!==undefined&&(typeof c.code!=='string'||c.code.length>5))return null;
-  if(c.step!==undefined&&(typeof c.step!=='number'||!Number.isInteger(c.step)||c.step<0||c.step>2))return null;
+  if(c.step!==undefined&&(typeof c.step!=='number'||!Number.isInteger(c.step)||c.step<0||c.step>11))return null;
   return {type:c.type,turn:c.turn,...(c.action===undefined?{}:{action:c.action as Command['action']}),...(c.target===undefined?{}:{target:c.target as string}),...(c.code===undefined?{}:{code:c.code as string}),...(c.step===undefined?{}:{step:c.step as number})};
 }
 export class Session {

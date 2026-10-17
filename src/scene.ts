@@ -5,7 +5,7 @@ import type { View, Player } from './engine';
 import { COLORS } from './engine';
 
 const mat=(color:T.ColorRepresentation,metalness=0,roughness=.72)=>new T.MeshStandardMaterial({color,roughness,metalness});
-type Actor = {id:string;root:T.Object3D;parts:Record<string,T.Object3D>;pose:Record<string,T.Euler>;target:T.Vector3;label:HTMLDivElement;index:number;action:string|null;searchSpot:string|null};
+type Actor = {id:string;root:T.Object3D;parts:Record<string,T.Object3D>;pose:Record<string,T.Euler>;target:T.Vector3;label:HTMLDivElement;status:HTMLSpanElement;reward:HTMLDivElement;link:HTMLDivElement;labelPosition:{x:number;y:number}|null;index:number;action:string|null;searchSpot:string|null};
 type Interaction = {target:string;object:T.Object3D;anchor:T.Vector3;button:HTMLButtonElement;line:HTMLDivElement;available:boolean};
 export class Museum {
   scene=new T.Scene(); camera:T.OrthographicCamera; renderer:T.WebGLRenderer; world=new T.Group(); props=new T.Group(); crew=new T.Group();
@@ -14,7 +14,7 @@ export class Museum {
   interactionLayer:HTMLDivElement;interactions=new Map<string,Interaction>();objects:Record<string,T.Object3D>={};
   raycaster=new T.Raycaster();pointer=new T.Vector2();pointerStart:{x:number;y:number}|null=null;
   focusedId:string|null=null;focusHalo:T.Mesh;focusLight:T.PointLight;cameraAim=new T.Vector3(0,1.15,0);
-  nextBadgeLayout=0;
+  nextBadgeLayout=0;actorLayoutKey='';
   roster:Player[]=this.previewPlayers();guard:T.Group|null=null;
   reduced=matchMedia('(prefers-reduced-motion: reduce)').matches; ready=false;
   gold=mat('#d8a345',.65,.32); stone=mat('#ba9c7a'); iron=mat('#34434a',.6,.48); red=mat('#743b40'); black=mat('#202c36');
@@ -53,7 +53,7 @@ export class Museum {
     button.style.zIndex='1';button.addEventListener('focus',()=>{button.style.outline='3px solid #fff';button.style.outlineOffset='3px';button.style.zIndex='3';});
     button.addEventListener('blur',()=>{button.style.outline='';button.style.outlineOffset='';button.style.zIndex='1';});
     button.addEventListener('click',event=>{event.stopPropagation();if(this.interactions.get(target)?.available)this.onInteract?.(target);});
-    const line=document.createElement('div');Object.assign(line.style,{position:'absolute',height:'2px',background:'#ffe6a8b0',transformOrigin:'0 50%',pointerEvents:'none',display:'none'});this.interactionLayer.append(line,button);this.interactions.set(target,{target,object,anchor,button,line,available:false});this.syncInteractions();
+    const line=document.createElement('div');line.className='museum-link';line.dataset.target=target;Object.assign(line.style,{position:'absolute',height:'2px',background:'#ffe6a8b0',transformOrigin:'0 50%',pointerEvents:'none',display:'none'});this.interactionLayer.append(line,button);this.interactions.set(target,{target,object,anchor,button,line,available:false});this.syncInteractions();
   }
   syncInteractions() {
     const v=this.view,me=v?.players.find(p=>p.id===v.myId),choosing=!!v&&!!me?.active&&(v.phase==='promise'||v.phase==='secret'&&v.myChoice===null);
@@ -77,6 +77,40 @@ export class Museum {
       for(let y=padding;y<=h-bh-padding;y+=13)for(let x=padding;x<=w-bw-padding;x+=13){const rect={x,y,w:bw,h:bh};if(taken.some(obstacle=>overlaps(rect,obstacle)))continue;const score=(x-home.x)**2+(y-home.y)**2;if(score<bestScore){best=rect;bestScore=score;}}
       const rect=best??home;taken.push(rect);entry.button.style.transform=`translate(${rect.x}px,${rect.y}px)`;
       const cx=rect.x+bw/2,cy=rect.y+bh/2,dx=sx-cx,dy=sy-cy;entry.line.style.left=`${cx}px`;entry.line.style.top=`${cy}px`;entry.line.style.width=`${Math.hypot(dx,dy)}px`;entry.line.style.transform=`rotate(${Math.atan2(dy,dx)}rad)`;
+    }
+  }
+  layoutActorLabels() {
+    const w=this.container.clientWidth,h=this.container.clientHeight,reveal=this.view?.phase==='reveal',bounds=this.container.getBoundingClientRect();
+    const visible=this.actors.filter(a=>a.root.visible&&a.label.style.display!=='none');
+    if(!reveal){this.actorLayoutKey='';this.labels.classList.remove('labels-tight');for(const a of this.actors){a.link.hidden=true;a.labelPosition=null;a.label.style.visibility='';}for(const a of visible){const point=a.root.position.clone().add(new T.Vector3(0,2.7,0)).project(this.camera);a.label.style.transform=`translate(-50%,-100%) translate(${(point.x*.5+.5)*w}px,${(-point.y*.5+.5)*h}px)`;}return;}
+    type Rect={x:number;y:number;w:number;h:number};
+    const obstacles=[...this.container.parentElement!.querySelectorAll<HTMLElement>('.location-tag,.scene-tools,.cinema-focus')].map(el=>{const r=el.getBoundingClientRect();return {x:r.left-bounds.left-3,y:r.top-bounds.top-3,w:r.width+6,h:r.height+6};}).filter(r=>r.w>6&&r.h>6);
+    const key=`${w}:${h}:${this.view?.turn}:${visible.map(a=>`${a.id}:${a.label.offsetWidth}:${a.label.offsetHeight}`).join('|')}:${obstacles.map(r=>`${Math.round(r.x)}:${Math.round(r.y)}:${Math.round(r.w)}:${Math.round(r.h)}`).join('|')}`;
+    if(key!==this.actorLayoutKey){
+      const overlaps=(a:Rect,b:Rect)=>a.x<b.x+b.w+3&&a.x+a.w+3>b.x&&a.y<b.y+b.h+3&&a.y+a.h+3>b.y;
+      const place=(packed=false)=>{
+        const taken:Rect[]=[...obstacles];let complete=true;
+        for(const a of visible){
+          const point=a.target.clone().add(new T.Vector3(0,2.7,0)).project(this.camera),bw=a.label.offsetWidth,bh=a.label.offsetHeight;
+          const home={x:T.MathUtils.clamp((point.x*.5+.5)*w-bw/2,4,w-bw-4),y:T.MathUtils.clamp((-point.y*.5+.5)*h-bh-7,4,h-bh-4),w:bw,h:bh};
+          let best:Rect|null=null,bestScore=Infinity;
+          const step=packed?2:6;
+          for(let y=4;y<=h-bh-4;y+=step)for(let x=4;x<=w-bw-4;x+=step){const rect={x,y,w:bw,h:bh};if(taken.some(r=>overlaps(rect,r)))continue;const score=packed?y*w+x:(x-home.x)**2+(y-home.y)**2;if(score<bestScore){best=rect;bestScore=score;}}
+          if(!best){complete=false;a.labelPosition=null;continue;}
+          taken.push(best);a.labelPosition={x:best.x,y:best.y};
+        }
+        return complete;
+      };
+      if(this.labels.classList.contains('labels-tight'))place(true);
+      else if(!place()){this.labels.classList.add('labels-tight');place(true);}
+      this.actorLayoutKey=`${w}:${h}:${this.view?.turn}:${visible.map(a=>`${a.id}:${a.label.offsetWidth}:${a.label.offsetHeight}`).join('|')}:${obstacles.map(r=>`${Math.round(r.x)}:${Math.round(r.y)}:${Math.round(r.w)}:${Math.round(r.h)}`).join('|')}`;
+    }
+    for(const a of this.actors){
+      if(!a.root.visible||!a.labelPosition){a.link.hidden=true;if(a.root.visible)a.label.style.visibility='hidden';continue;}
+      a.label.style.visibility='';const rect=a.labelPosition;a.label.style.transform=`translate(${rect.x}px,${rect.y}px)`;
+      const point=a.root.position.clone().add(new T.Vector3(0,2.35,0)).project(this.camera),sx=(point.x*.5+.5)*w,sy=(-point.y*.5+.5)*h;
+      const x=T.MathUtils.clamp(sx,rect.x+4,rect.x+a.label.offsetWidth-4),y=T.MathUtils.clamp(sy,rect.y+4,rect.y+a.label.offsetHeight-4),dx=sx-x,dy=sy-y;
+      a.link.hidden=false;a.link.style.left=`${x}px`;a.link.style.top=`${y}px`;a.link.style.width=`${Math.hypot(dx,dy)}px`;a.link.style.transform=`rotate(${Math.atan2(dy,dx)}rad)`;
     }
   }
   pickInteraction(event:PointerEvent) {
@@ -202,8 +236,13 @@ export class Museum {
       root.scale.setScalar(.94);root.rotation.y=-.2;const start=this.idlePosition(i);root.position.copy(start);this.crew.add(root);
       const parts:Record<string,T.Object3D>={};['Head','ArmL','ArmR','LegL','LegR'].forEach(n=>{const o=root.getObjectByName(n);if(o)parts[n]=o;});
       const pose=Object.fromEntries(Object.entries(parts).map(([name,part])=>[name,part.rotation.clone()]));
-      const label=document.createElement('div');label.className='name-tag';label.style.background=p.color;label.textContent=p.name;this.labels.append(label);
-      this.actors.push({id:p.id,root,parts,pose,target:start.clone(),label,index:i,action:null,searchSpot:null});
+      const label=document.createElement('div');label.className='name-tag';label.style.background=p.color;
+      const name=document.createElement('span');name.className='scene-player-name';name.textContent=p.name;
+      const status=document.createElement('span');status.className='scene-betrayal';status.hidden=true;
+      const reward=document.createElement('div');reward.className='scene-reward';reward.hidden=true;
+      const link=document.createElement('div');link.className='actor-callout-link';link.hidden=true;link.setAttribute('aria-hidden','true');
+      label.append(name,status,reward);this.labels.append(link,label);
+      this.actors.push({id:p.id,root,parts,pose,target:start.clone(),label,status,reward,link,labelPosition:null,index:i,action:null,searchSpot:null});
     });
     if(this.view)this.update(this.view);
   }
@@ -214,7 +253,7 @@ export class Museum {
   update(v:View|null) {
     const old=this.view;this.view=v;
     if(v&&(!old||v.players.map(p=>`${p.id}:${p.name}`).join()!==old.players.map(p=>`${p.id}:${p.name}`).join()))this.setPlayers(v.players);
-    if(!v){this.focusPlayer(null);if(old){this.lastLayout='';this.buildProps(0);if(this.guard)this.guard.position.set(-4.8,.07,-2.5);}this.actors.forEach((actor,i)=>{actor.target.copy(this.idlePosition(i));actor.action=null;actor.searchSpot=null;actor.root.visible=true;actor.label.style.display='';});this.syncInteractions();return;}
+    if(!v){this.focusPlayer(null);if(old){this.lastLayout='';this.buildProps(0);if(this.guard)this.guard.position.set(-4.8,.07,-2.5);}this.actors.forEach((actor,i)=>{actor.target.copy(this.idlePosition(i));actor.action=null;actor.searchSpot=null;actor.root.visible=true;actor.label.style.display='';actor.label.style.visibility='';actor.label.classList.remove('is-betrayer','is-agent','is-revealing');actor.status.hidden=true;actor.reward.hidden=true;actor.link.hidden=true;actor.label.removeAttribute('aria-label');});this.syncInteractions();return;}
     const key=`${v.rooms[v.roomIndex].layout}:${v.roomIndex}`;if(key!==this.lastLayout){this.lastLayout=key;this.buildProps(v.rooms[v.roomIndex].layout);if(this.guard)this.guard.position.set([-4.8,-3.8,4.8][v.rooms[v.roomIndex].layout],.07,-2.8);}
     const door=this.props.getObjectByName('VaultDoor');if(door)door.rotation.y=v.objective?-1.45:0;
     const treasure=this.props.getObjectByName('Treasure');if(treasure)treasure.visible=!v.objective;
@@ -222,7 +261,15 @@ export class Museum {
     const succeeded=(short:string)=>revealed&&v.report&&!v.report.incidents.some(i=>i.startsWith(short+' :'));
     for(const task of [room.a,room.b]){if(task.icon==='grid'){const bars=this.props.getObjectByName('GateBars');if(bars)bars.position.y=succeeded(task.short)?1.6:0;}if(task.icon==='laser'){const lasers=this.props.getObjectByName('Lasers');if(lasers)lasers.visible=!succeeded(task.short);}}
     this.actors.forEach((actor,i)=>{
-      const p=v.players[i];actor.label.style.display=p.active?'':'none';actor.root.visible=p.active;actor.target.copy(this.idlePosition(i));actor.action=null;actor.searchSpot=null;
+      const p=v.players[i],finding=v.phase==='reveal'?v.report?.findings.find(f=>f.id===p.id):undefined,agent=v.phase==='ended'&&p.exposed==='agent';
+      actor.label.style.display=p.active||agent?'':'none';actor.root.visible=p.active||agent;actor.target.copy(this.idlePosition(i));actor.action=null;actor.searchSpot=null;
+      const harmful=!!finding&&(finding.betrayed||finding.action==='loot');
+      actor.label.classList.toggle('is-betrayer',harmful);actor.label.classList.toggle('is-agent',agent);
+      actor.label.classList.toggle('is-revealing',v.phase==='reveal');actor.label.style.visibility='';
+      actor.status.hidden=!harmful&&!agent;actor.status.textContent=agent?'Agent infiltré · FBI':finding?.betrayed?'Promesse rompue':'Vol du butin';
+      actor.reward.hidden=!finding;
+      if(finding){actor.reward.innerHTML=`<svg viewBox="0 0 32 32" aria-hidden="true"><ellipse cx="16" cy="18" rx="13" ry="12" fill="#a86d12"/><circle cx="16" cy="15" r="12" fill="#ffd154" stroke="#e4a624" stroke-width="2"/><circle cx="16" cy="15" r="8.5" fill="none" stroke="#fff0a6" stroke-width="1.4"/><path d="M18.7 10.5c-4-2-7 4.5-2.7 4.5s1.3 6.5-2.7 4.5M16 8.5v13" fill="none" stroke="#a76c12" stroke-width="2" stroke-linecap="round"/><path d="m7 8 2-2" stroke="#fff8d6" stroke-width="2" stroke-linecap="round"/></svg><strong>+${finding.gain}</strong>`;actor.label.setAttribute('aria-label',`${p.name}${finding.betrayed?', promesse rompue':''}, +${finding.gain} pièces`);}
+      else if(agent)actor.label.setAttribute('aria-label',`${p.name}, agent infiltré du FBI`);else actor.label.removeAttribute('aria-label');
       if((v.phase==='reveal'||v.phase==='vote'||v.phase==='ended')&&v.report){const f=v.report.findings.find(f=>f.id===p.id);if(f){
         actor.action=f.action;const others=v.report.findings.filter(a=>a.action===f.action&&(f.action!=='search'||a.target===f.target)),n=others.findIndex(a=>a.id===p.id);
         if(f.action==='search'){const detail=f.detail.toLowerCase(),target=(f as typeof f&{target?:string}).target;actor.searchSpot=target??(p.id===v.myId?v.myTarget:null)??(detail.includes('cadre')?'frame':detail.includes('bureau')?'desk':detail.includes('statue')?'bust':v.spots[Math.min(v.roomIndex,2)]?.id??'frame');}
@@ -256,13 +303,12 @@ export class Museum {
         else if(a.action==='a'){rotate('ArmL','x',-1.35+motion*.3);rotate('ArmR','x',-1.35-motion*.3);rotate('Head','x',-.13);}
         else {rotate('ArmL','z',-.35);rotate('ArmR','z',1.2+motion);rotate('Head','y',motion*.5);}
       }else {rotate('ArmL','x',motion);rotate('ArmR','x',-motion);rotate('Head','z',motion);}
-      const screen=a.root.position.clone().add(new T.Vector3(0,2.7,0)).project(this.camera);a.label.style.transform=`translate(-50%,-100%) translate(${(screen.x*.5+.5)*this.container.clientWidth}px,${(-screen.y*.5+.5)*this.container.clientHeight}px)`;
       a.label.style.boxShadow=a.id===this.focusedId?'0 0 0 3px #fff3c5,0 4px 20px #0008':'';
     });
     const focus=this.actors.find(actor=>actor.id===this.focusedId&&actor.root.visible);this.focusHalo.visible=!!focus;
     const aim=focus?new T.Vector3(focus.root.position.x*.32,1.15,focus.root.position.z*.22):new T.Vector3(0,1.15,0);this.cameraAim.lerp(aim,this.reduced?1:Math.min(1,dt*3));this.camera.position.set(10+this.cameraAim.x,10,16+this.cameraAim.z);this.camera.lookAt(this.cameraAim);
     const cameraZoom=T.MathUtils.lerp(this.camera.zoom,focus?1.08:1,this.reduced?1:Math.min(1,dt*3));if(Math.abs(this.camera.zoom-cameraZoom)>.00005){this.camera.zoom=cameraZoom;this.camera.updateProjectionMatrix();}
     if(focus){this.focusHalo.position.copy(focus.root.position);this.focusHalo.position.y=.105;this.focusLight.position.copy(focus.root.position).add(new T.Vector3(0,2.6,1));this.focusLight.intensity=4;}else this.focusLight.intensity=0;
-    this.renderer.render(this.scene,this.camera);if(time>=this.nextBadgeLayout){this.layoutBadges();this.nextBadgeLayout=time+.12;}
+    this.renderer.render(this.scene,this.camera);this.layoutActorLabels();if(time>=this.nextBadgeLayout){this.layoutBadges();this.nextBadgeLayout=time+.12;}
   };
 }

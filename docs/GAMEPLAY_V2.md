@@ -1,5 +1,7 @@
 # Plan Foireux 0.2 : avidité, information et alibis
 
+> Historique de la version 0.2. La correction 0.3 du 17 octobre 2026 décrite dans [UX_V3.md](UX_V3.md) remplace la présentation des choix et le contrat de fouille ci-dessous : engagement avant inspection 3D, douze emplacements de marquage et indices permutés entre objets. L'économie 0.2 reste en vigueur. Les anciennes étapes de compartiments/enveloppes et `inspect` sans engagement ne sont plus le contrat actuel.
+
 Cette correction du 17 octobre 2026 remplace l'économie et la fouille de 0.1. Le but reste d'ouvrir le trésor et fuir ; le plus riche des braqueurs survivants gagne, le FBI cherche la défaite du groupe. L'amusement reste une hypothèse à éprouver entre humains.
 
 ## Décisions et enjeux
