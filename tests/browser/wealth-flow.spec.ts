@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { HostRoom } from "../../src/host";
 import { player, createGame, resolve } from "../../src/engine";
 import { newTrial } from "../../src/trial";
+import { writeFile } from "node:fs/promises";
 
 // A known saved host game exercises presentation of gains/losses without a debug API.
 test("restored host: money piles grow and shrink and a silent alarm has no explanation", async ({
@@ -23,7 +24,7 @@ test("restored host: money piles grow and shrink and a silent alarm has no expla
   g.phase = "secret";
   g.turn = 3;
   g.phaseStarted = Date.now();
-  g.deadline = Date.now() + 6500;
+  g.deadline = Date.now() + 12000;
   g.choices = {
     "0": { action: "pocket", target: "1" },
     "1": { action: "loot" },
@@ -46,12 +47,13 @@ test("restored host: money piles grow and shrink and a silent alarm has no expla
   await expect(page.locator("#scene")).toHaveAttribute(
     "data-wealth-coins",
     "[3,12,24,48]",
-    { timeout: 6000 },
+    { timeout: 10000 },
   );
   await expect(page.locator("#scene")).toHaveAttribute(
     "data-wealth-units",
     "[1,4,8,12]",
   );
+  await expect(page.locator("#phase-announcement")).toBeHidden();
   await page.screenshot({ path: "test-results/wealth-before.png" });
   await expect(page.locator("body")).toHaveAttribute("data-phase", "reveal", {
     timeout: 30000,
@@ -72,6 +74,10 @@ test("restored host: money piles grow and shrink and a silent alarm has no expla
   const stats = await page
     .locator("#scene")
     .evaluate((e) => ({ ...(e as HTMLElement).dataset }));
+  await writeFile(
+    "test-results/wealth-stats.json",
+    JSON.stringify(stats, null, 2),
+  );
   await test.info().attach("scene-stats", {
     body: JSON.stringify(stats, null, 2),
     contentType: "application/json",

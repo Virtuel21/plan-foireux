@@ -10,7 +10,7 @@
 
 ## Seize parcours Chrome exécutés
 
-La suite existante de treize parcours passe, puis les trois scénarios de présentation de cette version passent. Les premières erreurs du nouveau scénario de pile concernaient sa fixture : il attendait des statistiques de rendu pendant une transition qui suspend volontairement la 3D. La fixture commence désormais en choix secret, quand la scène est visible.
+La suite existante de treize parcours passe, puis les trois scénarios de présentation de cette version passent.
 
 - Six formats : **1440×900, 844×390, 740×360, 667×375, 390×844 et 320×740**. Huit repères visibles, cibles de 44 pixels minimum, absence de collision entre repères et de débordement horizontal, choix et gains lisibles.
 - Six épreuves jouées via leurs commandes ; câbles aussi au clavier et par glisser. Tactile Chrome réel émulé pour maintenir/relâcher et taps. Le tracé de toile volontairement erroné échoue, un seul tap réinitialise, puis un tracé tactile espacé et décalé jusqu’à 4,5 % réussit (100 % dans le couloir élargi). Talkie terminé sur trois fréquences. Lecture des trois musiques, changement de piste et mute vérifiés. Le minuteur d’un entraînement ne fige pas le suivant.
@@ -18,6 +18,12 @@ La suite existante de treize parcours passe, puis les trois scénarios de prése
 - **Trois scénarios à partir de sauvegardes d’hôte connues** : piles qui passent de `[3,12,24,48]` à `[7,8,36,60]`, avec une diminution chez la victime ; bilan silencieux sans calcul d’alarme ; annonce au centre mesurée ; avertissement de vigilance et défi difficile conservés après rechargement ; bilan d’un poste réussi à +12, vol de −11, solde +1. Ces cas sont des fixtures de présentation, distinctes du parcours réseau sans injection.
 
 Captures examinées : annonce centrale en paysage, découpe tolérante, piles de lingots et billets, bilan silencieux et gain courant volé. Le texte des alarmes emploie « Alarmes désactivées par N joueurs ». Le son de sirène et son explication partagent le même déclencheur : une hausse effective du niveau.
+
+## Partie complète avec délais réels
+
+`node scripts/qa-full-match.mjs` a joué trois manches en 844×390 avec trois bots, les vraies commandes et les chronomètres réels. Aucun état ni résultat injecté. **200,440 secondes**, soit 3 min 20 s, jusqu’à la fuite après ouverture à la manche 3. Les débats ont duré **2,503 s et 2,508 s**, terminés dès les réponses des bots et du joueur.
+
+Léa termine Roi des Voleurs avec 38 pièces, Julien à 32, Sarah à 26. Max est révélé FBI et exclu du classement. Bonus de fuite de 8 inclus ; aucune erreur JavaScript. Preuve structurée : `docs/evidence/solo-full-match-v3.json`.
 
 ## Rendu et limites
 
