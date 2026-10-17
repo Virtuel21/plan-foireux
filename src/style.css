@@ -2119,3 +2119,550 @@ nav {
   border-left: 3px solid var(--player);
   padding-left: 7px;
 }
+/* The planning phase names every participant at their promised station. */
+.post-complices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+  font-style: normal;
+}
+.post-complices > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--cream);
+}
+.post-complices img {
+  width: 21px;
+  height: 21px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid var(--player);
+}
+.post-marker.painting {
+  border-color: #b39465;
+}
+.modal.report {
+  width: min(1080px, 96vw);
+  max-width: 1080px;
+  padding: 24px;
+}
+.modal.report h2 {
+  margin: 4px 0 12px;
+  font-size: 32px;
+}
+.alarm-explanation {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #d8b46855;
+  background: #071b23;
+  border-radius: 12px;
+}
+.alarm-explanation div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.alarm-explanation span {
+  font-size: 12px;
+  color: #d2dbd5;
+}
+.alarm-explanation b {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 27px;
+  line-height: 1;
+}
+.alarm-explanation div:last-child {
+  color: var(--gold);
+}
+.report-context {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 10px 0;
+}
+.vote-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.vote-card {
+  min-width: 0;
+  border: 1px solid #76918e55;
+  border-top: 3px solid var(--player);
+  border-radius: 12px;
+  background: #102d34;
+  padding: 12px;
+}
+.vote-card.voted {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+.vote-person {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.vote-person img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 2px solid var(--player);
+  background: #112731;
+}
+.vote-person strong {
+  display: block;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.vote-person b {
+  display: block;
+  color: var(--gold);
+  font-size: 15px;
+}
+.finding-action {
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 10px;
+  min-height: 32px;
+}
+.success-text {
+  color: #8ce5c5;
+}
+.danger-text {
+  color: #ffac95;
+}
+.vote-card p {
+  font-size: 12px;
+  line-height: 1.6;
+  min-height: 58px;
+  margin: 5px 0;
+}
+.vote-card button {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  font-size: 13px;
+  min-height: 44px;
+}
+.vote-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+.vote-footer p,
+.vote-live {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 4px 0;
+}
+.vote-live {
+  color: #cad5cc;
+  margin-top: 12px;
+}
+.jam-targets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 20px 0;
+}
+.jam-targets button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 12px;
+}
+.jam-targets img {
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+/* An actual receiver: moulded case, inset LCD, rotary channel/fine knobs. */
+.trial-stage.radio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+.walkie {
+  width: 245px;
+  position: relative;
+  padding-top: 45px;
+  filter: drop-shadow(0 12px 18px #0008);
+}
+.walkie-antenna {
+  width: 13px;
+  height: 78px;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(90deg, #121e23, #526368, #131e23);
+  position: absolute;
+  top: 0;
+  left: 28px;
+  border-top: 6px solid #81928c;
+}
+.walkie-body {
+  border: 3px solid #62716b;
+  border-radius: 20px 20px 28px 28px;
+  background: linear-gradient(110deg, #3d4a47, #202e2e 42%, #122326);
+  padding: 14px 18px 18px;
+  box-shadow:
+    inset 4px 0 0 #84918533,
+    inset -4px -6px 0 #061316;
+}
+.walkie-knobs {
+  position: absolute;
+  top: 4px;
+  right: 12px;
+  display: flex;
+  gap: 15px;
+  text-align: center;
+}
+.walkie-knobs small {
+  display: block;
+  font-size: 10px;
+  color: #e0dec8;
+  margin-top: 2px;
+}
+.radio-knob {
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(#3e4c4d 0deg 10deg, #0e2026 10deg 20deg);
+  border: 3px solid #7a8984;
+  position: relative;
+  touch-action: none;
+}
+.radio-knob:before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  background: linear-gradient(#62706b, #1e3134);
+}
+.radio-knob span {
+  display: block;
+  position: absolute;
+  inset: 5px;
+  transform: rotate(var(--rotation, -100deg));
+}
+.radio-knob span:after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  width: 4px;
+  height: 12px;
+  border-radius: 2px;
+  background: #f3cd7b;
+}
+.walkie-brand {
+  color: #c5cbbd;
+  font-weight: 800;
+  letter-spacing: 2px;
+  font-size: 14px;
+}
+.walkie-brand small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 1px;
+  margin: 3px 0 9px;
+}
+.radio-screen {
+  padding: 10px;
+  background: #9eaf7e;
+  color: #1a3428;
+  border: 4px solid #0a181c;
+  border-radius: 7px;
+  box-shadow: inset 0 2px 6px #293e2888;
+}
+.radio-channel {
+  font: 10px monospace;
+  display: block;
+}
+.frequency {
+  font: 700 28px monospace;
+  display: block;
+  margin: 3px 0;
+}
+.frequency small {
+  font-size: 12px;
+}
+.signal-bars {
+  height: 21px;
+  display: flex;
+  gap: 5px;
+  align-items: end;
+}
+.signal-bars i {
+  display: block;
+  width: 12px;
+  background: currentColor;
+  opacity: 0.2;
+}
+.radio-screen.orange .signal-bars i:nth-child(-n + 5),
+.radio-screen.green .signal-bars i {
+  opacity: 1;
+}
+.radio-screen.red .signal-bars i:nth-child(-n + 2) {
+  opacity: 1;
+}
+.signal-label {
+  font: 700 9px monospace;
+  display: block;
+  margin: 5px 0;
+}
+.radio-screen.red {
+  background: #dba388;
+}
+.radio-screen.orange {
+  background: #dfc67e;
+}
+.radio-screen.green {
+  background: #a6d492;
+}
+.radio-lock-progress {
+  height: 4px;
+  background: #142f2733;
+}
+.radio-lock-progress i {
+  display: block;
+  height: 100%;
+  background: #153828;
+}
+.walkie-speaker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+}
+.walkie-speaker i {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: #07191e;
+  box-shadow: 0 1px #63736b;
+}
+.radio-private {
+  font-size: 12px;
+  color: var(--gold);
+}
+.trial-stage.painting {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.cut-board {
+  width: min(500px, 96%);
+  height: clamp(135px, 34vh, 250px);
+  touch-action: none;
+  cursor: crosshair;
+}
+.cut-outline {
+  fill: none;
+  stroke: #eee2b8;
+  stroke-width: 3;
+  stroke-dasharray: 7 5;
+}
+.cut-complete {
+  fill: none;
+  stroke: #6ff3c6;
+  stroke-width: 5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.cut-next {
+  fill: #fff5d5;
+  stroke: #113c3e;
+  stroke-width: 3;
+}
+.cut-quality {
+  display: flex;
+  gap: 18px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+@media (max-height: 600px) and (orientation: landscape) {
+  .post-marker {
+    max-width: calc((100vw - 56px) / 4);
+    padding: 5px 7px;
+  }
+  .post-marker > .icon {
+    display: none;
+  }
+  .post-marker em,
+  .post-marker small {
+    font-size: 10px;
+  }
+  .post-complices > span {
+    font-size: 10px;
+  }
+  .post-complices img {
+    width: 17px;
+    height: 17px;
+  }
+  .post-marker strong {
+    font-size: 12px;
+  }
+  .modal.report {
+    padding: 14px;
+    max-height: calc(100dvh - 12px);
+  }
+  .modal.report h2 {
+    font-size: 24px;
+    margin: 2px 0 7px;
+  }
+  .alarm-explanation {
+    padding: 8px;
+    gap: 6px;
+  }
+  .alarm-explanation b {
+    font-size: 22px;
+  }
+  .alarm-explanation span {
+    font-size: 10px;
+  }
+  .report-context {
+    font-size: 11px;
+    margin: 7px 0;
+  }
+  .vote-card {
+    padding: 7px;
+  }
+  .vote-person {
+    gap: 6px;
+  }
+  .vote-person img {
+    width: 40px;
+    height: 40px;
+  }
+  .vote-person strong,
+  .vote-person b {
+    font-size: 12px;
+  }
+  .finding-action {
+    font-size: 11px;
+    margin-top: 5px;
+    min-height: 28px;
+  }
+  .vote-card p {
+    font-size: 10px;
+    line-height: 1.45;
+    min-height: 43px;
+  }
+  .vote-card button {
+    font-size: 11px;
+  }
+  .vote-footer {
+    margin-top: 8px;
+  }
+  .vote-footer p,
+  .vote-live {
+    font-size: 10px;
+  }
+  .trial-stage.radio {
+    min-height: 180px;
+    height: 180px;
+  }
+  .walkie {
+    transform: scale(0.72);
+    transform-origin: center;
+  }
+  .cut-board {
+    height: 140px;
+  }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .vote-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .vote-person {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .alarm-explanation {
+    gap: 5px;
+    padding: 8px;
+  }
+  .alarm-explanation span {
+    font-size: 10px;
+  }
+  .vote-footer {
+    align-items: flex-start;
+  }
+}
+.modal-content > h2 {
+  padding-right: 30px;
+}
+.modal-content > p {
+  margin: 14px 0;
+}
+.modal.report .report-context {
+  margin: 8px 0;
+}
+@media (max-height: 600px) and (orientation: landscape) {
+  .trial-stage.radio {
+    min-height: 210px;
+    height: 210px;
+  }
+  .walkie {
+    transform: none;
+    width: 220px;
+    padding-top: 42px;
+  }
+  .walkie-body {
+    padding: 8px 12px;
+  }
+  .walkie-brand {
+    font-size: 12px;
+  }
+  .walkie-brand small {
+    margin: 2px 0 5px;
+  }
+  .radio-screen {
+    padding: 6px;
+  }
+  .frequency {
+    font-size: 24px;
+  }
+  .walkie-speaker {
+    gap: 3px;
+    margin-top: 7px;
+  }
+  .walkie-speaker i {
+    height: 2px;
+  }
+  .walkie-knobs small {
+    font-size: 8px;
+  }
+}
+
+.report-clock {
+  position: absolute;
+  right: 64px;
+  top: 21px;
+  color: var(--gold);
+  font-size: 23px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 400px) and (orientation: portrait) {
+  .report-clock {
+    position: static;
+    display: block;
+    font-size: 18px;
+  }
+}

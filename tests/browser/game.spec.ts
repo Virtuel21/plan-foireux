@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 const evidence = "test-results/visual";
 async function ready(page: Page) {
-  await page.goto("/");
+  await page.goto(process.env.PF_TEST_URL || "/");
   await expect(page.locator("#scene")).toHaveAttribute(
     "data-triangles",
     /\d+/,
@@ -10,34 +10,37 @@ async function ready(page: Page) {
   );
 }
 async function training(page: Page, action: string) {
-  await page
-    .getByRole("button", { name: "Essayer les quatre épreuves" })
-    .click();
+  await page.getByRole("button", { name: "Essayer les épreuves" }).click();
   await page.locator(`[data-practice="${action}"]`).click();
 }
 async function wires(page: Page, drag = false) {
-  for (let i = 0; i < 3; i++) {
-    const label = ["1 △", "2 ○", "3 ╳"][i],
-      plug = page.locator(`[data-cable="${i}"]`),
-      terminal = page.getByRole("button", {
-        name: `Borne ${label}`,
-        exact: true,
-      });
-    if (drag && i === 0) {
-      const from = (await plug.boundingBox())!,
-        to = (await terminal.boundingBox())!;
-      await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, {
-        steps: 10,
-      });
-      await page.mouse.up();
-    } else {
-      await plug.click();
-      await terminal.click();
+  for (let panel = 0; panel < 2; panel++) {
+    for (let i = 0; i < 3; i++) {
+      const label = ["1 △", "2 ○", "3 ╳"][i],
+        plug = page.locator(`[data-cable="${i}"]`),
+        terminal = page.getByRole("button", {
+          name: `Borne ${label}`,
+          exact: true,
+        });
+      if (drag && i === 0) {
+        const from = (await plug.boundingBox())!,
+          to = (await terminal.boundingBox())!;
+        await page.mouse.move(
+          from.x + from.width / 2,
+          from.y + from.height / 2,
+        );
+        await page.mouse.down();
+        await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, {
+          steps: 10,
+        });
+        await page.mouse.up();
+      } else {
+        await plug.click();
+        await terminal.click();
+      }
     }
+    await page.getByRole("button", { name: "Valider les circuits" }).click();
   }
-  await page.getByRole("button", { name: "Abaisser le levier" }).click();
   await expect(page.locator(".trial-status")).toContainText("Réussi");
 }
 for (const [width, height] of [
@@ -67,7 +70,7 @@ for (const [width, height] of [
       { timeout: 10000 },
     );
     const buttons = page.locator(".world-labels button:visible");
-    await expect(buttons).toHaveCount(7);
+    await expect(buttons).toHaveCount(8);
     const boxes = await buttons.evaluateAll((es) =>
       es.map((e) => {
         const r = e.getBoundingClientRect();
@@ -119,18 +122,20 @@ test("landscape cables playable by taps, mouse drag, and keyboard", async ({
   await page.screenshot({ path: `${evidence}/wires-landscape.png` });
   await page.getByRole("button", { name: "Retour", exact: true }).click();
   await page.locator('[data-practice="secure"]').click();
-  for (let i = 0; i < 3; i++) {
-    await page.locator(`[data-cable="${i}"]`).focus();
-    await page.keyboard.press("Enter");
-    await page
-      .getByRole("button", {
-        name: `Borne ${["1 △", "2 ○", "3 ╳"][i]}`,
-        exact: true,
-      })
-      .focus();
-    await page.keyboard.press("Enter");
+  for (let panel = 0; panel < 2; panel++) {
+    for (let i = 0; i < 3; i++) {
+      await page.locator(`[data-cable="${i}"]`).focus();
+      await page.keyboard.press("Enter");
+      await page
+        .getByRole("button", {
+          name: `Borne ${["1 △", "2 ○", "3 ╳"][i]}`,
+          exact: true,
+        })
+        .focus();
+      await page.keyboard.press("Enter");
+    }
+    await page.getByRole("button", { name: "Valider les circuits" }).click();
   }
-  await page.getByRole("button", { name: "Abaisser le levier" }).click();
   await expect(page.locator(".trial-status")).toContainText("Réussi");
 });
 test("drill, pins and pocket are completed through their real controls", async ({

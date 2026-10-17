@@ -1,4 +1,4 @@
-# Plan Foireux — prototype jouable v1
+# Plan Foireux — prototype jouable v2
 
 Un musée Art déco, quatre complices, un FBI. Le brief du 17 octobre 2026 dans `docs/BRIEF.md` remplace les règles 0.x. La précision ultérieure de Julien prévaut sur son chapitre réseau : **le navigateur de l’hôte gère la partie localement**, sans serveur de jeu à déployer.
 
@@ -6,18 +6,17 @@ Un musée Art déco, quatre complices, un FBI. Le brief du 17 octobre 2026 dans 
 
 Choisissez un prénom, jouez avec trois bots ou invitez vos complices. L’hôte crée un salon et copie le lien. Chaque invité l’ouvre sur son écran, entre son prénom puis rejoint. Quatre joueurs prêts sont requis pour lancer une partie en ligne. Le salon garde les mêmes sièges pour Rejouer. Les discussions passent par Discord ou par la conversation dans la pièce.
 
-Ouvrez le coffre avant la fin du tour 5. À 5 alarmes, la police gagne. Coopérez pour fuir, enrichissez-vous pour devenir Roi des Voleurs ; un FBI est parmi vous.
+Ouvrez le coffre pour fuir, en cinq manches maximum. À 5 alarmes, la police gagne. La fuite suit immédiatement la manche qui ouvre le coffre, avec priorité à la police si l’alarme atteint aussi 5.
 
-Touchez directement le coffre, les casiers, le poste de sécurité ou le personnage d’un rival. La promesse publique est modifiable pendant 20 s, puis le choix réel reste privé pendant 12 s. Une épreuve de 18 s décide de la réussite. La révélation dure 12 s, puis on débat et vote pendant 30 s après les tours 1 à 4. Aucune validation anticipée ne raccourcit une phase et aucune réussite anticipée n’est montrée aux autres.
+Annoncez publiquement un poste parmi Forer, Sécuriser, Casiers ou Voler la toile. Les portraits et noms montrent qui promet quoi. En secret, choisissez votre vrai poste ou faites les poches d’un rival : le vol ne peut jamais être annoncé. Les phases durent 20 s de promesses, 12 s de secret, 18 s d’épreuve et 12 s de bilan. Un débat de 30 s suit chaque manche qui continue.
 
-- Forer : coffre +2, poche +6 en cas de réussite.
-- Sécuriser : alarme −2, poche +6.
-- Casiers : un stock global de 12 pièces partagé entre les réussites.
-- Faire les poches : jusqu’à 4 pièces de la poche initiale d’un rival, à partager entre ses voleurs ; les gains du tour ne peuvent pas être volés.
+Chaque poste partage **12 pièces entre tous ses participants réels** : seul 12, à deux 6, à trois 4, à quatre 3 ; une part ratée est perdue. Forer ajoute aussi 2 au coffre ; Sécuriser retire 2 alarmes. Le vol prend jusqu’à 4 pièces au portefeuille initial d’un rival, partagé entre les voleurs réussis. Voler la toile demande de découper un contour avec 85 % de précision.
 
-Le temps ajoute 1 alarme. Le FBI peut ajouter 1 alarme en réussissant avec Brouiller activé. Une trace révèle seulement sa zone. Trois voix sur quatre déclenchent un tour de surveillance, avec deux utilisations communes ; aucune élimination ni révélation de rôle. La fuite attend le tour 5 : coffre à 8 et alarme sous 5, les trois braqueurs gagnent et reçoivent chacun 8 pièces. Le plus riche reçoit un titre supplémentaire, partagé en cas d’égalité.
+L’alarme ajoute 1 pour le temps et 1 par défi raté, puis retire 2 par sécurité réussie. Le bilan automatique explique ce calcul et présente les statistiques des quatre portraits. Le vote affiche les nombres de voix en direct : 3/4 imposent un tour de surveillance, deux charges communes, aucun rôle révélé.
 
-L’entraînement du salon permet d’essayer les quatre épreuves. Le paysage est le format principal pour téléphone ; le portrait reste jouable. Les gestes ont des commandes au clavier, les câbles permettent le glisser ou deux taps, et les cibles mesurent au moins 44 pixels CSS.
+Le FBI choisit une cible privée et joue un talkie-walkie à trois fréquences : rouge, orange, vert. S’il réussit, la cible apparaît comme ayant raté son défi et son propre poste de couverture réussit. Un joueur surveillé ne peut pas brouiller. Tous les détails sont dans `docs/BRIEF.md`, les règles précédentes dans `docs/BRIEF-v1-archive.md`.
+
+L’entraînement propose six épreuves : les quatre postes, le vol et le talkie FBI. Les trois musiques fournies par Julien sont intégrées : thème d’accueil et deux thèmes alternés en partie. Téléphone paysage prioritaire, gestes et alternatives clavier, cibles de 44 pixels CSS minimum.
 
 ## Développer
 
@@ -30,7 +29,7 @@ npm test
 npm run build
 ```
 
-`npm test` vérifie le moteur, l’autorité locale de l’hôte, la confidentialité des projections et les quatre simulations de mini-jeux. `npm run test:browser` utilise Chrome installé pour la recette. Le test multijoueur utilise réellement WebRTC et le service public de signalisation PeerJS ; il nécessite Internet. Sous Linux, `npx playwright install chrome` installe le navigateur de recette.
+`npm test` vérifie le moteur, l’autorité locale de l’hôte, la confidentialité des projections et les six simulations de mini-jeux. `npm run test:browser` utilise Chrome installé pour la recette. Le test multijoueur utilise réellement WebRTC et le service public de signalisation PeerJS ; il nécessite Internet. Sous Linux, `npx playwright install chrome` installe le navigateur de recette.
 
 `npm run build` produit `dist/`, déployable sur GitHub Pages sans backend. `node scripts/qa-full-match.mjs` exécute une partie avec bots avec les délais réels. `PF_TEST_URL` et `PF_QA_DIR` choisissent l’URL et le dossier de preuves.
 
@@ -46,7 +45,7 @@ Les coupures silencieuses sont détectées par heartbeat, avec un délai de dét
 
 - `src/engine.ts`, `config/rules.ts` : règles pures, résolution simultanée, surveillance, délais et pause.
 - `src/host.ts`, `src/session.ts` : autorité locale, identités et transport WebRTC.
-- `src/trial.ts`, `src/minigame.ts` : état sérialisable et quatre manipulations 2D.
+- `src/trial.ts`, `src/minigame.ts` : état sérialisable et six manipulations 2D.
 - `src/scene.ts`, `src/animation.ts` : diorama, repères accessibles, clips procéduraux du modèle partagé.
 - `scenes/layouts/` : trois dispositions préparées, zones stables.
 - `art/source/`, `art/build_museum.py`, `art/finish_assets.py` : sources Blender et exports mobiles reproductibles.

@@ -19,6 +19,8 @@ export const LABELS = {
   secure: "Sécuriser",
   loot: "Casiers",
   pocket: "Faire les poches",
+  painting: "Voler la toile",
+  radio: "Brouilleur FBI",
 };
 type Actor = {
   id: string;
@@ -101,7 +103,7 @@ export class Museum {
     this.scene.add(fill);
     const loader = new GLTFLoader();
     loader.load(
-      `${import.meta.env.BASE_URL}models/museum.glb`,
+      `${import.meta.env.BASE_URL}models/museum.glb?v=2.0.0`,
       (gltf) => {
         this.room = gltf.scene;
         this.configure(this.room);
@@ -110,6 +112,7 @@ export class Museum {
           "POST_Vault",
           "POST_Loot",
           "POST_Security",
+          "POST_Painting",
           "VaultDoorPivot",
           "CameraPivot",
           ...Array.from({ length: 4 }, (_, i) => `PROP_Bag_${i}`),
@@ -123,6 +126,7 @@ export class Museum {
         this.addMarker("drill", "POST_Vault", new T.Vector3(0, 2.75, 0.15));
         this.addMarker("loot", "POST_Loot", new T.Vector3(0, 2.15, 0.1));
         this.addMarker("secure", "POST_Security", new T.Vector3(0, 2.9, 0.1));
+        this.addMarker("painting", "POST_Painting", new T.Vector3(0, 2.9, 0.1));
         this.ready = true;
         this.update(this.view, this.roster, this.selection);
       },
@@ -289,18 +293,13 @@ export class Museum {
     for (const [action, m] of this.markers) {
       const promises = players.filter((p) => p.promise?.action === action),
         need = action === "drill" && v ? recommended(v) : 1;
-      const covered = action !== "loot" && promises.length >= need,
+      const covered =
+          ["drill", "secure"].includes(action) && promises.length >= need,
         finished = action === "drill" && (v?.vault ?? 0) >= 8;
       const isSelected = selected?.action === action;
-      const gain =
-        action === "drill"
-          ? "Coffre +2 · Vous +6"
-          : action === "secure"
-            ? "Alarme −2 · Vous +6"
-            : promises.length
-              ? `${12 / promises.length} chacun si réussite`
-              : "12 à partager";
-      m.button.innerHTML = `${icon(isSelected ? "check" : action === "drill" ? "wrench" : action === "secure" ? "laser" : "lock")}<span><strong>${LABELS[action as keyof typeof LABELS]}${finished ? " · Terminé" : ""}</strong><small>${gain}</small>${v ? `<em>${promises.length ? promises.map((p) => esc(p.name.slice(0, 1))).join(" · ") + " — " : ""}${action === "loot" ? `${promises.length} annoncé${promises.length > 1 ? "s" : ""}` : `${covered ? "✓ " : ""}${promises.length} sur ${need} annoncé`}</em>` : ""}</span>`;
+      const share = Math.floor(12 / Math.max(1, promises.length));
+      const gain = `${action === "drill" ? "Coffre +2 · " : action === "secure" ? "Alarme −2 · " : ""}${promises.length ? share + " / personne" : "12 à partager"}`;
+      m.button.innerHTML = `${icon(isSelected ? "check" : action === "drill" ? "wrench" : action === "secure" ? "laser" : action === "painting" ? "grid" : "lock")}<span><strong>${LABELS[action as keyof typeof LABELS]}${finished ? " · Ouvert" : ""}</strong><small>${gain}</small>${v ? `<em>${["drill", "secure"].includes(action) ? `${covered ? "✓ " : ""}${promises.length}/${need} conseillé` : `${promises.length} annoncé${promises.length > 1 ? "s" : ""}`}</em><span class="post-complices">${promises.length ? promises.map((p) => `<span style="--player:${p.color}"><img src="${import.meta.env.BASE_URL}portraits/${players.indexOf(p)}.png" alt="">${esc(p.name)}</span>`).join("") : "<span>Personne d’annoncé</span>"}</span>` : ""}</span>`;
       m.button.classList.toggle("covered", covered && !finished);
       m.button.classList.toggle("selected", isSelected);
       m.button.classList.toggle("finished", finished);
@@ -327,7 +326,8 @@ export class Museum {
         !v ||
         (v.phase === "debate"
           ? v.charges === 0
-          : !choosing ||
+          : v.phase === "promise" ||
+            !choosing ||
             p.id === v.myId ||
             !legal(v, v.myId, { action: "pocket", target: p.id }));
       a.button.hidden =
@@ -340,9 +340,11 @@ export class Museum {
             ? "POST_Vault"
             : finding.choice.action === "loot"
               ? "POST_Loot"
-              : finding.choice.action === "secure"
-                ? "POST_Security"
-                : `PROP_Bag_${players.findIndex((p) => p.id === finding.choice.target)}`;
+              : finding.choice.action === "painting"
+                ? "POST_Painting"
+                : finding.choice.action === "secure"
+                  ? "POST_Security"
+                  : `PROP_Bag_${players.findIndex((p) => p.id === finding.choice.target)}`;
         const obj = this.objects[key];
         if (obj) {
           obj.getWorldPosition(a.target);
@@ -425,11 +427,11 @@ export class Museum {
         sy = (-p.y * 0.5 + 0.5) * h;
       const wide = w / h > 1.7 && h < 420;
       const idealX = wide
-        ? index < 3
-          ? [0.15, 0.51, 0.85][index] * w - bw / 2
-          : ((index - 3 + 0.5) * w) / 4 - bw / 2
+        ? index < 4
+          ? ((index + 0.5) / 4) * w - bw / 2
+          : ((index - 4 + 0.5) * w) / 4 - bw / 2
         : sx - bw / 2;
-      const idealY = wide ? (index < 3 ? 10 : h - bh - 10) : sy - bh;
+      const idealY = wide ? (index < 4 ? 10 : h - bh - 10) : sy - bh;
       const x = Math.max(6, Math.min(w - bw - 6, idealX)),
         y = Math.max(6, Math.min(h - bh - 6, idealY));
       let best: Rect | null = null,
@@ -517,7 +519,9 @@ export class Museum {
               ? "POST_Security"
               : finding.choice.action === "loot"
                 ? "POST_Loot"
-                : `PROP_Bag_${this.roster.findIndex((p) => p.id === finding.choice.target)}`;
+                : finding.choice.action === "painting"
+                  ? "POST_Painting"
+                  : `PROP_Bag_${this.roster.findIndex((p) => p.id === finding.choice.target)}`;
         const aim = this.objects[key]?.getWorldPosition(new T.Vector3());
         if (aim)
           yaw = Math.atan2(

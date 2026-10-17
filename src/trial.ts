@@ -1,6 +1,7 @@
 import type { Action } from "./engine";
+export type TrialAction = Action | "radio";
 export type Trial = {
-  action: Action;
+  action: TrialAction;
   seed: number;
   elapsed: number;
   stage: number;
@@ -10,9 +11,15 @@ export type Trial = {
   cursor: number;
   connections: number[];
   correct: boolean[];
+  panel: number;
+  cutIndex: number;
+  cutErrors: number;
+  cutSamples: number;
+  cutX: number;
+  cutY: number;
   done: boolean;
 };
-export function newTrial(action: Action, seed: number): Trial {
+export function newTrial(action: TrialAction, seed: number): Trial {
   return {
     action,
     seed,
@@ -24,15 +31,29 @@ export function newTrial(action: Action, seed: number): Trial {
     cursor: 0,
     connections: [-1, -1, -1],
     correct: [false, false, false],
+    panel: 0,
+    cutIndex: 0,
+    cutErrors: 0,
+    cutSamples: 0,
+    cutX: 0.5,
+    cutY: 0.15,
     done: false,
   };
 }
 export const targetBand = (t: Trial) =>
-  0.35 + ((t.seed + t.stage * 7) % 11) / 50;
-export const pinBand = (t: Trial) => 0.25 + ((t.seed + t.stage * 13) % 21) / 50;
+  0.24 + ((t.seed + t.stage * 7) % 17) / 40;
+export const pinBand = (t: Trial) => 0.2 + ((t.seed + t.stage * 13) % 23) / 40;
+export const radioTarget = (t: Trial) =>
+  0.18 + ((t.seed + t.stage * 19) % 29) / 45;
+export const radioSignal = (t: Trial) =>
+  t.done || Math.abs(t.needle - radioTarget(t)) < 0.028
+    ? "green"
+    : Math.abs(t.needle - radioTarget(t)) < 0.12
+      ? "orange"
+      : "red";
 export function gaze(t: Trial): "away" | "warning" | "front" {
-  const cycle = (t.elapsed + (t.seed % 7) / 10) % 4;
-  return cycle < 2.5 ? "away" : cycle < 3 ? "warning" : "front";
+  const cycle = (t.elapsed + (t.seed % 7) / 10) % 3.4;
+  return cycle < 1.65 ? "away" : cycle < 2.05 ? "warning" : "front";
 }
 export function stepTrial(t: Trial, dt: number, held: boolean): void {
   if (t.done) return;
@@ -42,22 +63,22 @@ export function stepTrial(t: Trial, dt: number, held: boolean): void {
   if (t.action === "drill") {
     t.needle = Math.max(
       0,
-      Math.min(1, t.needle + (held && !t.cooldown ? 0.48 : -0.34) * dt),
+      Math.min(1, t.needle + (held && !t.cooldown ? 0.64 : -0.45) * dt),
     );
-    if (t.needle >= 0.95) {
+    if (t.needle >= 0.94) {
       t.progress = 0;
       t.cooldown = 0.5;
     }
     const band = targetBand(t);
-    if (!t.cooldown && t.needle >= band && t.needle <= band + 0.23)
-      t.progress += dt;
+    if (!t.cooldown && t.needle >= band && t.needle <= band + 0.13)
+      t.progress += dt / 1.45;
     if (t.progress >= 1) {
       t.stage++;
       t.progress = 0;
     }
   }
   if (t.action === "loot") {
-    const pos = (t.elapsed * 0.52) % 2;
+    const pos = (t.elapsed * (0.76 + t.stage * 0.12)) % 2;
     t.cursor = pos <= 1 ? pos : 2 - pos;
   }
   if (t.action === "pocket" && held && !t.cooldown) {
@@ -65,18 +86,25 @@ export function stepTrial(t: Trial, dt: number, held: boolean): void {
       t.progress = 0;
       t.cooldown = 0.5;
     } else {
-      t.progress += dt;
+      t.progress += dt / 1.3;
       if (t.progress >= 1) {
         t.stage++;
         t.progress = 0;
       }
     }
   }
-  t.done = t.stage >= 3;
+  if (t.action === "radio") {
+    t.progress = radioSignal(t) === "green" ? t.progress + dt / 0.85 : 0;
+    if (t.progress >= 1) {
+      t.stage++;
+      t.progress = 0;
+    }
+  }
+  if (t.action !== "painting" && t.action !== "secure") t.done = t.stage >= 3;
 }
 export function pin(t: Trial): boolean {
   if (t.done || t.cooldown || t.action !== "loot") return false;
-  if (Math.abs(t.cursor - pinBand(t)) <= 0.18) {
+  if (Math.abs(t.cursor - pinBand(t)) <= 0.075) {
     t.stage++;
     t.done = t.stage >= 3;
     return true;
@@ -91,13 +119,60 @@ export function connect(t: Trial, cable: number, terminal: number) {
   );
 }
 export const terminalId = (t: Trial, index: number) =>
-  (index + (t.seed % 3)) % 3;
+  (index + (t.seed % 3) + t.panel) % 3;
 export function lever(t: Trial): boolean {
   t.connections.forEach((connection, i) => {
     t.correct[i] = connection >= 0 && terminalId(t, connection) === i;
     if (!t.correct[i]) t.connections[i] = -1;
   });
-  t.stage = t.correct.filter(Boolean).length;
-  t.done = t.stage === 3;
+  if (t.correct.every(Boolean)) {
+    t.panel++;
+    t.stage = t.panel === 2 ? 3 : 1;
+    t.done = t.panel === 2;
+    if (!t.done) {
+      t.connections = [-1, -1, -1];
+      t.correct = [false, false, false];
+    }
+  }
   return t.done;
+}
+/** Ordered closed silhouette. Coordinates normalised to the artwork, independent of DPI. */
+export function cutPath(t: Pick<Trial, "seed">): [number, number][] {
+  return Array.from({ length: 81 }, (_, i) => {
+    const a = -Math.PI / 2 + (i * Math.PI * 2) / 80;
+    const r = 1 + 0.08 * Math.sin(3 * a + (t.seed % 3) * 0.4);
+    return [0.5 + Math.cos(a) * 0.32 * r, 0.5 + Math.sin(a) * 0.35 * r];
+  });
+}
+export const cutAccuracy = (t: Trial) =>
+  Math.round(100 * (1 - t.cutErrors / Math.max(1, t.cutSamples)));
+export function cutAt(t: Trial, x: number, y: number): boolean {
+  if (
+    t.action !== "painting" ||
+    t.done ||
+    !Number.isFinite(x) ||
+    !Number.isFinite(y)
+  )
+    return false;
+  t.cutX = Math.max(0, Math.min(1, x));
+  t.cutY = Math.max(0, Math.min(1, y));
+  const path = cutPath(t);
+  t.cutSamples = Math.min(10000, t.cutSamples + 1);
+  let best = -1,
+    dist = Infinity;
+  for (let i = t.cutIndex; i < Math.min(81, t.cutIndex + 5); i++) {
+    const d = Math.hypot(x - path[i][0], y - path[i][1]);
+    if (d < dist) {
+      dist = d;
+      best = i;
+    }
+  }
+  if (dist > 0.045) {
+    t.cutErrors = Math.min(t.cutSamples, t.cutErrors + 1);
+    return false;
+  }
+  t.cutIndex = best + 1;
+  t.stage = Math.min(3, Math.floor(t.cutIndex / 27));
+  t.done = t.cutIndex >= 81 && cutAccuracy(t) >= 85;
+  return true;
 }

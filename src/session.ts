@@ -40,12 +40,12 @@ export class Session {
   lastPing = 0;
   state: Snapshot;
   last = "";
-  token = sessionStorage.getItem("pf-v1-token") || crypto.randomUUID();
+  token = sessionStorage.getItem("pf-v2-token") || crypto.randomUUID();
   constructor(
     public name: string,
     public changed: (s: Snapshot) => void,
   ) {
-    sessionStorage.setItem("pf-v1-token", this.token);
+    sessionStorage.setItem("pf-v2-token", this.token);
     this.state = {
       players: this.soloPlayers(),
       view: null,
@@ -82,7 +82,7 @@ export class Session {
     if (this.authority)
       try {
         sessionStorage.setItem(
-          "pf-v1-host",
+          "pf-v2-host",
           JSON.stringify({ room: this.room, data: this.authority.serialize() }),
         );
       } catch {}
@@ -150,19 +150,19 @@ export class Session {
     this.game = null;
     if (restore) {
       try {
-        const saved = JSON.parse(sessionStorage.getItem("pf-v1-host") || "");
+        const saved = JSON.parse(sessionStorage.getItem("pf-v2-host") || "");
         this.room = saved.room;
         this.authority = HostRoom.restore(saved.data);
         this.state.myId = this.authority.owner;
       } catch {
         this.online = false;
-        sessionStorage.removeItem("pf-v1-host");
+        sessionStorage.removeItem("pf-v2-host");
         this.state.error = "L’ancien salon a expiré. Créez un nouveau casse.";
         this.emit();
         return;
       }
     } else {
-      this.room = `pf-v1-${crypto.randomUUID().slice(0, 8)}`;
+      this.room = `pf-v2-${crypto.randomUUID().slice(0, 8)}`;
       this.state.myId = crypto.randomUUID();
       this.authority = new HostRoom(this.state.myId, this.name);
     }
@@ -177,7 +177,11 @@ export class Session {
     peer.on("open", () => {
       this.state.status = "online";
       this.state.error = "";
-      history.replaceState(null, "", `${location.pathname}#room=${this.room}`);
+      history.replaceState(
+        null,
+        "",
+        `${location.pathname}?v=2.0.0#room=${this.room}`,
+      );
       this.emit();
     });
     peer.on("connection", (conn) => this.accept(conn));
@@ -266,7 +270,7 @@ export class Session {
     conn.on("error", () => conn.close());
   }
   join(room: string) {
-    if (!/^pf-v1-[a-f0-9]{8}$/.test(room)) {
+    if (!/^pf-v2-[a-f0-9]{8}$/.test(room)) {
       this.state.error = "Code de salon invalide.";
       this.emit();
       return;
@@ -323,12 +327,12 @@ export class Session {
         return;
       }
       if (m.type === "snapshot" && m.data) {
-        sessionStorage.setItem("pf-v1-joined", this.room);
+        sessionStorage.setItem("pf-v2-joined", this.room);
         this.state = m.data;
         history.replaceState(
           null,
           "",
-          `${location.pathname}#room=${this.room}`,
+          `${location.pathname}?v=2.0.0#room=${this.room}`,
         );
         this.emit();
       }
@@ -383,7 +387,7 @@ export class Session {
     }
   }
   resume() {
-    if (sessionStorage.getItem("pf-v1-host")) this.createRoom(true);
+    if (sessionStorage.getItem("pf-v2-host")) this.createRoom(true);
   }
   leave() {
     this.stopped = true;
@@ -393,8 +397,8 @@ export class Session {
     this.authority = null;
     this.game = null;
     this.room = "";
-    sessionStorage.removeItem("pf-v1-host");
-    sessionStorage.removeItem("pf-v1-joined");
+    sessionStorage.removeItem("pf-v2-host");
+    sessionStorage.removeItem("pf-v2-joined");
     this.state = {
       players: this.soloPlayers(),
       view: null,

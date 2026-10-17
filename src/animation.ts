@@ -7,6 +7,7 @@ export const CLIPS = [
   "secure",
   "loot",
   "pocket",
+  "painting",
   "failure",
   "accuse",
   "celebrate",
@@ -54,7 +55,7 @@ export function pose(
     rotate("ArmR", "x", -1.25 - wave * 0.14);
     rotate("Head", "x", 0.25);
   }
-  if (clip === "loot") {
+  if (clip === "loot" || clip === "painting") {
     rotate("ArmL", "x", -1.1 + wave * 0.3);
     rotate("ArmR", "x", -0.6 - wave * 0.3);
     rotate("Head", "x", 0.15);

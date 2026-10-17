@@ -54,14 +54,15 @@ for x in [-5.8,-2.3,2.1,5.8]:
     cube('Column foot',(x,3.72,.32),(.45,.32,.24),walnut,.03)
 # Framed original geometric paintings, relief kept shallow.
 for i,x in enumerate([-4.35,-.35,4]):
-    cube('Gilt frame',(x,3.64,2.03),(1.64,.16,1.44),gold,.065)
-    cube('Frame inner',(x,3.53,2.03),(1.43,.07,1.23),walnut,.025)
-    cube('Original artwork',(x,3.48,2.03),(1.31,.035,1.11),paper,.01)
-    uv('Painted sun',(x-.25,3.445,2.22),(.3,.015,.3),orange if i!=1 else gold)
+    picture=empty('POST_Painting' if i==1 else 'Decor_Painting_'+str(i),(x,3.64,0))
+    cube('Gilt frame',(0,0,2.03),(1.64,.16,1.44),gold,.065,picture)
+    cube('Frame inner',(0,-.11,2.03),(1.43,.07,1.23),walnut,.025,picture)
+    cube('Original artwork',(0,-.16,2.03),(1.31,.035,1.11),paper,.01,picture)
+    uv('Painted sun',(-.25,-.195,2.22),(.3,.015,.3),orange if i!=1 else gold,picture)
     for k in range(3):
-        p=cube('Geometric brushstroke',(x+.12+k*.13,3.425,1.85+k*.12),(.2,.025,.65),blue if i!=2 else green,.012);p.rotation_euler[1]=-.4
-    cyl('Picture lamp base',(x,3.43,2.96),.12,.1,gold).rotation_euler[0]=math.pi/2
-    cube('Picture lamp',(x,3.34,2.86),(.8,.16,.10),gold,.035)
+        p=cube('Geometric brushstroke',(.12+k*.13,-.215,1.85+k*.12),(.2,.025,.65),blue if i!=2 else green,.012,picture);p.rotation_euler[1]=-.4
+    cyl('Picture lamp base',(0,-.21,2.96),.12,.1,gold,picture).rotation_euler[0]=math.pi/2
+    cube('Picture lamp',(0,-.3,2.86),(.8,.16,.10),gold,.035,picture)
 # Grand vault and a separate hinge and door.
 vault=empty('POST_Vault',(-3.65,1.65,0));groups['vault']=vault
 cube('Vault cabinet',(0,0,1.18),(2.25,1.4,2.3),iron,.15,vault)
@@ -133,17 +134,9 @@ for x in [-5.5,5.5]:
 for x in [-2,1.8]:
     cyl('Rope post',(x,-.5,.48),.045,.85,gold);cyl('Rope foot',(x,-.5,.12),.17,.10,gold);uv('Rope finial',(x,-.5,.95),(.095,.095,.095),gold)
 curve('Velvet rope',[(-2,-.5,.91),(-.1,-.5,.65),(1.8,-.5,.91)],.035,red)
-# Bench at left; escape van visible outside front edge.
+# Bench at left. Escape is communicated by the game result; no decorative car.
 cube('Bench cushion',(-4,-1.3,.48),(1.3,.55,.18),red,.08)
 for x in [-4.48,-3.52]:cube('Bench leg',(x,-1.3,.25),(.09,.45,.45),gold,.025)
-van=empty('PROP_Escape',(4.8,-4.7,0))
-cube('Van body',(0,0,.66),(1.5,2.35,.94),iron,.18,van)
-cube('Van cabin',(0,-.55,1.12),(1.4,1.05,.66),cream,.16,van)
-cube('Windshield',(0,-1.05,1.2),(1.12,.03,.34),black,.06,van)
-for x in [-.72,.72]:
-    for y in [-.75,.75]:cyl('Van wheel',(x,y,.34),.28,.17,black,van).rotation_euler[1]=math.pi/2
-for x in [-.48,.48]:uv('Headlight',(x,-1.2,.7),(.14,.035,.10),light,van)
-
 # Convert curves and batch only root static meshes. Keep all gameplay pivots separate.
 bpy.ops.object.select_all(action='DESELECT')
 for o in list(bpy.context.scene.objects):

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "generated": "2026-10-17",
   "assets": [
     {
@@ -16,8 +16,8 @@
     },
     {
       "path": "public/models/museum.glb",
-      "bytes": 1384580,
-      "sha256": "18693edbf257936f1126ba71581b7db9822b1c6af22531b18c1da6f17a30550b",
+      "bytes": 1320248,
+      "sha256": "52fb1b55a48a97c7db0fd72bc522fec04b7539b5dfb1b814c82b8eaa059b88fd",
       "source": "art/build_museum.py and art/finish_assets.py; original geometry"
     },
     {
@@ -181,6 +181,24 @@
       "bytes": 48554,
       "sha256": "63026c776cc8c77b8a36d3d1831c6c2d987ceb06bff3ab0f47f2988290f65663",
       "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/music/sneaking-motif-1.mp3",
+      "bytes": 8799888,
+      "sha256": "61b0faca29c5d2802471cb5e8ed6ba94ef8d89a3244e5b880822fa9a8ed3a4fb",
+      "source": "Music supplied by Julien from Documents/Plan foireux/songs; original MP3, no reencoding"
+    },
+    {
+      "path": "public/music/sneaking-motif-2.mp3",
+      "bytes": 8525932,
+      "sha256": "5b871cfe2529781ba41ced9b958563aa121589484023c929a2f350f37cf4f12f",
+      "source": "Music supplied by Julien from Documents/Plan foireux/songs; original MP3, no reencoding"
+    },
+    {
+      "path": "public/music/sneaky-museum-heist.mp3",
+      "bytes": 8295334,
+      "sha256": "d5f90b2024fe88317a9aed4ad29c00f13fc4de1f1bd3c9f8c1b9f2ff3a744e25",
+      "source": "Music supplied by Julien from Documents/Plan foireux/songs; original MP3, no reencoding"
     }
   ]
 }
