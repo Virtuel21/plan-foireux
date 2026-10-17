@@ -2,6 +2,7 @@
 
 - `public/models/burglar.glb` : modèle original construit pour ce projet, environ 0,94 Mo. Une seule base et des variantes de la matière `Cloth`.
 - `art/build_character.py` : script de création original. `art/burglar.blend` : source Blender éditable.
+- `public/portraits/0.png` à `5.png` : rendus Blender RGBA du même modèle, 160 × 192 px, un par couleur. Le gardien réutilise également ce modèle, sans masque ni sac et en bleu.
 - Musée, coffre, vitrine, couronne, grille, lasers, bancs, cordons et végétaux : géométries originales dans `src/scene.ts`. Les tableaux sont des textures de paysages dessinées par Canvas au lancement, sans image externe.
 - Interface et pictogrammes : SVG originaux dans `src/icons.ts`. Les avatars UI sont des représentations stylisées en CSS ; les modèles 3D sont visibles dans la scène.
 - Sons : synthèse Web Audio, aucun enregistrement externe.
