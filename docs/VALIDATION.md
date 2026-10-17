@@ -20,6 +20,12 @@
 - Salon WebRTC réel avec deux humains simulés par deux onglets et quatre bots : engagement de fouille invité transmis, rechargement pendant la manipulation, même siège et même fouille irréversible retrouvés. Après rotation, le vrai chiffre 7 est arrivé dans le carnet privé ; l'annonce publique 2 était visible dans le carnet de l'hôte sans la valeur privée. Les deux consoles n'ont relevé ni erreur ni avertissement.
 - Après correction du cinéma trop haut, révélation à 740 × 360 : 6 étiquettes de gain sur 6 visibles, aucune intersection entre leurs rectangles DOM, liens vers les personnages et six avatars sur une seule rangée. La liste d'avatars est recentrée au début de chaque phase pour éviter de conserver le défilement d'une ancienne consultation du carnet.
 
+### Publication vérifiée
+
+- Le workflow [39023330759](https://github.com/Virtuel21/plan-foireux/actions/runs/39023330759) du commit `2abb5c1` a terminé avec succès : tests, build et déploiement Pages.
+- La version publique `?v=2abb5c1` a été chargée puis jouée : garde portrait à 390 × 844, retour en paysage à 740 × 360, annonce de poste, choix secret de vol et révélation à six.
+- Sur cette révélation publique : six gains visibles, trois avatars rouges, défilement de l'équipe et des décisions réinitialisé à zéro, aucun débordement horizontal et aucune erreur ni avertissement console.
+
 ### Limites
 
 Ces parcours vérifient le fonctionnement et la lisibilité des états, sans prouver la compréhension d'un nouveau joueur ni l'amusement d'un groupe humain. Pas d'essai sur téléphone physique ou Safari/iOS. La garde portrait est vérifiable en navigateur ; la rotation matérielle et l'API de verrouillage paysage ne sont pas garanties sur chaque appareil. Les restrictions réseau et l'hôte de confiance décrits plus bas restent applicables.
