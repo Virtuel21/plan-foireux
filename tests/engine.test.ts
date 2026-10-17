@@ -437,6 +437,7 @@ test("recommendations include current turn and command validation rejects malfor
     null,
     {},
     { type: "__proto__", turn: 1 },
+    { type: { toString: null, valueOf: null }, turn: 1 },
     { type: "choose", turn: 1, choice: { action: "pocket", target: "0" } },
     { type: "choose", turn: 1, choice: { action: "drill", target: "3" } },
     { type: "result", turn: 1, success: true, money: 999 },

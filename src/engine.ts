@@ -245,6 +245,7 @@ export function apply(
     !c ||
     typeof c !== "object" ||
     Array.isArray(c) ||
+    typeof c.type !== "string" ||
     !g.players.some((p) => p.id === id) ||
     c.turn !== g.turn ||
     g.phase === "ended" ||

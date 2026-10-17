@@ -11,9 +11,9 @@ Ces résultats distinguent exécution automatique, observation visuelle et limit
 
 ## Navigateur et interface
 
-Dix parcours Chrome ont été exécutés avec succès via Playwright, sur la version locale de production. Les six formats : **1440×900, 844×390, 740×360, 667×375, 390×844 et 320×740**.
+Onze parcours Chrome ont été exécutés avec succès via Playwright, sur la version locale de production. Les six formats : **1440×900, 844×390, 740×360, 667×375, 390×844 et 320×740**.
 
-Les vérifications mesurent les sept repères du musée : cibles d’au moins 44×44 pixels CSS, absence de recouvrement, maintien dans le viewport, absence de débordement horizontal, sélection visible et gain affiché. Les contrôles paysage utilisent les safe areas et des lignes d’ancrage qui dégagent les modèles. Les quatre épreuves ont été terminées par leurs vrais contrôles. Les câbles sont validés au clic, au glisser, au clavier, et par taps pendant le test réseau. La préférence de mouvement réduit et la restitution du focus après une boîte de dialogue sont vérifiées.
+Les vérifications mesurent les sept repères du musée : cibles d’au moins 44×44 pixels CSS, absence de recouvrement, maintien dans le viewport, absence de débordement horizontal, sélection visible et gain affiché. Les contrôles paysage utilisent les safe areas et des lignes d’ancrage qui dégagent les modèles. Les quatre épreuves ont été terminées par leurs vrais contrôles. Un parcours tactile supplémentaire utilise de vrais événements de contact Chrome : maintenir/relâcher réussit la perceuse et le sac, puis des taps réussissent les trois goupilles. Les câbles sont validés au clic, au glisser, au clavier, et par taps pendant le test réseau. La préférence de mouvement réduit et la restitution du focus après une boîte de dialogue sont vérifiées.
 
 Une observation visuelle a été réalisée sur les captures du salon, des choix, des quatre épreuves et de la révélation. Les polices sont locales. Contrastes mesurés des couples principaux : texte/surface 11,75:1 ; texte secondaire/surface 8,16:1 ; bouton principal 9,78:1 ; texte des marqueurs 10,45:1.
 
