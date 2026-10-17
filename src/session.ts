@@ -1,137 +1,459 @@
-import Peer, { type DataConnection } from 'peerjs';
-import { createGame, publicView, apply, advance, botCommand, ACTIONS, COLORS, type Command, type Player, type Game, type View } from './engine';
-export type Chat={id:string;name:string;text:string};
-export type Snapshot={players:Player[];view:View|null;myId:string;host:boolean;room:string;status:string;chat:Chat[];error:string};
-type MessageBudget={tokens:number;updated:number};
-const uid=()=>crypto.randomUUID();
-const PING_INTERVAL=5000, HEARTBEAT_TIMEOUT=18000, DISCONNECT_GRACE=20000, REVEAL_MIN=8000;
-const COMMAND_TYPES=['promise','choose','vote','begin-search','inspect','claim','continue'];
-const COMMAND_FIELDS=['type','action','target','code','step','turn'];
-function readCommand(raw:unknown):Command|null {
-  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
-  const c=raw as Record<string,unknown>;
-  if(Object.keys(c).some(k=>!COMMAND_FIELDS.includes(k))||typeof c.type!=='string'||!COMMAND_TYPES.includes(c.type)||typeof c.turn!=='number'||!Number.isSafeInteger(c.turn)||c.turn<1)return null;
-  if(c.action!==undefined&&(typeof c.action!=='string'||!ACTIONS.includes(c.action as Command['action']&string)))return null;
-  if(c.target!==undefined&&(typeof c.target!=='string'||c.target.length>80))return null;
-  if(c.code!==undefined&&(typeof c.code!=='string'||c.code.length>5))return null;
-  if(c.step!==undefined&&(typeof c.step!=='number'||!Number.isInteger(c.step)||c.step<0||c.step>11))return null;
-  return {type:c.type,turn:c.turn,...(c.action===undefined?{}:{action:c.action as Command['action']}),...(c.target===undefined?{}:{target:c.target as string}),...(c.code===undefined?{}:{code:c.code as string}),...(c.step===undefined?{}:{step:c.step as number})};
-}
+import Peer, { type DataConnection } from "peerjs";
+import {
+  advance,
+  apply,
+  botAct,
+  createGame,
+  player,
+  publicView,
+  CONFIG,
+  type Command,
+  type Game,
+  type Player,
+  type View,
+} from "./engine";
+import { HostRoom } from "./host";
+export type Snapshot = {
+  players: Player[];
+  view: View | null;
+  myId: string;
+  host: boolean;
+  room: string;
+  status: string;
+  error: string;
+};
 export class Session {
-  players:Player[]=[];game:Game|null=null;view:View|null=null;myId='you';host=true;room='';status='local';error='';chat:Chat[]=[];
-  peer:Peer|null=null;connection:DataConnection|null=null;connections=new Map<string,DataConnection>();tokens=new Map<string,string>();
-  token=sessionStorage.getItem('pf-token')??uid();lastTurn=0;phaseStart=Date.now();lastSnapshot='';reconnectTimer:ReturnType<typeof setTimeout>|null=null;
-  lastSeen=new Map<string,number>();commandBudgets=new Map<string,MessageBudget>();chatBudgets=new Map<string,MessageBudget>();disconnectedAt=new Map<string,number>();lastPingAt=0;lastHostSeen=0;destroyed=false;
-  constructor(public name:string,public changed:(s:Snapshot)=>void) {sessionStorage.setItem('pf-token',this.token);this.resetPlayers();setInterval(()=>this.tick(),250);}
-  resetPlayers() {this.myId='you';this.players=[this.makePlayer(this.myId,this.name,false,0),...['Léa','Max','Sarah'].map((n,i)=>this.makePlayer(`bot-${i}`,n,true,i+1))];}
-  makePlayer(id:string,name:string,bot:boolean,index:number):Player{return {id,name:name.trim().slice(0,18)||'Braqueur',bot,online:true,color:COLORS[index%6],active:true,money:0,promise:null,ready:false,exposed:null};}
-  snapshot():Snapshot{return {players:this.players,view:this.host&&this.game?publicView(this.game,this.myId):this.view,myId:this.myId,host:this.host,room:this.room,status:this.status,chat:this.chat,error:this.error};}
-  emit(force=false) {
-    const s=this.snapshot(),key=JSON.stringify(s);if(!force&&key===this.lastSnapshot)return;this.lastSnapshot=key;this.changed(s);
-    if(this.host)for(const [id,conn]of this.connections)if(conn.open)try{conn.send({type:'snapshot',data:{...s,view:this.game?publicView(this.game,id):null,myId:id,host:false}});}catch{conn.close();}
+  game: Game | null = null;
+  authority: HostRoom | null = null;
+  peer: Peer | null = null;
+  connection: DataConnection | null = null;
+  clients = new Map<string, DataConnection>();
+  seen = new Map<string, number>();
+  sent = new Map<string, string>();
+  room = "";
+  online = false;
+  offset = 0;
+  stopped = false;
+  reconnecting = false;
+  absentSince = 0;
+  lastHostSeen = 0;
+  lastPing = 0;
+  state: Snapshot;
+  last = "";
+  token = sessionStorage.getItem("pf-v1-token") || crypto.randomUUID();
+  constructor(
+    public name: string,
+    public changed: (s: Snapshot) => void,
+  ) {
+    sessionStorage.setItem("pf-v1-token", this.token);
+    this.state = {
+      players: this.soloPlayers(),
+      view: null,
+      myId: "you",
+      host: true,
+      room: "",
+      status: "local",
+      error: "",
+    };
+    setInterval(() => this.tick(), 100);
+    window.addEventListener("pagehide", () => {
+      if (this.authority) {
+        this.clients.forEach((conn) => {
+          if (conn.open) conn.send({ type: "host-away" });
+        });
+        this.authority.players.forEach((p) => this.authority!.offline(p.id));
+        this.save();
+      } else this.send({ type: "away" });
+      this.peer?.destroy();
+    });
   }
-  async createRoom() {
-    if(this.room||this.status==='connecting')return;this.error='';this.status='connecting';this.emit();
-    const peer=new Peer(`pf-${uid().slice(0,12)}`);this.peer=peer;
-    peer.on('connection',c=>this.accept(c));
-    peer.on('open',id=>{this.room=id;this.status='online';this.host=true;history.replaceState(null,'',`${location.pathname}#room=${encodeURIComponent(id)}`);this.emit();});
-    peer.on('disconnected',()=>{if(!peer.destroyed){this.status='reconnecting';this.emit();peer.reconnect();}});
-    peer.on('error',err=>{this.error=`Le salon ne peut pas se connecter (${err.type}). Le mode solo reste disponible.`;this.status='error';this.emit();});
+  soloPlayers() {
+    return [
+      player("you", this.name, 0),
+      ...["Léa", "Sarah", "Max"].map((n, i) =>
+        player(`bot${i}`, n, i + 1, true),
+      ),
+    ];
   }
-  markOffline(id:string,now=Date.now()) {
-    const p=this.players.find(p=>p.id===id);if(p)p.online=false;
-    if(!this.disconnectedAt.has(id))this.disconnectedAt.set(id,now);
+  now() {
+    return Date.now() + this.offset;
   }
-  consumeBudget(budgets:Map<string,MessageBudget>,id:string,rate:number,capacity:number,now=Date.now()) {
-    const budget=budgets.get(id)??{tokens:capacity,updated:now};
-    budget.tokens=Math.min(capacity,budget.tokens+Math.max(0,now-budget.updated)*rate/1000);budget.updated=now;budgets.set(id,budget);
-    if(budget.tokens<1)return false;budget.tokens--;return true;
+  save() {
+    if (this.authority)
+      try {
+        sessionStorage.setItem(
+          "pf-v1-host",
+          JSON.stringify({ room: this.room, data: this.authority.serialize() }),
+        );
+      } catch {}
   }
-  accept(conn:DataConnection) {
-    let assigned:string|null=null;let introduced=false;
-    const expiry=setTimeout(()=>{if(!introduced)conn.close();},12000);
-    conn.on('data',(raw:unknown)=>{
-      if(!raw||typeof raw!=='object'||Array.isArray(raw))return;const msg=raw as Record<string,unknown>;
-      if(msg.type==='hello'&&!introduced) {
-        introduced=true;clearTimeout(expiry);if(typeof msg.token!=='string'||!msg.token.length||msg.token.length>80||typeof msg.name!=='string'||msg.name.length>80){conn.close();return;}
-        const existing=this.tokens.get(msg.token);let replaced:DataConnection|undefined;
-        if(existing){assigned=existing;replaced=this.connections.get(existing);}
-        else {
-          if(this.game){conn.send({type:'rejected',text:'La partie a déjà commencé. Rejoins le prochain casse.'});setTimeout(()=>conn.close(),300);return;}
-          const humans=this.players.filter(p=>!p.bot);if(humans.length>=6){conn.send({type:'rejected',text:'Le salon est complet (6 joueurs).'});setTimeout(()=>conn.close(),300);return;}
-          const bot=this.players.find(p=>p.bot);assigned=bot?.id??uid();const index=bot?this.players.indexOf(bot):this.players.length;
-          const player=this.makePlayer(assigned,msg.name,false,index);if(bot)this.players[index]=player;else this.players.push(player);this.tokens.set(msg.token,assigned);
+  emit() {
+    if (this.authority) {
+      this.state.players = this.authority.players;
+      this.state.view = this.authority.view(this.state.myId);
+      this.save();
+    }
+    const key = JSON.stringify(this.state);
+    if (key !== this.last) {
+      this.last = key;
+      this.changed(this.state);
+    }
+    if (this.authority)
+      for (const [id, conn] of this.clients) {
+        const data = {
+          players: this.authority.players,
+          view: this.authority.view(id),
+          myId: id,
+          host: false,
+          room: this.room,
+          status: "online",
+          error: "",
+        };
+        const k = JSON.stringify(data);
+        if (conn.open && this.sent.get(id) !== k) {
+          this.sent.set(id, k);
+          conn.send({ type: "snapshot", data, hostNow: Date.now() });
         }
-        this.connections.set(assigned,conn);const p=this.players.find(p=>p.id===assigned);if(p)p.online=true;
-        this.disconnectedAt.delete(assigned);this.lastSeen.set(assigned,Date.now());replaced?.close();this.emit(true);return;
       }
-      if(!assigned||this.connections.get(assigned)!==conn)return;
-      this.lastSeen.set(assigned,Date.now());
-      if(msg.type==='ping'){if(conn.open)conn.send({type:'pong'});return;}
-      if(msg.type==='command'&&this.game) {
-        if(!this.consumeBudget(this.commandBudgets,assigned,12,6))return;
-        const c=readCommand(msg.command);if(c&&apply(this.game,assigned,c))this.emit(true);
+  }
+  solo() {
+    if (this.online) return;
+    this.state.players = this.soloPlayers();
+    this.game = createGame(
+      this.state.players,
+      crypto.getRandomValues(new Uint32Array(1))[0],
+      Date.now(),
+      () => crypto.getRandomValues(new Uint32Array(1))[0] / 0x100000000,
+    );
+    this.state.view = publicView(this.game, "you");
+    this.emit();
+  }
+  command(c: Omit<Command, "turn">) {
+    const v = this.state.view;
+    if (!v) return;
+    const command = { ...c, turn: v.turn } as Command;
+    if (this.game) {
+      if (apply(this.game, "you", command)) {
+        this.state.view = publicView(this.game, "you");
+        this.emit();
       }
-      if(msg.type==='chat'&&typeof msg.text==='string'&&this.consumeBudget(this.chatBudgets,assigned,2,2))this.addChat(assigned,msg.text);
+    } else if (this.authority) {
+      if (this.authority.command(this.state.myId, command)) this.emit();
+    } else this.send({ type: "command", command });
+  }
+  createRoom(restore = false) {
+    if (this.online && !restore) return;
+    this.stopped = false;
+    this.online = true;
+    this.state.status = "connecting";
+    this.state.error = "";
+    this.game = null;
+    if (restore) {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem("pf-v1-host") || "");
+        this.room = saved.room;
+        this.authority = HostRoom.restore(saved.data);
+        this.state.myId = this.authority.owner;
+      } catch {
+        this.online = false;
+        sessionStorage.removeItem("pf-v1-host");
+        this.state.error = "L’ancien salon a expiré. Créez un nouveau casse.";
+        this.emit();
+        return;
+      }
+    } else {
+      this.room = `pf-v1-${crypto.randomUUID().slice(0, 8)}`;
+      this.state.myId = crypto.randomUUID();
+      this.authority = new HostRoom(this.state.myId, this.name);
+    }
+    this.state.host = true;
+    this.state.room = this.room;
+    this.emit();
+    this.openHostPeer();
+  }
+  openHostPeer() {
+    const peer = new Peer(this.room);
+    this.peer = peer;
+    peer.on("open", () => {
+      this.state.status = "online";
+      this.state.error = "";
+      history.replaceState(null, "", `${location.pathname}#room=${this.room}`);
+      this.emit();
     });
-    conn.on('close',()=>{clearTimeout(expiry);if(assigned&&this.connections.get(assigned)===conn){this.connections.delete(assigned);this.lastSeen.delete(assigned);this.markOffline(assigned);this.emit();}});
-    conn.on('error',()=>conn.close());
-  }
-  join(room:string) {
-    this.host=false;this.room=room;this.status='connecting';this.error='';this.game=null;this.players=[];this.emit();
-    this.peer=new Peer();this.peer.on('open',()=>this.connect());this.peer.on('disconnected',()=>{if(this.peer&&!this.peer.destroyed)this.peer.reconnect();});
-    this.peer.on('error',err=>{this.status='error';this.error=err.type==='peer-unavailable'?'Le salon est introuvable. L’hôte doit garder sa page ouverte.':`Connexion interrompue (${err.type}). Tu peux réessayer.`;this.emit();});
-  }
-  queueReconnect(conn:DataConnection) {
-    if(this.connection!==conn||this.status==='rejected'||this.destroyed)return;
-    if(this.reconnectTimer)return;this.status='reconnecting';
-    this.reconnectTimer=setTimeout(()=>{this.reconnectTimer=null;this.connect();},3000);this.emit();
-  }
-  connect() {
-    if(!this.peer||this.peer.destroyed||this.destroyed)return;
-    if(this.reconnectTimer){clearTimeout(this.reconnectTimer);this.reconnectTimer=null;}
-    const previous=this.connection;this.connection=null;previous?.close();
-    const conn=this.peer.connect(this.room,{reliable:true});this.connection=conn;this.lastHostSeen=Date.now();this.lastPingAt=0;
-    conn.on('open',()=>{if(this.connection!==conn)return;this.status='connecting';this.error='';this.lastHostSeen=Date.now();conn.send({type:'hello',token:this.token,name:this.name});this.emit();});
-    conn.on('data',(raw:unknown)=>{
-      if(this.connection!==conn||!raw||typeof raw!=='object'||Array.isArray(raw))return;const msg=raw as Record<string,unknown>;
-      if(msg.type==='pong'){this.lastHostSeen=Date.now();return;}
-      if(msg.type==='snapshot'&&msg.data&&typeof msg.data==='object'){const s=msg.data as Snapshot;this.lastHostSeen=Date.now();this.players=s.players;this.view=s.view;this.myId=s.myId;this.chat=s.chat;this.status='online';this.error='';this.emit();}
-      if(msg.type==='rejected'){this.lastHostSeen=Date.now();this.error=String(msg.text);this.status='rejected';this.emit();}
+    peer.on("connection", (conn) => this.accept(conn));
+    peer.on("disconnected", () => {
+      if (!peer.destroyed) peer.reconnect();
     });
-    conn.on('close',()=>this.queueReconnect(conn));
-    conn.on('error',()=>{if(this.connection!==conn)return;this.error='La connexion directe n’a pas abouti. Certains réseaux bloquent WebRTC. Réessaie sur un autre réseau.';conn.close();this.queueReconnect(conn);});
+    peer.on("error", (err) => {
+      if (err.type === "unavailable-id") {
+        peer.destroy();
+        setTimeout(() => {
+          if (this.peer === peer && !this.stopped) this.openHostPeer();
+        }, 2500);
+      } else {
+        this.state.error = `Le salon n’a pas pu se connecter (${err.type}). Le mode bots reste disponible.`;
+        this.state.status = "error";
+        this.emit();
+      }
+    });
   }
-  start() {
-    if(!this.host)return;const seed=crypto.getRandomValues(new Uint32Array(1))[0];this.game=createGame(this.players,seed);this.players=this.game.players;this.lastTurn=0;this.emit();
+  accept(conn: DataConnection) {
+    let assigned = "",
+      count = 0,
+      windowAt = Date.now();
+    const intro = setTimeout(() => {
+      if (!assigned) conn.close();
+    }, 10000);
+    conn.on("data", (raw: unknown) => {
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+      const m = raw as Record<string, any>;
+      if (Date.now() - windowAt > 1000) {
+        count = 0;
+        windowAt = Date.now();
+      }
+      if (++count > 40) return;
+      if (
+        m.type === "hello" &&
+        !assigned &&
+        typeof m.token === "string" &&
+        typeof m.name === "string"
+      ) {
+        try {
+          assigned = this.authority!.join(m.token, m.name);
+        } catch (e) {
+          conn.send({ type: "rejected", text: (e as Error).message });
+          setTimeout(() => conn.close(), 100);
+          return;
+        }
+        clearTimeout(intro);
+        const previous = this.clients.get(assigned);
+        this.clients.set(assigned, conn);
+        this.sent.delete(assigned);
+        previous?.close();
+        this.seen.set(assigned, Date.now());
+        this.emit();
+        return;
+      }
+      if (!assigned || this.clients.get(assigned) !== conn) return;
+      this.seen.set(assigned, Date.now());
+      if (m.type === "away") {
+        this.authority?.offline(assigned);
+        this.emit();
+        conn.close();
+        return;
+      }
+      if (m.type === "ping") {
+        conn.send({ type: "pong", hostNow: Date.now() });
+        return;
+      }
+      if (m.type === "command" && this.authority!.command(assigned, m.command))
+        this.emit();
+      if (m.type === "ready") {
+        this.authority!.ready(assigned, m.ready === true);
+        this.emit();
+      }
+    });
+    conn.on("close", () => {
+      clearTimeout(intro);
+      if (assigned && this.clients.get(assigned) === conn) {
+        this.clients.delete(assigned);
+        this.seen.delete(assigned);
+        this.sent.delete(assigned);
+        this.authority?.offline(assigned);
+        this.emit();
+      }
+    });
+    conn.on("error", () => conn.close());
   }
-  backToLobby() {if(!this.host)return;this.game=null;this.view=null;this.players.forEach(p=>{p.active=true;p.exposed=null;p.money=0;p.promise=null;p.ready=false;});this.emit();}
-  rename(name:string) {this.name=name.trim().slice(0,18)||'Julien';if(this.host&&!this.game){this.players[0].name=this.name;this.emit();}}
-  addBot(){if(this.host&&!this.game&&this.players.length<6){const i=this.players.length;this.players.push(this.makePlayer(uid(),['Nico','Zoé'][i-4]??'Alex',true,i));this.emit();}}
-  removeBot(id:string){if(this.host&&!this.game&&this.players.length>4){this.players=this.players.filter(p=>p.id!==id||!p.bot);this.emit();}}
-  command(command:Command){const c=readCommand(command);if(!c)return;if(this.host&&this.game){if(apply(this.game,this.myId,c))this.emit(true);}else if(this.connection?.open)this.connection.send({type:'command',command:c});}
-  sendChat(text:string){if(this.host)this.addChat(this.myId,text);else if(this.connection?.open)this.connection.send({type:'chat',text});}
-  addChat(id:string,text:string){const p=this.players.find(p=>p.id===id);if(!p||!text.trim())return;this.chat.push({id:uid(),name:p.name,text:text.trim().slice(0,160)});this.chat=this.chat.slice(-30);this.emit();}
-  tick() {
-    const now=Date.now();
-    if(!this.host){
-      const conn=this.connection;if(!conn||this.status==='rejected'||this.destroyed)return;
-      if(now-this.lastHostSeen>HEARTBEAT_TIMEOUT){conn.close();this.queueReconnect(conn);return;}
-      if(conn.open&&now-this.lastPingAt>=PING_INTERVAL){this.lastPingAt=now;try{conn.send({type:'ping'});}catch{conn.close();this.queueReconnect(conn);}}
+  join(room: string) {
+    if (!/^pf-v1-[a-f0-9]{8}$/.test(room)) {
+      this.state.error = "Code de salon invalide.";
+      this.emit();
       return;
     }
-    let networkChanged=false;
-    for(const [id,conn]of this.connections)if(now-(this.lastSeen.get(id)??now)>HEARTBEAT_TIMEOUT){this.connections.delete(id);this.lastSeen.delete(id);this.markOffline(id,now);conn.close();networkChanged=true;}
-    if(!this.game){if(networkChanged)this.emit();return;}const g=this.game;
-    if(g.turn!==this.lastTurn){this.lastTurn=g.turn;this.phaseStart=now;}
-    const elapsed=now-this.phaseStart,humanReady=this.players.filter(h=>!h.bot&&h.online&&h.active).every(h=>h.ready);
-    let privateChanged=false;
-    for(const p of this.players) {
-      if(!p.active||(!p.bot&&p.online))continue;
-      if(!p.bot){if(!this.disconnectedAt.has(p.id))this.disconnectedAt.set(p.id,now);if(now-this.disconnectedAt.get(p.id)!<DISCONNECT_GRACE)continue;}
-      const delay=(g.phase==='reveal'?REVEAL_MIN:humanReady?1300:6500)+this.players.indexOf(p)*350;
-      if(elapsed>=delay){const cmd=botCommand(g,p);if(cmd&&apply(g,p.id,cmd,now))privateChanged=true;}
+    this.online = true;
+    this.stopped = false;
+    this.room = room;
+    this.game = null;
+    this.state = {
+      ...this.state,
+      host: false,
+      status: "connecting",
+      room,
+      error: "",
+      players: [],
+    };
+    this.lastHostSeen = Date.now();
+    this.emit();
+    const peer = new Peer();
+    this.peer = peer;
+    peer.on("open", () => this.connect());
+    peer.on("disconnected", () => {
+      if (!peer.destroyed) peer.reconnect();
+    });
+    peer.on("error", (err) => {
+      if (err.type === "peer-unavailable" || err.type === "network")
+        this.queueReconnect();
+      else {
+        this.state.error = `Connexion au salon impossible (${err.type}).`;
+        this.state.status = "error";
+        this.emit();
+      }
+    });
+  }
+  connect() {
+    if (!this.peer || this.peer.destroyed || this.stopped) return;
+    this.reconnecting = false;
+    const previous = this.connection;
+    this.connection = null;
+    previous?.close();
+    const conn = this.peer.connect(this.room, { reliable: true });
+    this.connection = conn;
+    conn.on("open", () =>
+      conn.send({ type: "hello", token: this.token, name: this.name }),
+    );
+    conn.on("data", (raw: unknown) => {
+      if (this.connection !== conn || !raw || typeof raw !== "object") return;
+      const m = raw as Record<string, any>;
+      this.lastHostSeen = Date.now();
+      this.absentSince = 0;
+      if (typeof m.hostNow === "number") this.offset = m.hostNow - Date.now();
+      if (m.type === "host-away") {
+        this.queueReconnect();
+        return;
+      }
+      if (m.type === "snapshot" && m.data) {
+        sessionStorage.setItem("pf-v1-joined", this.room);
+        this.state = m.data;
+        history.replaceState(
+          null,
+          "",
+          `${location.pathname}#room=${this.room}`,
+        );
+        this.emit();
+      }
+      if (m.type === "rejected") {
+        this.stopped = true;
+        this.state.error = m.text;
+        this.state.status = "error";
+        this.state.view = null;
+        this.emit();
+      }
+    });
+    conn.on("close", () => {
+      if (this.connection === conn) this.queueReconnect();
+    });
+    conn.on("error", () => {
+      if (this.connection === conn) this.queueReconnect();
+    });
+  }
+  queueReconnect() {
+    if (this.reconnecting || this.stopped) return;
+    this.reconnecting = true;
+    this.absentSince ||= Date.now();
+    this.state.status = "reconnecting";
+    this.state.error = "Connexion à l’hôte interrompue. Le casse est en pause.";
+    this.emit();
+    setTimeout(() => {
+      this.reconnecting = false;
+      this.connect();
+    }, 2000);
+  }
+  send(data: unknown) {
+    if (this.connection?.open) this.connection.send(data);
+  }
+  start() {
+    if (this.authority?.start(this.state.myId)) this.emit();
+  }
+  ready(ready: boolean) {
+    if (this.authority) {
+      this.authority.ready(this.state.myId, ready);
+      this.emit();
+    } else this.send({ type: "ready", ready });
+  }
+  lobby() {
+    if (this.authority) {
+      this.authority.lobby(this.state.myId);
+      this.emit();
+    } else if (!this.online) {
+      this.game = null;
+      this.state.view = null;
+      this.state.players = this.soloPlayers();
+      this.emit();
     }
-    if(g.phase!=='reveal'||elapsed>=REVEAL_MIN)advance(g,now);this.emit(privateChanged);
+  }
+  resume() {
+    if (sessionStorage.getItem("pf-v1-host")) this.createRoom(true);
+  }
+  leave() {
+    this.stopped = true;
+    this.online = false;
+    this.peer?.destroy();
+    this.clients.clear();
+    this.authority = null;
+    this.game = null;
+    this.room = "";
+    sessionStorage.removeItem("pf-v1-host");
+    sessionStorage.removeItem("pf-v1-joined");
+    this.state = {
+      players: this.soloPlayers(),
+      view: null,
+      myId: "you",
+      host: true,
+      room: "",
+      status: "local",
+      error: "",
+    };
+    this.emit();
+  }
+  tick() {
+    const now = Date.now();
+    if (this.game) {
+      this.game.players
+        .filter((p) => p.bot)
+        .forEach((p) => botAct(this.game!, p, now));
+      advance(this.game, now);
+      this.state.players = this.game.players;
+      this.state.view = publicView(this.game, "you");
+      this.emit();
+      return;
+    }
+    if (this.authority) {
+      for (const [id, conn] of this.clients)
+        if (now - (this.seen.get(id) ?? now) > 15000) {
+          conn.close();
+          this.authority.offline(id, now);
+          this.clients.delete(id);
+        }
+      this.authority.tick(now);
+      this.emit();
+      return;
+    }
+    if (!this.online || this.stopped) return;
+    if (this.absentSince && now - this.absentSince >= CONFIG.reconnect) {
+      this.stopped = true;
+      if (this.state.view) {
+        this.state.view.phase = "ended";
+        this.state.view.turn++;
+        this.state.view.pausedAt = null;
+        this.state.view.result = {
+          kind: "aborted",
+          winners: [],
+          kings: [],
+          text: "Reconnexion expirée. Partie terminée sans classement.",
+        };
+        this.state.status = "online";
+        this.emit();
+      }
+      return;
+    }
+    if (now - this.lastHostSeen > 15000) {
+      this.connection?.close();
+      this.queueReconnect();
+    }
+    if (now - this.lastPing > 4000) {
+      this.lastPing = now;
+      this.send({ type: "ping" });
+    }
   }
 }

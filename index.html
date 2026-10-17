@@ -1,2 +1,33 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#102737"><meta name="description" content="Un musée, un butin, un agent infiltré. Préparez le casse entre amis… et méfiez-vous des promesses."><title>Plan Foireux — Le casse entre amis</title></head><body><div id="app"><header id="top"></header><main><section class="playfield" aria-label="Le musée"><div id="scene"></div><div id="scene-ui"></div></section><aside id="crew"></aside><section id="controls"></section></main><footer id="footer"></footer></div><div id="modal-root"></div><section id="orientation-guard" hidden role="dialog" aria-modal="true" aria-labelledby="orientation-title"><svg viewBox="0 0 120 100" aria-hidden="true"><rect x="41" y="12" width="38" height="74" rx="8" fill="none" stroke="currentColor" stroke-width="5" transform="rotate(90 60 49)"/><path d="M23 24a42 42 0 0 1 76 5m0 0-16-3m16 3 1-16" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><circle cx="86" cy="49" r="3" fill="currentColor"/></svg><h1 id="orientation-title">Tourne ton téléphone.</h1><p>Le casse se joue en paysage.<br>Garde le musée et tes deux choix sous les yeux.</p><button data-action="landscape" class="primary">Activer le plein écran</button><small>Si l’écran ne pivote pas, désactive le verrouillage de rotation de ton téléphone.</small></section><div id="toast" role="status"></div><script type="module" src="/src/main.ts"></script></body></html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#11232c" />
+    <meta
+      name="description"
+      content="Cinq tours, quatre complices, un FBI. Un braquage de musée, des promesses publiques et des choix secrets."
+    />
+    <title>Plan Foireux — Un casse presque parfait</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#phase">Aller au jeu</a>
+    <div id="app">
+      <header id="top"></header>
+      <section id="phase" tabindex="-1"></section>
+      <main id="playfield">
+        <div id="scene"></div>
+        <div id="lobby"></div>
+      </main>
+      <footer id="footer"></footer>
+    </div>
+    <div id="trial-root" hidden></div>
+    <div id="modal-root"></div>
+    <div id="pause-root" hidden></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

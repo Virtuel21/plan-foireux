@@ -1,141 +1,67 @@
-import { ALARM_MAX, COLORS, type Action, type View } from './engine';
-import type { Snapshot } from './session';
-import { icon } from './icons';
-
-export const esc=(s:unknown)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-export const money=(n:number)=>new Intl.NumberFormat('fr-FR',{maximumFractionDigits:1}).format(n);
-export const button=(label:string,action:string,kind='primary',extra='')=>`<button class="${kind}" data-action="${action}" ${extra}>${label}</button>`;
-export const actionName=(v:View,a:Action|null)=>a==='a'?v.rooms[v.roomIndex].a.short:a==='b'?v.rooms[v.roomIndex].b.short:a==='loot'?'Voler pour moi':a==='search'?'Fouiller une cache':a==='repair'?'Réparer l’alarme':a==='cover'?'Couvrir l’équipe':'Aucune promesse';
-export const actionIcon=(v:View,a:Action)=>a==='a'?v.rooms[v.roomIndex].a.icon:a==='b'?v.rooms[v.roomIndex].b.icon:a==='loot'?'bag':a==='search'?'eye':a==='repair'?'wrench':'shield';
-export const portrait=(color:string)=>`${import.meta.env.BASE_URL}portraits/${Math.max(0,COLORS.indexOf(color))}.png`;
-export const me=(v:View)=>v.players.find(p=>p.id===v.myId)!;
-
-export function header(s:Snapshot,muted:boolean){
-  const v=s.view;
-  return `<a class="brand" href="${location.pathname}" aria-label="Plan Foireux, accueil">PLAN <span>F${icon('mask')}IREUX</span></a>
-    <div class="game-meta"><span class="meta">${icon('museum')}${v?v.roomIndex===4?'La fuite':`Salle ${v.roomIndex+1} / 4`:'Musée royal'}</span>
-    <span class="meta phase-meta">${icon('mask')}${v?({promise:'Le plan',secret:'À toi de jouer',reveal:'Pris sur le fait !',vote:'Les accusations',ended:'Fin du casse'}[v.phase]):'Le casse entre amis'}</span>
-    <span class="alarm" aria-label="Alarme ${v?.alarm??0} sur ${ALARM_MAX}">${icon('shield')}<b>${v?.alarm??0}/${ALARM_MAX}</b>${Array.from({length:ALARM_MAX},(_,i)=>`<i class="${(v?.alarm??0)>i?'lit':''}"></i>`).join('')}</span></div>
-    <div class="header-actions">${button(icon('help'),'rules','icon-button','aria-label="Règles du jeu"')}${button(icon(muted?'mute':'sound'),'sound','icon-button',`aria-label="${muted?'Activer':'Couper'} le son"`)}${button(`${icon('users')}<span>Inviter</span>`,'invite','primary small',`aria-label="Inviter" ${s.status==='connecting'?'disabled':''}`)}</div>`;
+import { recommended, type Choice, type View } from "./engine";
+import { LABELS } from "./scene";
+import { icon } from "./icons";
+export { escapeHTML as esc } from "./html";
+import { escapeHTML as esc } from "./html";
+export const choiceText = (c: Choice | null, v?: View) =>
+  c
+    ? `${LABELS[c.action]}${c.target ? ` → ${v?.players.find((p) => p.id === c.target)?.name ?? ""}` : ""}`
+    : "Aucun poste";
+export const PHASES = {
+  role: "Découvrez votre rôle",
+  promise: "Annoncez votre poste",
+  secret: "Choisissez ce que vous faites vraiment",
+  transition: "À vous de jouer…",
+  minigame: "Une épreuve. Un seul poste.",
+  reveal: "Les promesses passent aux actes",
+  debate: "Qui surveille-t-on au prochain tour ?",
+  ended: "Le casse est terminé",
+};
+export function gain(c: Choice | null, v: View) {
+  if (!c) return "Touchez un poste dans le musée.";
+  return c.action === "drill"
+    ? "Coffre +2 · Vous +6 pièces"
+    : c.action === "secure"
+      ? "Alarme −2 · Vous +6 pièces"
+      : c.action === "loot"
+        ? "Butin de 12 pièces à partager entre les réussites"
+        : `Jusqu’à ${Math.min(4, v.players.find((p) => p.id === c.target)?.money ?? 0)} volées à ${v.players.find((p) => p.id === c.target)?.name}${v.round === 1 ? " · Poches vides ce tour" : ""}`;
 }
-export function sceneOverlay(v:View|null){
-  const location=`<div class="location-tag">${icon('museum')}<span>${v?esc(v.rooms[v.roomIndex].subtitle):'Le musée royal'}<small>${v?esc(v.rooms[v.roomIndex].objective):'Tes complices veulent aussi ta part'}</small></span></div>
-    <div class="scene-tools">${button('+','zoom-in','icon-button','aria-label="Agrandir le musée"')}${button('−','zoom-out','icon-button','aria-label="Réduire le musée"')}</div>`;
-  if(!v)return location+`<div class="intro-panel"><span class="stamp">Une bande. Un casse. Un traître.</span><h1>Tu prends le risque.<br>Ils prennent le butin.</h1><p>Fouille le musée. Négocie ta part. Méfie-toi des chiffres qu’on te donne.</p></div>`;
-  if(v.phase==='reveal')return location+`<div id="cinema"></div>`;
-  if(v.phase==='ended')return location+`<div class="result-banner ${v.result?.kind==='escape'?'escaped':''}">${icon(v.result?.kind==='escape'?'van':'shield')}<h1>${v.result?.kind==='escape'?'Le casse est réussi !':v.result?.kind==='fbi'?'Le FBI vous a eus !':v.result?.kind==='missed'?'Le trésor est resté au musée…':'La police est là !'}</h1><p>${esc(v.result?.text)}</p></div>`;
-  const room=v.rooms[v.roomIndex];
-  return location+`${v.phase==='vote'?`<div class="objective-box"><h2>${esc(room.title)}</h2><p>${icon(room.a.icon)}${esc(room.a.short)}<b>${room.a.need} ${room.a.need>1?'personnes':'personne'}</b></p><p>${icon(room.b.icon)}${esc(room.b.short)}<b>${room.b.need} ${room.b.need>1?'personnes':'personne'}</b></p></div>`:''}
-    <div class="scene-bottom-right">${button(`${icon('eye')} Mes informations`,'notebook','clue-button')}<div class="timer">${icon('clock')}<span id="countdown"></span></div></div>
-    ${v.phase==='secret'?`<div class="secret-ribbon">Touche un objet du musée pour agir. Un seul choix sera exécuté.</div>`:''}`;
+export function hud(v: View) {
+  const me = v.players.find((p) => p.id === v.myId)!;
+  return `<div class="hud-vault" aria-label="Coffre ${v.vault} sur 8">${icon("lock")}<span class="hud-label">Coffre</span><div class="segments">${Array.from({ length: 8 }, (_, i) => `<i class="${i < v.vault ? "filled" : ""}"></i>`).join("")}</div><strong>${v.vault}/8</strong></div><div class="alarm ${v.alarm >= 4 ? "critical" : ""}" aria-label="Alarme ${v.alarm} sur 5">${Array.from({ length: 5 }, (_, i) => `<span class="siren ${i < v.alarm ? "on" : ""}">${icon("alarm")}</span>`).join("")}</div><div class="my-money">${icon("coin")}<strong>${me.money}</strong><span>pièces</span></div><div class="surveillance-count" aria-label="${v.charges} surveillances restantes">${icon("eye")}<strong>${v.charges}/2</strong></div>`;
 }
-export function crew(s:Snapshot,roleVisible:boolean,chatOpen:boolean){
-  const v=s.view;
-  return `<div class="crew-title"><h2>${v?'Les alibis':'L’équipe'}</h2><span>${s.players.length}/6</span></div><div class="players">${s.players.map((p,i)=>{
-    const finding=v&&(v.phase==='reveal'||v.phase==='vote')?v.report?.findings.find(f=>f.id===p.id):undefined;
-    const betrayal=!!finding&&(finding.betrayed||finding.action==='loot');
-    const ended=v?.phase==='ended',role=ended?`${p.exposed==='agent'?'Agent infiltré · FBI':'Braqueur'}${!p.active?' · Éjecté·e':''}`:p.active?(v?esc(actionName(v,p.promise)):p.bot?'Complice automatique':p.online?'Dans le salon':'Déconnecté'):`Éjecté·e · ${p.exposed==='agent'?'FBI':'innocent'}`;
-    return `<article class="player ${p.active?'':'eliminated'} ${p.id===s.myId?'is-me':''} ${betrayal?'is-betrayer':''} ${ended&&p.exposed==='agent'?'is-agent':''}" style="--player:${p.color}">
-    <div class="avatar ${betrayal?'betrayal-pulse':''}"><img src="${portrait(p.color)}" alt="" width="160" height="192"><span>${i+1}</span></div><div class="player-info"><strong>${esc(p.name)}${p.id===s.myId?' <small>toi</small>':''}</strong><span>${role}</span>${betrayal?`<b class="crew-betrayal">${finding?.betrayed?'Promesse rompue':'Vol du butin'}</b>`:''}<span class="coins">${icon('coin')}${money(p.money)} ${v?ended?'encaissées':'à risque':''}</span></div>${v?`<span class="ready ${p.ready?'done':''}" aria-label="${p.ready?'Prêt':'En réflexion'}">${p.ready?icon('check'):'…'}</span>`:p.bot&&s.players.length>4?button('×',`remove:${p.id}`,'remove-bot',`aria-label="Retirer ${esc(p.name)}"`):''}</article>`;
-  }).join('')}</div>
-    ${!v&&s.host&&s.players.length<6?button(`${icon('plus')} Ajouter un bot`,'add-bot','text-button'):''}
-    <div class="agent-hint">${icon('mask')}<p>${v?.agentExposed?'Le FBI est démasqué.':'Gourmand… ou infiltré ?'}<small>${v?'Fuyez pour encaisser. Même après avoir éjecté l’agent.':'Le plus riche des braqueurs qui s’échappent gagne.'}</small></p></div>
-    ${v?button(`${icon('eye')} ${roleVisible?(v.myRole==='agent'?'Tu es l’agent du FBI':'Tu es un braqueur'):'Voir mon rôle'}`,'role','role-button')+button(`${icon('chat')} Mes chiffres et les annonces`,'notebook','role-button'):''}
-    <div class="room-status ${s.error?'has-error':''}">${s.error?esc(s.error):s.room?`${s.status==='online'?'● Salon connecté':'◌ Reconnexion…'} <small>${s.host?'Garde cette page ouverte.':'L’hôte dirige la partie.'}</small>`:'Essai solo disponible sans connexion.'}${s.status==='error'&&!s.host?button('Réessayer','reconnect','text-button'):''}</div>
-    ${s.room?`<details class="chat" ${chatOpen?'open':''}><summary>${icon('chat')} Discussion (${s.chat.length})</summary><div class="messages">${s.chat.slice(-8).map(m=>`<p><strong>${esc(m.name)}</strong> ${esc(m.text)}</p>`).join('')||'<p>Négociez votre plan ici ou en vocal.</p>'}</div><form id="chat-form"><label class="sr-only" for="chat-text">Message aux complices</label><input id="chat-text" maxlength="160" autocomplete="off" placeholder="Je vous jure que c’est un 7…"><button aria-label="Envoyer">${icon('arrow')}</button></form></details>`:''}`;
-}
-export function lobbyControls(s:Snapshot,name:string){
-  return `<div class="lobby-copy"><h2>${s.room?'Le plan se prépare.':'Un poste à tenir. Une fortune à voler.'}</h2><p>Annonce ton poste. Tiens parole… ou prends le butin.</p></div>
-    <div class="lobby-actions"><label for="nickname">Ton pseudo<input id="nickname" maxlength="18" value="${esc(name)}" autocomplete="nickname" ${!s.host?'disabled':''}></label>${s.host?button(`${icon('mask')} ${s.room?'Lancer le braquage':'Jouer avec les bots'}`,'start','primary big'):'<span class="waiting">L’hôte prépare le départ…</span>'}${s.host?button(`${icon(s.room?'copy':'users')} ${s.room?'Copier l’invitation':'Créer un salon entre amis'}`,s.room?'copy':'create','secondary big',s.status==='connecting'?'disabled':''):''}</div>
-    <p class="lobby-note">Fouillez les objets du musée, négociez les postes, ouvrez vraiment le coffre. Tout perdre est encore possible jusqu’à la fuite.</p>`;
-}
-
-export function evidence(v:View,compact=false){
-  if(!v.report)return '';
-  return `<div class="heist-evidence ${compact?'compact':''}">${v.report.findings.map((f,i)=>{
-    const p=v.players.find(p=>p.id===f.id)!;
-    return `<article class="evidence-card ${f.betrayed?'betrayed':''}" data-reveal-index="${i}" style="--player:${p.color}"><img src="${portrait(p.color)}" alt="" width="64" height="77"><div><strong>${esc(p.name)}</strong><span class="promise-line">Avait promis : ${esc(actionName(v,f.promise))}</span><b>${icon(actionIcon(v,f.action))}${esc(actionName(v,f.action))}</b><p>${esc(f.detail)}</p>${f.betrayed?'<small class="betrayal">A rompu sa promesse !</small>':'<small>Promesse tenue</small>'}</div><span class="big-gain">+${money(f.gain)}${icon('coin')}</span></article>`;
-  }).join('')}</div>`;
-}
-export function reportTotals(v:View){const r=v.report;if(!r)return '';return `<div class="report-totals"><span class="${r.alarmAfter>r.alarmBefore?'bad':'good'}">${icon('shield')}Alarme <b>${r.alarmBefore} → ${r.alarmAfter}/${ALARM_MAX}</b></span><span>${icon('bag')}Sac commun <b>${money(r.poolBefore)} → ${money(r.poolAfter)}</b></span><span>${icon('lock')}${v.phase==='ended'?v.result?.kind==='escape'?'Gains encaissés':'Butin perdu':'Tout reste à risque'}</span></div>`;}
-export function cinema(v:View,index:number){const f=v.report?.findings[index];if(!f)return '';const p=v.players.find(p=>p.id===f.id)!;return `<div class="cinema-focus ${f.betrayed?'betrayed':''}" style="--player:${p.color}"><img src="${portrait(p.color)}" alt="" width="160" height="192"><div><span class="stamp">${index+1}/${v.report!.findings.length} · Pris sur le fait</span><h2>${esc(p.name)}</h2><p>« Je m’occupe de ${esc(actionName(v,f.promise).toLowerCase())}. »</p><strong>${icon(actionIcon(v,f.action))}${esc(actionName(v,f.action))}</strong><span>${esc(f.detail)}</span></div><b class="cinema-gain">+${money(f.gain)}<small>pièces à risque</small></b></div>`;}
-
-export function teamNeeds(v:View){
-  const room=v.rooms[v.roomIndex];
-  return `<div class="team-needs" aria-label="Les deux postes à assurer">${(['a','b'] as const).map(a=>{
-    const task=room[a],promised=v.players.filter(p=>p.active&&p.promise===a),missing=Math.max(0,task.need-promised.length);
-    return `<div class="team-need ${missing?'short-staffed':'covered'}">${icon(task.icon)}<div><strong>${esc(task.short)}</strong><span>${promised.length}/${task.need} annoncé${promised.length>1?'s':''} · ${missing?`manque ${missing}`:'couvert sur le papier'}</span><small>${missing?'Poste abandonné : +2 alarme':'Les choix secrets peuvent tout changer.'}</small></div><div class="promised-avatars">${promised.map(p=>`<img src="${portrait(p.color)}" alt="${esc(p.name)} a promis ce poste" title="${esc(p.name)}" width="30" height="36" style="--player:${p.color}">`).join('')||'<span>?</span>'}</div></div>`;
-  }).join('')}</div>`;
-}
-
-const gainLabel=(a:Action)=>a==='loot'?'18 max':a==='search'?'+2 à +6':a==='repair'?'+1':a==='cover'?'+6 si sauvetage':'+3';
-function personalEffect(v:View,a:Action,code:string){
-  if(a==='loot')return '18 pièces si tu es seul à voler, 9 à deux, 6 à trois.';
-  if(a==='search')return '6 pièces si tu découvres le chiffre en premier, 2 pour une nouvelle vérification. Un chiffre privé.';
-  if(a==='repair')return '1 pièce pour réparer.';
-  if(a==='cover')return '6 pièces à partager entre les sauveteurs si vous remplacez une personne manquante. Sinon 0.';
-  if(a==='a'&&v.roomIndex===3)return code==='FORCE'?'3 pièces si tu forces le coffre.':'+3 pièces avec le bon code ; 0 si ta tentative échoue.';
-  return '3 pièces pour tenir ce poste.';
-}
-function groupEffect(v:View,a:Action,code:string){
-  const p=me(v),abandoned=(p.promise==='a'||p.promise==='b')&&a!==p.promise?` Tu quittes le poste ${actionName(v,p.promise)} : +2 alarme s’il reste incomplet.`:'';
-  if(a==='loot')return `+1 alarme et −8 pièces au sac commun.${abandoned}`;
-  if(a==='repair')return `−2 alarme, une seule fois même si plusieurs réparent.${abandoned}`;
-  if(a==='cover')return `Tu remplaces une seule personne manquante sur l’un des deux postes.${abandoned}`;
-  if(a==='search')return `Tu cherches un chiffre pour ouvrir le coffre ; tu n’assures aucun poste.${abandoned}`;
-  if(a==='a'&&v.roomIndex===3)return code==='FORCE'?`Tu ouvres le coffre : +2 alarme et −18 au sac commun.${abandoned}`:`Le bon code ouvre le coffre et ajoute 48 pièces au sac.${abandoned}`;
-  return `Tu assures ${actionName(v,a)}. S’il manque quelqu’un sur un poste : +2 alarme.${abandoned}`;
-}
-
-function choiceCard(v:View,a:Action,selected:Action|null,title:string,kicker:string,tone:string,detail:string){
-  return `<button class="decision-card ${tone} ${selected===a?'selected':''}" data-action="select:${a}" aria-pressed="${selected===a}"><span class="card-art ${a}">${icon(actionIcon(v,a))}</span><span class="card-copy"><small class="choice-kicker">${esc(kicker)}</small><strong class="choice-title">${esc(title)}</strong><span class="choice-payoff">${icon('coin')}${a==='loot'?'18 pièces max':`${a==='cover'?'Jusqu’à +6':gainLabel(a)} pièces`}</span><span class="choice-consequence">${esc(detail)}</span></span><span class="selection-check">${icon('check')}</span></button>`;
-}
-
-export function gameControls(v:View,selected:Action|null,code:string,expanded=false){
-  const player=me(v),room=v.rooms[v.roomIndex];
-  if(v.phase==='ended'){
-    const infiltrated=v.players.find(p=>p.exposed==='agent');
-    return `<div class="end-heading"><h2>${v.result?.winners.includes(player.id)?'Bien joué, tu remportes le casse !':'Le compte est bon… ou presque.'}</h2><p>${v.result?.winners.length?`Victoire : ${v.players.filter(p=>v.result!.winners.includes(p.id)).map(p=>esc(p.name)).join(' et ')}. `:'Personne ne remporte ce casse. '}${v.result?.kind==='escape'?`Le sac commun de ${money(v.pool)} est partagé entre ${v.players.filter(p=>p.active).length} survivants : +${money(v.pool/v.players.filter(p=>p.active).length)} chacun. Les totaux ci-dessous sont encaissés.`:'Le butin provisoire est perdu.'} Les rôles sont révélés.</p></div>${infiltrated?`<article class="fbi-reveal" style="--player:${infiltrated.color}"><img src="${portrait(infiltrated.color)}" alt="" width="160" height="192"><div><span class="stamp">Dossier déclassifié · FBI</span><h3>L’agent infiltré était… ${esc(infiltrated.name)} !</h3><p>${infiltrated.active?'Il était encore parmi vous à la fin du casse.':'Vous l’aviez éjecté pendant le casse.'}</p></div>${icon('shield')}</article>`:''}<div class="leaderboard">${[...v.players].sort((a,b)=>b.money-a.money).map(p=>`<div style="--player:${p.color}"><span class="mini-dot"></span><strong>${esc(p.name)}</strong><small>${p.exposed==='agent'?'FBI':!p.active?'Éjecté·e':'Braqueur'}</small><b>${money(p.money)} ${icon('coin')}</b>${v.result?.winners.includes(p.id)?icon('flag'):''}</div>`).join('')}</div>${reportTotals(v)}${evidence(v,true)}${button('Revoir les règles','rules','secondary')}${snapshotHostButton()}`;
+export function footer(v: View, selected: Choice | null) {
+  if (v.phase === "promise" || v.phase === "secret") {
+    const covered =
+      v.players.filter((p) => p.promise?.action === "drill").length >=
+        recommended(v) && v.players.some((p) => p.promise?.action === "secure");
+    return `<div class="selection-info"><span class="eyebrow">${v.phase === "secret" ? "VOTRE CHOIX PRIVÉ" : "VOTRE PROMESSE PUBLIQUE"}</span><strong>${esc(gain(selected, v))}</strong><small>${v.watched === v.myId ? "Surveillance : coffre ou sécurité uniquement ce tour." : v.phase === "secret" ? "Modifiable jusqu’au signal. Les autres ne voient que vos promesses." : covered ? "✓ Le plan couvre les besoins annoncés, si les épreuves réussissent." : "Choix modifiable. Touchez un autre poste ou le personnage d’un rival."}</small></div>${v.phase === "promise" && v.voteResult ? `<button class="subtle" data-action="report" aria-label="Voir les voix du dernier vote">Vote</button>` : ""}${v.myRole === "agent" && v.phase === "secret" ? `<button class="transmitter ${v.myJam ? "armed" : ""}" data-action="jam" aria-pressed="${v.myJam}" ${v.watched === v.myId ? "disabled" : ""}>${icon("flag")}<span>${v.watched === v.myId ? "Brouillage bloqué ce tour" : v.myJam ? "Brouiller · activé" : "Profil bas"}</span></button>` : `<span class="phase-tag">${v.phase === "secret" ? icon("lock") + " Secret" : icon("users") + " Public"}</span>`}`;
   }
-  if(v.phase==='reveal')return `<div class="controls-heading"><h2>${esc(v.report?.text??'Pris sur le fait !')}</h2><p>Les gestes sont révélés. Les vrais chiffres restent dans les poches de ceux qui les ont trouvés.</p></div>${reportTotals(v)}${evidence(v)}<div class="incidents">${v.report?.incidents.map(i=>`<span>${icon('laser')}${esc(i)}</span>`).join('')||`${icon('check')} Les deux postes sont assurés.`}</div><div class="reveal-actions">${button(`${icon('arrow')} J’ai vu le casse`,'continue','primary',player.ready||!player.active?'disabled':'')}<span>${player.ready?'Tu attends les autres complices.':'La scène reste affichée jusqu’à la validation du groupe.'}</span></div>`;
-  if(!player.active)return `<h2>Tu as été éjecté·e.</h2><p>${v.myRole==='agent'?'Ton infiltration est terminée.':'Tu étais un braqueur. Tes anciens complices doivent encore fuir.'}</p>${v.report?evidence(v,true):''}<p class="waiting">Suis la fin du casse, puis prépare ta revanche.</p>`;
-  if(v.phase==='vote')return `<div class="controls-heading"><h2>Qui profite du chaos ?</h2><p>${v.voteCount}/${v.players.filter(p=>p.active).length} votes · ${Math.floor(v.players.filter(p=>p.active).length/2)+1} voix pour éjecter. Un innocent perd sa fortune.</p></div><div class="vote-options">${v.players.filter(p=>p.active&&p.id!==player.id).map(p=>button(`<span class="mini-dot" style="--player:${p.color}"></span>${esc(p.name)}`,`vote:${p.id}`,`vote-button ${v.myVote===p.id?'selected':''}`,player.ready?'disabled':'')).join('')}${button('Je passe','vote:skip',`secondary ${v.myVote==='skip'?'selected':''}`,player.ready?'disabled':'')}${button('Comparer les annonces','notebook','secondary')}</div><p class="vote-feedback">${player.ready?'Ton vote est enregistré.':'Un vol ou un mensonge peut venir d’un braqueur gourmand. À vous de décider.'}</p>${reportTotals(v)}${evidence(v,true)}`;
-  const promise=v.phase==='promise',pledged=player.promise??'a',readyCount=v.players.filter(p=>p.active&&p.ready).length,activeCount=v.players.filter(p=>p.active).length;
-  const heading=`<div class="controls-heading"><h2>${promise?'1. Quel poste annonces-tu ?':'2. Tu tiens parole… ou tu voles ?'}</h2><p class="choice-goal">Récupérez le trésor, fuyez. Le braqueur le plus riche gagne.</p></div>`;
-  const needs=teamNeeds(v);
-  if(player.ready||!promise&&v.mySearch?.committed){
-    const action=promise?player.promise:v.mySearch?.committed?'search':v.myChoice;
-    return `${heading}${needs}<div class="choice-waiting">${icon('check')}<div><h3>${promise?'Promesse annoncée':'Choix secret enregistré'}</h3><strong>${esc(actionName(v,action))}</strong><p>${promise?'Les autres voient ce que tu as promis. Tu décideras ensuite si tu tiens parole.':'Les autres ne verront ton action qu’à la révélation.'}</p>${!promise&&v.mySearch?.committed?button(v.mySearch.found?'Revoir mon objet':'Continuer à examiner l’objet',`search:${v.mySearch.spotId}`,'secondary'):''}</div><span>${readyCount}/${activeCount} prêts</span></div>`;
+  if (v.phase === "reveal" || v.phase === "debate") {
+    const r = v.report;
+    return `<div class="selection-info"><span class="eyebrow">${v.phase === "debate" ? "DISCUTEZ · VOIX PRIVÉES" : "RÉSOLUTION SIMULTANÉE"}</span><strong>${r?.trace ? `Transmission suspecte : zone ${r.trace === "vault" ? "du coffre" : "de l’entrée"}` : "Aucune transmission suspecte détectée"}</strong><small>${v.phase === "debate" ? (v.charges ? "3 voix sur 4 · Un tour de surveillance · Rôle non révélé" : "Plus de surveillance. Préparez le prochain tour ensemble.") : `${r?.alarmBefore} +1 temps +${r?.jam} brouillage −${(r?.security ?? 0) * 2} sécurité = ${r?.alarmAfter} alarme · Coffre +${r?.vaultAdded}`}</small></div><button data-action="report" class="subtle">${icon("chat")}<span>Bilan</span></button>${v.phase === "debate" ? `<button data-action="pass" class="${v.myVote === "pass" ? "selected" : "subtle"}" ${!v.charges ? "disabled" : ""}>Passer</button>` : ""}`;
   }
-  const publicCards=()=>`<div class="decision-options public-posts">${(['a','b'] as const).map(a=>choiceCard(v,a,selected,room[a].name,'J’assure un poste','loyal',`${room[a].need} personne${room[a].need>1?'s':''} nécessaire${room[a].need>1?'s':''} · si abandonné : +2 alarme`)).join('')}</div>`;
-  const secretCards=()=>pledged==='loot'?`<div class="decision-options secret-dilemma">${choiceCard(v,'loot',selected,'Je vole comme annoncé','Mon intérêt','greedy','18 seul · 9 à deux · 6 à trois. +1 alarme et −8 au sac.')}${(['a','b'] as const).map(a=>choiceCard(v,a,selected,`Je reprends un poste : ${room[a].short}`,'J’aide le groupe','loyal','Je change mon annonce pour assurer un poste utile.')).join('')}</div>`:`<div class="decision-options secret-dilemma">${choiceCard(v,pledged,selected,'Je tiens ma promesse',actionName(v,pledged),'loyal',pledged==='a'||pledged==='b'?'Je reste à mon poste pour que le casse réussisse.':pledged==='search'?'Je cherche un chiffre dans un objet du musée.':pledged==='repair'?'Je baisse l’alarme pour aider tout le monde.':'Je remplace une personne manquante.')}${choiceCard(v,'loot',selected,'Je trahis pour voler','Je prends plus… si on s’en sort','greedy',`18 seul · 9 à deux · 6 à trois. +1 alarme, −8 au sac${pledged==='a'||pledged==='b'?', et je quitte mon poste':''}.`)}</div>`;
-  const alternatives=(['a','b','search','repair','cover'] as Action[]).filter(a=>(!promise||a!=='a'&&a!=='b')&&(promise||a!==pledged)&&(a!=='search'||v.roomIndex<4));
-  const changed=!promise&&selected!==null&&selected!==player.promise;
-  const confirmLabel=!selected?'Choisis une carte':promise?`Promettre : ${actionName(v,selected)} ${gainLabel(selected)}`:selected==='loot'?'Voler jusqu’à 18 pièces':selected==='search'?'Choisis un objet dans le musée':selected==='a'||selected==='b'?`${selected===player.promise?'Tenir mon poste':'Reprendre ce poste'} +3`:selected==='repair'?'Réparer l’alarme +1':'Couvrir l’équipe · jusqu’à +6';
-  const searchChoices=!promise&&selected==='search'?`<div class="selection-detail"><strong>${icon('eye')} Quel objet veux-tu examiner ?</strong><span>Fais-le pivoter pour trouver un chiffre écrit dessus. Tu t’engages avant de le découvrir.</span><div>${v.spots.filter(s=>s.unlockRoom<=v.roomIndex&&v.roomIndex<4).map(s=>button(`Examiner ${s.id==='frame'?'le cadre':s.id==='desk'?'le bureau':'la statue'}`,`search:${s.id}`,'secondary')).join('')}</div></div>`:'';
-  return `${heading}${needs}${v.roomIndex===3?`<div class="vault-round-note">${icon('lock')}<strong>${v.vaultRetries?'Dernière tentative au coffre.':'Le coffre attend ses trois chiffres.'}</strong><span>${v.vaultRetries?'Réessayez le code ou forcez. Sans trésor, l’agent encore infiltré gagne.':'Le bon code ajoute 48 pièces au sac commun.'}</span></div>`:''}${promise?publicCards():secretCards()}
-    ${button(`${expanded?'−':'+'} ${promise?'Fouiller ou aider autrement':'Changer de plan autrement'}`,'toggle-options','text-button',`aria-expanded="${expanded}"`)}
-    ${expanded?`<div class="decision-alternatives">${alternatives.map(a=>choiceCard(v,a,selected,actionName(v,a),a==='search'?'Trouver le code':'Aider autrement','helpful',a==='search'?'Un chiffre privé. Cette fouille remplace ton poste.':a==='repair'?'−2 alarme, une seule fois par salle.':a==='cover'?'Remplace une personne ; prime de 6 partagée si utile.':'Je rejoins ce poste au lieu de mon annonce initiale.')).join('')}</div>`:''}
-    ${selected&&!(promise&&selected==='loot')?`<div class="choice-preview"><p class="personal-preview">${icon('coin')}<strong>Pour toi :</strong> ${esc(personalEffect(v,selected,code))}</p><p class="group-preview">${icon('users')}<strong>Pour le groupe :</strong> ${esc(groupEffect(v,selected,code))}</p>${changed?`<p class="promise-warning">${icon('flag')} Tu changes ta promesse ${esc(actionName(v,player.promise))}. ${selected==='loot'?'Tu trahis le groupe pour ton butin.':'C’est un autre plan : explique ton changement à l’équipe.'}</p>`:''}</div>`:'<p class="choice-preview empty">Choisis une carte pour voir ton gain et son effet sur l’équipe.</p>'}
-    ${searchChoices}${!promise&&v.roomIndex===3&&selected==='a'?`<div class="selection-detail safe-selection"><strong>${icon('lock')} ${code==='FORCE'?'Tu vas forcer le coffre':code?`Code préparé : ${esc(code)}`:'Il faut préparer les 3 chiffres'}</strong><span>${code==='FORCE'?'+2 alarme · −18 au sac commun.':'Un mauvais code ne rapporte aucun salaire.'}</span>${button('Composer le code','safe','secondary')}</div>`:''}
-    <div class="confirm-row"><p class="risk-note">${icon('lock')}${promise?'Tu annonces ton intention ; ton action sera choisie ensuite.':'Toutes les pièces restent à risque jusqu’à la fuite.'}</p>${button(`${icon(promise?'flag':'lock')} ${esc(confirmLabel)}`,'confirm','primary',!selected||promise&&selected==='loot'||!promise&&selected==='search'?'disabled':'')}<span class="progress-ready">${readyCount}/${activeCount} prêts</span></div>`;
+  return `<p class="quiet">Ouvrez le coffre avant la fin du tour 5. À 5 alarmes, la police gagne.</p>`;
 }
-let host=false;
-export function setHost(value:boolean){host=value;}
-function snapshotHostButton(){return host?button('Préparer la revanche','rematch','primary'):'<p class="waiting">L’hôte peut préparer la revanche.</p>';}
-
-export function claimsTable(v:View){return `<div class="claims-table">${[0,1,2].map(index=>`<div><b>Chiffre ${index+1}</b>${v.claims.filter(c=>c.index===index).map(c=>`<span><strong>${esc(v.players.find(p=>p.id===c.id)?.name??'Complice')}</strong> annonce <em>${esc(c.value)}</em></span>`).join('')||'<small>Aucune annonce. Quelqu’un garde-t-il le silence ?</small>'}</div>`).join('')}</div>`;}
-export function notebook(v:View){
-  return `<span class="stamp">Informations personnelles</span><h2 id="modal-title">Ce que tu sais. Ce qu’ils disent.</h2><p>Les chiffres trouvés ci-dessous sont vrais. Les annonces publiques peuvent être fausses.</p><div class="private-clues">${v.myClues.length?v.myClues.map(c=>{const own=v.claims.find(a=>a.id===v.myId&&a.index===c.index);return `<article><div><span>Chiffre ${c.index+1}</span><b>${esc(c.value)}</b><small>Découvert dans ${esc(v.spots.find(s=>s.id===c.spotId)?.name??c.spotId)}</small></div><form class="claim-form" data-index="${c.index}"><label for="claim-${c.index}">Le chiffre que tu annonces<input id="claim-${c.index}" name="claim" inputmode="numeric" maxlength="1" pattern="[0-9]" value="${esc(own?.value??c.value)}" required></label><button class="secondary" ${me(v).active&&v.phase!=='ended'&&!(v.phase==='secret'&&me(v).ready)?'':'disabled'}>Annoncer</button></form></article>`;}).join(''):'<p>Tu n’as pas encore de chiffre. Pour en obtenir un, manipule une cache dans le musée puis consacre ton action à sa fouille.</p>'}</div><h3>Les annonces de l’équipe</h3>${claimsTable(v)}<p class="notebook-warning">${icon('mask')} Tu peux mentir ou te taire. Un complice peut dépenser une fouille pour vérifier ton histoire.</p>`;
+export function report(v: View) {
+  const r = v.report;
+  if (!r) return "<p>Aucun bilan pour le moment.</p>";
+  return `<span class="eyebrow">TOUR ${r.round} · INFORMATIONS PUBLIQUES</span><h2>Bilan du casse</h2><p class="report-math">Alarme : ${r.alarmBefore} +1 temps +${r.jam} signal −${r.security * 2} sécurité = <strong>${r.alarmAfter}</strong><br>Coffre : +${r.vaultAdded} points</p>${r.trace ? `<p class="trace">${icon("flag")}Transmission suspecte dans la zone ${r.trace === "vault" ? "du coffre" : "de l’entrée"}.</p>` : ""}<div class="report-list">${r.findings
+    .map((f) => {
+      const p = v.players.find((p) => p.id === f.id)!;
+      return `<div><span class="report-player" style="--player:${p.color}">${esc(p.name)}</span><span><strong>${esc(choiceText(f.choice, v))} · ${f.success ? "Réussi" : "Raté"}</strong><small>${f.betrayed ? `Promis : ${esc(choiceText(f.promise, v))} → Fait : ${esc(choiceText(f.choice, v))}` : f.promise ? "Promesse tenue" : "Aucun poste promis"}<br>Zone ${f.zone === "vault" ? "du coffre" : "de l’entrée"}</small></span><b>+${f.gain}${f.loss ? `<br>−${f.loss}` : ""}</b></div>`;
+    })
+    .join("")}</div>${
+    v.voteResult
+      ? `<p class="quiet">Dernier vote : ${v.players
+          .map((p) => [p.id, v.voteResult!.votes[p.id] ?? "pass"] as const)
+          .map(
+            ([id, target]) =>
+              `${esc(v.players.find((p) => p.id === id)?.name)} → ${target === "pass" ? "Passer" : esc(v.players.find((p) => p.id === target)?.name)}`,
+          )
+          .join(" · ")}</p>`
+      : ""
+  }`;
 }
-export function searchModal(v:View,spotId:string){
-  const spot=v.spots.find(s=>s.id===spotId)!;const progress=v.mySearch?.spotId===spotId?v.mySearch:null;
-  const heading=`<span class="stamp">Chiffre ${spot.clueIndex+1} du coffre</span><h2 id="modal-title">${esc(spot.name)}</h2>`;
-  if(progress?.committed)return `${heading}<p>Fais glisser l’objet pour le faire pivoter. Cherche le chiffre écrit sur une de ses faces.</p><span id="inspection-countdown" class="inspection-countdown"></span><div id="inspection-stage" class="inspection-stage" tabindex="0" role="img" aria-label="Objet 3D à faire pivoter"></div><p id="inspection-status" class="inspection-status" role="status">Fais pivoter l’objet pour examiner ses faces.</p><div class="rotation-controls" aria-label="Rotation de l’objet">${button('←','rotate:left','secondary','aria-label="Faire pivoter l’objet vers la gauche"')}${button('→','rotate:right','secondary','aria-label="Faire pivoter l’objet vers la droite"')}${button('↑','rotate:up','secondary','aria-label="Faire pivoter l’objet vers le haut"')}${button('↓','rotate:down','secondary','aria-label="Faire pivoter l’objet vers le bas"')}</div><p class="search-rule">${icon('lock')} Tu as choisi de fouiller : tu ne peux plus prendre un autre poste ou voler dans cette salle. Le chiffre reste privé ; tu pourras dire la vérité, mentir ou te taire.</p>${button('Revenir au musée','close-modal','secondary')}`;
-  const own=v.myClues.some(c=>c.spotId===spotId),discovered=v.discoveries.some(d=>d.spotId===spotId),pledged=me(v).promise;
-  return `${heading}<div class="search-commit-preview">${icon('eye')}<h3>Tu consacres ton action à cet objet.</h3><p>Tu vas le prendre en main et le faire pivoter pour chercher un chiffre écrit dessus. L’objet et l’endroit du marquage changent à chaque partie.</p><p class="personal-preview">${icon('coin')}<strong>Pour toi :</strong> ${own?'Tu connais déjà ce chiffre : aucune pièce supplémentaire.':discovered?'2 pièces si tu retrouves ce chiffre pour le vérifier.':'6 pièces si tu es le premier à trouver ce chiffre ; 2 si un autre le découvre avant toi.'}</p><p class="group-preview">${icon('users')}<strong>Pour le groupe :</strong> un chiffre pour ouvrir le coffre. ${pledged==='a'||pledged==='b'?`Tu quittes le poste ${esc(actionName(v,pledged))} : +2 alarme s’il reste incomplet.`:'Tu n’assures aucun des deux postes.'}</p><p class="promise-warning">${icon('lock')} Ce choix est irréversible pour cette salle. Tu ne pourras plus voler ni changer de poste.</p></div>${button('Je fouille cet objet',`begin-search:${spotId}`,'primary')}${button('Choisir autre chose','close-modal','secondary')}`;
-}
-export function safeModal(v:View,code:string){
-  const shown=code==='FORCE'?'':code;
-  return `<span class="stamp">Le vrai coffre du musée</span><h2 id="modal-title">Quel code vas-tu composer ?</h2><div class="safe-puzzle"><div class="safe-panel"><div class="safe-display" aria-label="Code saisi ${esc(shown||'vide')}">${Array.from({length:3},(_,i)=>`<b>${esc(shown[i]??'–')}</b>`).join('')}</div><div class="keypad">${['1','2','3','4','5','6','7','8','9','clear','0','back'].map(k=>button(k==='clear'?'C':k==='back'?'⌫':k,`key:${k}`,'key',`aria-label="${k==='clear'?'Effacer le code':k==='back'?'Effacer le dernier chiffre':`Chiffre ${k}`}"`)).join('')}</div>${button('Préparer ce code','use-code','primary',shown.length!==3?'disabled':'')}</div><div class="safe-intel"><h3>Qui t’a donné ces chiffres ?</h3>${claimsTable(v)}<p>Tes découvertes : <b>${[0,1,2].map(i=>esc(v.myClues.find(c=>c.index===i)?.value??'?')).join(' · ')}</b></p></div></div><div class="force-safe"><p><strong>Personne ne dit la vérité ?</strong> Tu peux forcer le coffre : +2 alarme et −18 au sac commun, en plus des autres incidents.</p>${button('Tant pis, je force le coffre','force-safe','secondary')}</div>`;
-}
+export const rules = `<span class="eyebrow">LE PLAN EN TROIS PHRASES</span><h2>Fuyez ensemble.<br>Gardez une longueur d’avance.</h2><p>Ouvrez le coffre avant la fin du tour 5. À 5 alarmes, la police gagne. Coopérez pour fuir, enrichissez-vous pour devenir Roi des Voleurs ; un FBI est parmi vous.</p><div class="rule-grid"><p><b>Forer</b>Une réussite : coffre +2, vous +6.</p><p><b>Sécuriser</b>Une réussite : alarme −2, vous +6.</p><p><b>Casiers</b>12 pièces partagées entre ceux qui réussissent.</p><p><b>Faire les poches</b>Jusqu’à 4 pièces de la poche initiale d’un rival. Ses gains du tour restent à lui.</p></div><p>Chaque tour : 20 s de promesses, 12 s de choix secrets, 18 s d’épreuve, 12 s de révélation et 30 s de débat. Le temps ajoute 1 alarme. Un FBI qui réussit peut en ajouter 1 et laisse une trace de zone.</p><p><b>Surveillance :</b> 3 voix sur 4, deux utilisations communes. Au prochain tour seulement, le suspect doit forer ou sécuriser ; son brouillage est bloqué. Personne n’est éliminé, aucun rôle n’est révélé.</p><p><b>La fuite attend la fin du tour 5.</b> Coffre à 8 et alarme sous 5 : les trois braqueurs gagnent, chacun reçoit 8 pièces. Le plus riche devient Roi des Voleurs, même en cas d’égalité.</p>`;

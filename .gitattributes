@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.glb binary
+*.blend binary
+*.png binary
+*.ttf binary
+*.wav binary
+public/fonts/*-OFL.txt -text

@@ -1,27 +1,27 @@
-# Plan Foireux
+# Plan Foireux — prototype jouable v1
 
-Un musée, un trésor, un agent infiltré. Un petit jeu de braquage et de bluff entre amis, directement dans le navigateur.
-
-**[Jouer](https://virtuel21.github.io/plan-foireux/?v=0.3)** · Prototype 0.3
+Un musée Art déco, quatre complices, un FBI. Le brief du 17 octobre 2026 dans `docs/BRIEF.md` remplace les règles 0.x. La précision ultérieure de Julien prévaut sur son chapitre réseau : **le navigateur de l’hôte gère la partie localement**, sans serveur de jeu à déployer.
 
 ## Jouer
 
-1. Choisissez un pseudo. Lancez une partie avec les bots, ou créez un salon et copiez l'invitation.
-2. Annoncez publiquement l'un des deux postes : les cartes montrent le gain de 3 pièces et les personnes encore nécessaires. « Fouiller ou aider autrement » donne accès aux autres intentions.
-3. Choisissez ensuite en secret entre tenir votre promesse et trahir pour voler. Les cartes et le récapitulatif séparent le gain personnel de l'effet sur l'équipe. Les voleurs se partagent 18 : 18 seul, 9 à deux, 6 à trois. Le vol ajoute 1 alarme et retire 8 au sac commun ; abandonner un poste encore incomplet ajoute 2 alarmes. À 6, la police entre. Les autres plans restent accessibles : réparer rapporte 1 et retire 2 alarmes ; couvrir peut sauver un poste et partager une prime de 6.
-4. Pour fouiller, choisissez un objet puis engagez votre action : vous ne pourrez plus voler ou changer de poste dans cette salle. Faites pivoter le cadre, le bureau ou la statue en 3D, avec un glissement, les flèches du clavier ou les boutons de rotation. Cherchez le chiffre écrit sur l'une de ses six faces, parmi douze emplacements possibles. La correspondance entre objets et chiffres du code ainsi que le placement changent selon la graine de la partie. Le chiffre est privé. La première découverte rapporte 6 au total ; un indice encore inconnu de vous rapporte 2. Refouiller un indice déjà connu ne rapporte rien. Une fouille non terminée avant la fin du délai ne donne ni chiffre au carnet ni prime. Vous pouvez ensuite annoncer un faux chiffre ou garder le silence.
-5. Pendant la révélation, les avatars des voleurs et de ceux qui ont rompu leur promesse sont signalés en rouge. Les gains apparaissent dans le décor avec une pièce d'or et restent dans le récapitulatif. Votez ensuite pour éjecter un suspect, ou passez. Il faut la majorité absolue. Le rôle de l'éjecté est révélé et son argent est retiré.
-6. Composez les trois chiffres sur le clavier du coffre. Un mauvais code ne l'ouvre pas. Un échec accorde une seule seconde tentative après le débat et le vote. Le forcer coûte +2 alarme et −18 au sac ; l'ouvrir rapporte 48 au sac commun. Fuyez ensuite : le plus riche des braqueurs survivants gagne. Tous les gains restent provisoires jusqu'à la fuite.
+Choisissez un prénom, jouez avec trois bots ou invitez vos complices. L’hôte crée un salon et copie le lien. Chaque invité l’ouvre sur son écran, entre son prénom puis rejoint. Quatre joueurs prêts sont requis pour lancer une partie en ligne. Le salon garde les mêmes sièges pour Rejouer. Les discussions passent par Discord ou par la conversation dans la pièce.
 
-L'agent FBI gagne en faisant monter l'alarme à 6 sans être éjecté, en restant seul face à un braqueur, ou si le groupe fuit sans trésor alors qu'il est encore actif. Une fuite sans trésor ni agent actif ne donne aucun gagnant. Il dispose des mêmes gestes que les autres, peut mentir sur ses indices et se cacher parmi les gourmands. Le jeu comprend quatre salles et une fuite. Jusqu'à 6 humains ; des bots complètent l'équipe jusqu'à 4 participants. Ils peuvent soupçonner un voleur chronique et lui disputer le butin.
+Ouvrez le coffre avant la fin du tour 5. À 5 alarmes, la police gagne. Coopérez pour fuir, enrichissez-vous pour devenir Roi des Voleurs ; un FBI est parmi vous.
 
-La fin de partie révèle les rôles et affiche une grande carte avec le nom et le portrait de l'agent infiltré, y compris lorsque les braqueurs ont réussi à fuir.
+Touchez directement le coffre, les casiers, le poste de sécurité ou le personnage d’un rival. La promesse publique est modifiable pendant 20 s, puis le choix réel reste privé pendant 12 s. Une épreuve de 18 s décide de la réussite. La révélation dure 12 s, puis on débat et vote pendant 30 s après les tours 1 à 4. Aucune validation anticipée ne raccourcit une phase et aucune réussite anticipée n’est montrée aux autres.
 
-Sur mobile, jouez en paysage. En portrait, un écran bloque les interactions et demande de tourner l'appareil. Le bouton de plein écran tente aussi de demander le verrouillage en paysage lorsque le navigateur le permet ; le site ne peut pas garantir ce verrouillage sur tous les systèmes.
+- Forer : coffre +2, poche +6 en cas de réussite.
+- Sécuriser : alarme −2, poche +6.
+- Casiers : un stock global de 12 pièces partagé entre les réussites.
+- Faire les poches : jusqu’à 4 pièces de la poche initiale d’un rival, à partager entre ses voleurs ; les gains du tour ne peuvent pas être volés.
+
+Le temps ajoute 1 alarme. Le FBI peut ajouter 1 alarme en réussissant avec Brouiller activé. Une trace révèle seulement sa zone. Trois voix sur quatre déclenchent un tour de surveillance, avec deux utilisations communes ; aucune élimination ni révélation de rôle. La fuite attend le tour 5 : coffre à 8 et alarme sous 5, les trois braqueurs gagnent et reçoivent chacun 8 pièces. Le plus riche reçoit un titre supplémentaire, partagé en cas d’égalité.
+
+L’entraînement du salon permet d’essayer les quatre épreuves. Le paysage est le format principal pour téléphone ; le portrait reste jouable. Les gestes ont des commandes au clavier, les câbles permettent le glisser ou deux taps, et les cibles mesurent au moins 44 pixels CSS.
 
 ## Développer
 
-Node 22 est utilisé en CI.
+Node 22 :
 
 ```sh
 npm ci
@@ -30,22 +30,27 @@ npm test
 npm run build
 ```
 
-`src/engine.ts` contient les règles déterministes, `session.ts` les salons PeerJS/WebRTC, `scene.ts` le musée Three.js, `inspection.ts` les objets 3D manipulables, `views.ts` les vues et `main.ts` les interactions. Le GLB est généré par `art/build_character.py` avec Blender, et son fichier source `art/burglar.blend` est inclus. Le modèle commun se recolore via la matière `Cloth`. L'attente, la marche et le travail utilisent les pivots du même modèle.
+`npm test` vérifie le moteur, l’autorité locale de l’hôte, la confidentialité des projections et les quatre simulations de mini-jeux. `npm run test:browser` utilise Chrome installé pour la recette. Le test multijoueur utilise réellement WebRTC et le service public de signalisation PeerJS ; il nécessite Internet. Sous Linux, `npx playwright install chrome` installe le navigateur de recette.
 
-```sh
-blender --background --python art/build_character.py
-```
+`npm run build` produit `dist/`, déployable sur GitHub Pages sans backend. `node scripts/qa-full-match.mjs` exécute une partie avec bots avec les délais réels. `PF_TEST_URL` et `PF_QA_DIR` choisissent l’URL et le dossier de preuves.
 
-## Connexion et limites du prototype
+## Multijoueur hébergé chez l’hôte
 
-Les invités communiquent directement avec l'hôte via WebRTC. Le service public PeerServer sert à la signalisation ; aucun serveur de jeu ni compte n'est requis. Certains réseaux restreints nécessitent un relais TURN qui n'est pas fourni par cette version. L'hôte doit garder sa page ouverte. Il n'y a pas encore de migration d'hôte ni de reprise après son rechargement.
+PeerJS établit les connexions WebRTC directes. Son service public sert à la signalisation ; les rôles, choix, mini-jeux, récompenses et résultats sont détenus et calculés dans le navigateur de l’hôte. Aucun serveur Node personnel, compte ou adresse à configurer n’est nécessaire. Les invités ne reçoivent que l’état public et leur propre état privé, via une projection explicite. L’hôte est une machine de confiance : son propriétaire peut techniquement inspecter l’état complet dans son navigateur.
 
-Un invité peut recharger son onglet pour reprendre son siège dans le même salon (jeton dans `sessionStorage`). Après 20 secondes d'absence, un bot prend ses décisions en attendant son retour. Le jeton n'est pas placé dans les liens d'invitation. Aucun rôle des autres joueurs ni choix secret n'est transmis aux invités avant la révélation. L'hôte reste une autorité de confiance et peut techniquement lire l'état complet : ce prototype ne prétend pas fournir une protection compétitive contre un hôte modifié.
+Une perte de connexion gèle le groupe et les chronos. Le même onglet retrouve son siège, son rôle, son choix et la dernière progression envoyée, grâce à un jeton privé dans `sessionStorage`. Les liens d’invitation n’incluent aucun jeton. Une fenêtre de 90 s laisse le temps de revenir ; ensuite la partie se termine sans classement. L’hôte conserve aussi une sauvegarde locale de son salon et peut le reprendre après un rechargement du même onglet ; les invités se reconnectent à son identifiant. Fermer définitivement l’onglet de l’hôte ne migre pas la partie vers un autre joueur.
 
-Le mode solo fonctionne sans service réseau une fois les fichiers chargés. Les polices Google ont des polices de secours. Le jeu contient des sons synthétisés, désactivables, et respecte la préférence de réduction des animations.
+Les coupures silencieuses sont détectées par heartbeat, avec un délai de détection pouvant atteindre 15 secondes. Les fermetures et rechargements envoient immédiatement une annonce d’absence lorsque le navigateur le permet. Des réseaux restrictifs peuvent bloquer WebRTC ; aucun relais TURN privé n’est fourni. Les résultats d’épreuves sont déclarés par le navigateur : les autorisations, gains, délais et unicité sont vérifiés, mais ce prototype entre amis ne prétend pas empêcher la modification du client.
 
-## Direction et suite
+## Sources et direction
 
-Voir [le brief final](docs/BRIEF.md), [l'interface et le contrat de fouille 0.3](docs/UX_V3.md), [la direction artistique](docs/DESIGN.md), [les sources des ressources](docs/ASSETS.md) et [les vérifications effectuées](docs/VALIDATION.md).
+- `src/engine.ts`, `config/rules.ts` : règles pures, résolution simultanée, surveillance, délais et pause.
+- `src/host.ts`, `src/session.ts` : autorité locale, identités et transport WebRTC.
+- `src/trial.ts`, `src/minigame.ts` : état sérialisable et quatre manipulations 2D.
+- `src/scene.ts`, `src/animation.ts` : diorama, repères accessibles, clips procéduraux du modèle partagé.
+- `scenes/layouts/` : trois dispositions préparées, zones stables.
+- `art/source/`, `art/build_museum.py`, `art/finish_assets.py` : sources Blender et exports mobiles reproductibles.
+- `audio/build_audio.py` : banque de sons originaux synthétisés.
+- `docs/ASSETS.md`, `docs/DESIGN.md`, `docs/VALIDATION.md` : provenance, décisions UX et vérifications.
 
-Le rendu est une première interprétation jouable du concept : modèle original simplifié, matériaux PBR, ombres et objets modulaires. Le concept ImageGen n'est pas un modèle 3D. Les expressions, la finesse des vêtements, les gestes spécialisés, les animations du gardien et l'équilibrage humain restent à approfondir.
+Les documents `GAMEPLAY_V2.md` et `UX_V3.md` sont des archives historiques, sans autorité sur cette version. Les essais sur téléphone physique, Safari/iOS et l’équilibrage avec plusieurs groupes humains restent à réaliser.

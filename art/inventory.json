@@ -1,0 +1,186 @@
+{
+  "version": "1.0.0",
+  "generated": "2026-10-17",
+  "assets": [
+    {
+      "path": "public/models/burglar.glb",
+      "bytes": 311768,
+      "sha256": "4510b979f73bfce8b4e285be469482e1efe7a896f985299f4ae0a432a8433e83",
+      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+    },
+    {
+      "path": "public/models/drill.glb",
+      "bytes": 43476,
+      "sha256": "fa721941ef14667fa0295b594e584d116446ee3908e1f570594bdbcb43a8158a",
+      "source": "art/build_drill.py; original geometry"
+    },
+    {
+      "path": "public/models/museum.glb",
+      "bytes": 1384580,
+      "sha256": "18693edbf257936f1126ba71581b7db9822b1c6af22531b18c1da6f17a30550b",
+      "source": "art/build_museum.py and art/finish_assets.py; original geometry"
+    },
+    {
+      "path": "public/portraits/0.png",
+      "bytes": 45551,
+      "sha256": "443295f6c8bfc3a923a39bd4dff130429ef0905965e6aa0c49d7194bc7cfe46d",
+      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+    },
+    {
+      "path": "public/portraits/1.png",
+      "bytes": 44931,
+      "sha256": "87f81cfd24b76b04f59367577a18c69eb1cf2544e272f044827a5427c846d642",
+      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+    },
+    {
+      "path": "public/portraits/2.png",
+      "bytes": 45383,
+      "sha256": "22e605b90bf3072b70baa029276ff36e215181eb7ef2c0d1edc74932370768e8",
+      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+    },
+    {
+      "path": "public/portraits/3.png",
+      "bytes": 44522,
+      "sha256": "f2d66390b3c11cf6045201519b21fb889af2710ff5623227f57c73072f86ab00",
+      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+    },
+    {
+      "path": "public/portraits/4.png",
+      "bytes": 44608,
+      "sha256": "320bdc660b4fed7731f2db30838780d1a9fe0874af177f970b414ce8aae06c3e",
+      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+    },
+    {
+      "path": "public/portraits/5.png",
+      "bytes": 44904,
+      "sha256": "257666fa43a6e337bf904576a03a3ff8e0a8bce0a169de0d7c0c1a0b694bc3bd",
+      "source": "Original Plan Foireux character and portraits; art/build_character.py; art/finish_assets.py"
+    },
+    {
+      "path": "public/fonts/BarlowCondensed-ExtraBold.ttf",
+      "bytes": 110296,
+      "sha256": "724c9c25952d5f4a2d87185d9767aa006144c5f0d944dc05bf7d5d603551c260",
+      "source": "Google Fonts official repository; SIL OFL 1.1 supplied"
+    },
+    {
+      "path": "public/fonts/BarlowCondensed-OFL.txt",
+      "bytes": 4377,
+      "sha256": "186d750eb496a4c17a76385f82be6aea2ac1cf2de074a811d63786cf374ea73f",
+      "source": "Google Fonts official repository; SIL OFL 1.1 supplied"
+    },
+    {
+      "path": "public/fonts/DMSans-OFL.txt",
+      "bytes": 4482,
+      "sha256": "9af36190332437f5ecd09974de43c1f7c77a310a996cdd8ceb25628b458840e1",
+      "source": "Google Fonts official repository; SIL OFL 1.1 supplied"
+    },
+    {
+      "path": "public/fonts/DMSans.ttf",
+      "bytes": 240164,
+      "sha256": "8cd08d97e89c24d0aa92edd2f0f4c8ee6195eee9b7c9f154865a58b02f0c1c0d",
+      "source": "Google Fonts official repository; SIL OFL 1.1 supplied"
+    },
+    {
+      "path": "public/audio/ambience.wav",
+      "bytes": 352844,
+      "sha256": "1e48188e10794e98c0444696f6b01565990b34db94fae7905c3c064066b1cd71",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/arrest.wav",
+      "bytes": 28708,
+      "sha256": "dadc3e2b1e96986d626443ff007f8e32abe4db6b84f599a25a7f6815900d179c",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/cloth.wav",
+      "bytes": 19888,
+      "sha256": "a2adb2d382e601f0fe6cb98151a0c3d18a8aab57b2fb592cb065b83e6609da26",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/coin.wav",
+      "bytes": 15478,
+      "sha256": "b28ae94a095b34d14efaf6e0ecd297a114f351b00290083187011867f1e187d0",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/confirm.wav",
+      "bytes": 8864,
+      "sha256": "6b0bb2241ec29c428becc1da4b8cfa466db53d1c9867470da14e1f19bd4d3de0",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/current.wav",
+      "bytes": 15478,
+      "sha256": "58a4b88961cf04c6c9f89dc54a59c5c38de460dc7473416dabbfd328beedd579",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/deny.wav",
+      "bytes": 7982,
+      "sha256": "ca0ddb92b4bfdd7b3a182b20636aeb0348f6e17e96ac615ac8c6077762ef1744",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/drill.wav",
+      "bytes": 35324,
+      "sha256": "6481bd73aa7fd458f8343a1a5ddbc988189ff1accf5686fa1d232adfde37d2d4",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/lever.wav",
+      "bytes": 8864,
+      "sha256": "8fc63c92ad2ccbd2fecf342d80e54bb5db3601f2c37123e31695a8ebc99f91e6",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/lock.wav",
+      "bytes": 7540,
+      "sha256": "452c6b464408b6878c68cc17f0420b47daaa29097614561539b89b2af42cecce",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/overheat.wav",
+      "bytes": 26504,
+      "sha256": "5d5b38b11c93cfb6dee6a88ad9f76d00074c5a88603efa8d3880dde5c9ddc625",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/phase.wav",
+      "bytes": 17684,
+      "sha256": "10e66da128a03859f06a880862e2ecd78791ee6004307e99c97619be0d873fb7",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/plug.wav",
+      "bytes": 5336,
+      "sha256": "84140426a7be61375a0991953a0fb90af98af83aa2eaf6b111c403e526a6359b",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/signal.wav",
+      "bytes": 22094,
+      "sha256": "bd9cf1cd0c3ee6a73eee0bebecee373acde815b948b1359b11a2bbd609112730",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/siren.wav",
+      "bytes": 61782,
+      "sha256": "c930f60d3d854c63455d143d4775a47e54c821327fcab491f845864840deafe7",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/ui.wav",
+      "bytes": 4012,
+      "sha256": "0511363dff28e89412a73213c4cf92ae61f5354b3cefda345b623c047958ee08",
+      "source": "audio/build_audio.py; original synthesis"
+    },
+    {
+      "path": "public/audio/van.wav",
+      "bytes": 48554,
+      "sha256": "63026c776cc8c77b8a36d3d1831c6c2d987ceb06bff3ab0f47f2988290f65663",
+      "source": "audio/build_audio.py; original synthesis"
+    }
+  ]
+}

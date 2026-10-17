@@ -1,0 +1,162 @@
+{
+  "elapsedSeconds": 441.361,
+  "phases": [
+    {
+      "phase": "role",
+      "heading": "TOUR\n1\n/ 5\nDécouvrez votre rôle\n00:07",
+      "seconds": 0.007
+    },
+    {
+      "phase": "promise",
+      "heading": "TOUR\n1\n/ 5\nAnnoncez votre poste\n00:20",
+      "seconds": 7.012
+    },
+    {
+      "phase": "secret",
+      "heading": "TOUR\n1\n/ 5\nChoisissez ce que vous faites vraiment\nPRIVÉ\n00:12",
+      "seconds": 26.987
+    },
+    {
+      "phase": "transition",
+      "heading": "TOUR\n1\n/ 5\nÀ vous de jouer…\n00:01",
+      "seconds": 38.994
+    },
+    {
+      "phase": "minigame",
+      "heading": "TOUR\n1\n/ 5\nUne épreuve. Un seul poste.\n00:18",
+      "seconds": 39.732
+    },
+    {
+      "phase": "reveal",
+      "heading": "TOUR\n1\n/ 5\nLes promesses passent aux actes\n00:12",
+      "seconds": 57.703
+    },
+    {
+      "phase": "debate",
+      "heading": "TOUR\n1\n/ 5\nQui surveille-t-on au prochain tour ?\n00:30",
+      "seconds": 69.786
+    },
+    {
+      "phase": "promise",
+      "heading": "TOUR\n2\n/ 5\nAnnoncez votre poste\n00:20",
+      "seconds": 99.933
+    },
+    {
+      "phase": "secret",
+      "heading": "TOUR\n2\n/ 5\nChoisissez ce que vous faites vraiment\nPRIVÉ\n00:12",
+      "seconds": 119.881
+    },
+    {
+      "phase": "transition",
+      "heading": "TOUR\n2\n/ 5\nÀ vous de jouer…\n00:01",
+      "seconds": 132.022
+    },
+    {
+      "phase": "minigame",
+      "heading": "TOUR\n2\n/ 5\nUne épreuve. Un seul poste.\n00:18",
+      "seconds": 132.707
+    },
+    {
+      "phase": "reveal",
+      "heading": "TOUR\n2\n/ 5\nLes promesses passent aux actes\n00:12",
+      "seconds": 150.799
+    },
+    {
+      "phase": "debate",
+      "heading": "TOUR\n2\n/ 5\nQui surveille-t-on au prochain tour ?\n00:30",
+      "seconds": 162.823
+    },
+    {
+      "phase": "promise",
+      "heading": "TOUR\n3\n/ 5\nAnnoncez votre poste\n00:20",
+      "seconds": 192.877
+    },
+    {
+      "phase": "secret",
+      "heading": "TOUR\n3\n/ 5\nChoisissez ce que vous faites vraiment\nPRIVÉ\n00:12",
+      "seconds": 212.926
+    },
+    {
+      "phase": "transition",
+      "heading": "TOUR\n3\n/ 5\nÀ vous de jouer…\n00:01",
+      "seconds": 225.009
+    },
+    {
+      "phase": "minigame",
+      "heading": "TOUR\n3\n/ 5\nUne épreuve. Un seul poste.\n00:18",
+      "seconds": 225.728
+    },
+    {
+      "phase": "reveal",
+      "heading": "TOUR\n3\n/ 5\nLes promesses passent aux actes\n00:12",
+      "seconds": 243.673
+    },
+    {
+      "phase": "debate",
+      "heading": "TOUR\n3\n/ 5\nQui surveille-t-on au prochain tour ?\n00:30",
+      "seconds": 255.675
+    },
+    {
+      "phase": "promise",
+      "heading": "TOUR\n4\n/ 5\nAnnoncez votre poste\n00:20",
+      "seconds": 285.677
+    },
+    {
+      "phase": "secret",
+      "heading": "TOUR\n4\n/ 5\nChoisissez ce que vous faites vraiment\nPRIVÉ\n00:12",
+      "seconds": 305.69
+    },
+    {
+      "phase": "transition",
+      "heading": "TOUR\n4\n/ 5\nÀ vous de jouer…\n00:01",
+      "seconds": 317.797
+    },
+    {
+      "phase": "minigame",
+      "heading": "TOUR\n4\n/ 5\nUne épreuve. Un seul poste.\n00:18",
+      "seconds": 318.431
+    },
+    {
+      "phase": "reveal",
+      "heading": "TOUR\n4\n/ 5\nLes promesses passent aux actes\n00:12",
+      "seconds": 336.422
+    },
+    {
+      "phase": "debate",
+      "heading": "TOUR\n4\n/ 5\nQui surveille-t-on au prochain tour ?\n00:30",
+      "seconds": 348.376
+    },
+    {
+      "phase": "promise",
+      "heading": "TOUR\n5\n/ 5\nAnnoncez votre poste\n00:20",
+      "seconds": 378.401
+    },
+    {
+      "phase": "secret",
+      "heading": "TOUR\n5\n/ 5\nChoisissez ce que vous faites vraiment\nPRIVÉ\n00:12",
+      "seconds": 398.485
+    },
+    {
+      "phase": "transition",
+      "heading": "TOUR\n5\n/ 5\nÀ vous de jouer…\n00:01",
+      "seconds": 410.482
+    },
+    {
+      "phase": "minigame",
+      "heading": "TOUR\n5\n/ 5\nUne épreuve. Un seul poste.\n00:18",
+      "seconds": 411.083
+    },
+    {
+      "phase": "reveal",
+      "heading": "TOUR\n5\n/ 5\nLes promesses passent aux actes\n00:12",
+      "seconds": 429.185
+    },
+    {
+      "phase": "ended",
+      "heading": "TOUR\n5\n/ 5\nLe casse est terminé\n00:00",
+      "seconds": 441.295
+    }
+  ],
+  "result": "LE VAN N’ATTEND PLUS\nLe casse est réussi. Tous les braqueurs s’échappent !\nL’AGENT INFILTRÉ\nSarah\nFBI · Portefeuille exclu du classement\nJulien\nRoi des Voleurs\n38 pièces\nLéa\n34 pièces\nMax\n34 pièces\n\nLes trois braqueurs gagnent. Bonus personnel de 8 pièces inclus.\n\nRetour au salon · Rejouer",
+  "errors": []
+}
