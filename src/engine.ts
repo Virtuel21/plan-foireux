@@ -70,6 +70,7 @@ export type Game = {
   trials: Record<string, Trial>;
   successes: Record<string, boolean>;
   wallets: Record<string, number>;
+  lastThefts: Record<string, string>;
   phase: Phase;
   round: number;
   turn: number;
@@ -110,6 +111,7 @@ export type View = Pick<
   myId: string;
   myRole: Role;
   myChoice: Choice | null;
+  myLastTheft: string | null;
   myJam: boolean;
   myJamTarget: string | null;
   voteCounts: Record<string, number>;
@@ -171,6 +173,7 @@ export function createGame(
     trials: {},
     successes: {},
     wallets: {},
+    lastThefts: {},
     phase: "role",
     round: 1,
     turn: 1,
@@ -211,6 +214,7 @@ export function publicView(g: Game, id: string, now = Date.now()): View {
     myId: id,
     myRole: g.roles[id] ?? "burglar",
     myChoice: g.choices[id] ?? null,
+    myLastTheft: g.lastThefts[id] ?? null,
     myJam: g.jams[id] ?? false,
     myJamTarget: g.jamTargets[id] ?? null,
     voteCounts:
@@ -319,7 +323,7 @@ export function apply(
   if (
     c.type === "vote" &&
     g.phase === "debate" &&
-    g.charges > 0 &&
+    (g.charges > 0 || c.target === "pass") &&
     typeof c.target === "string" &&
     (c.target === "pass" || g.players.some((p) => p.id === c.target))
   ) {
@@ -355,7 +359,8 @@ function validProgress(
     !current ||
     JSON.stringify(t).length > 3000 ||
     t.action !== current.action ||
-    t.seed !== current.seed
+    t.seed !== current.seed ||
+    t.difficulty !== current.difficulty
   )
     return false;
   return (
@@ -464,6 +469,7 @@ export function resolve(g: Game): Report {
       gains[p.id] = Math.floor(pools[c.action] / count);
     }
   }
+  const earned = { ...gains };
   for (const victim of g.players) {
     const thieves = g.players.filter(
       (p) =>
@@ -473,7 +479,12 @@ export function resolve(g: Game): Report {
     );
     if (!thieves.length) continue;
     const share = Math.floor(
-      Math.min(CONFIG.theft, before[victim.id] ?? victim.money) /
+      (earned[victim.id] > 0
+        ? Math.min(
+            earned[victim.id] - 1,
+            Math.ceil(earned[victim.id] * CONFIG.theftIncomeRate),
+          )
+        : Math.min(CONFIG.theft, before[victim.id] ?? victim.money)) /
         thieves.length,
     );
     thieves.forEach((p) => (gains[p.id] += share));
@@ -513,6 +524,11 @@ export function resolve(g: Game): Report {
   g.players.forEach((p) => (p.money += gains[p.id] - losses[p.id]));
   g.alarm = report.alarmAfter;
   g.vault += report.vaultAdded;
+  g.lastThefts = Object.fromEntries(
+    g.players
+      .filter((p) => g.choices[p.id]?.action === "pocket")
+      .map((p) => [p.id, g.choices[p.id].target!]),
+  );
   g.report = report;
   g.history.push(report);
   g.watched = null;
@@ -559,7 +575,10 @@ export function advance(
     }
     return;
   }
-  if (now < g.deadline) return;
+  const allVoted =
+    g.phase === "debate" &&
+    g.players.every((p) => Object.hasOwn(g.votes, p.id));
+  if (now < g.deadline && !allVoted) return;
   let next: Phase;
   if (g.phase === "role") next = "promise";
   else if (g.phase === "promise") next = "secret";
@@ -577,6 +596,10 @@ export function advance(
           ? "radio"
           : g.choices[p.id].action,
         Math.floor(privateRandom() * 0xffffffff),
+        g.choices[p.id].action === "pocket" &&
+          g.lastThefts[p.id] === g.choices[p.id].target
+          ? 2
+          : 1,
       );
       g.wallets[p.id] = p.money;
     }

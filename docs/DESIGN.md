@@ -1,4 +1,4 @@
-# Direction artistique et UX — v2
+# Direction artistique et UX — v3
 
 Le dernier brief fourni le 17 octobre remplace les cartes d’actions, l’éjection et les inspections des versions 0.x.
 
@@ -33,3 +33,11 @@ Les quatre postes affichent les portraits et noms de leurs participants annoncé
 La fenêtre de bilan s’ouvre automatiquement : calcul explicite des alarmes, puis quatre portraits avec promesse, action, résultat, poche, gains et pertes. Si la partie continue, la fenêtre de vote s’ouvre ; les quatre compteurs sont visibles en direct. La recherche UI/UX Pro Max `live vote count feedback` a fourni la règle de mise à jour contextualisée : une seule région de statut annonce l’ensemble des voix sans déplacer le focus.
 
 Le talkie est un objet 2D dessiné pour le jeu : antenne, boîtier, grille de haut-parleur, écran LCD, deux boutons rotatifs. Glisser verticalement tourne le bouton ; les flèches ajustent aussi la valeur. Couleurs du signal doublées de texte. La toile utilise un tracé ordonné et montre longueur découpée et précision ; le doigt, la souris et les flèches sont pris en charge.
+
+## Ajustements v3
+
+Une grande annonce au centre signale « Annoncez votre poste » et « Choisissez votre vrai poste », avec la distinction Public / Privé. Elle dure 2,8 secondes, laisse les commandes utilisables et respecte le mouvement réduit. La recherche UI/UX Pro Max `status message focus` a guidé son statut accessible : région polie atomique, aucun focus déplacé. Les rôles secrets FBI/braqueur restent sur leur carte privée.
+
+La sirène et son explication ont le même déclencheur : une hausse effective du niveau d’alarme. Sinon, le bilan montre seulement les résultats et le butin. « Alarmes désactivées par N joueurs » indique clairement le travail accompli. Le vote indique que les quatre réponses lancent la suite ; le chronomètre ne retient plus les joueurs prêts.
+
+La découpe affiche un couloir de tolérance plus large, accepte les mouvements espacés et les petits retours, et demande 70 % de précision. Le vol annonce son enjeu réel, presque tout le gain du tour, et avertit « Cible très vigilante » avant de répéter une cible. Cette difficulté réduit les fenêtres et fait perdre une prise si repéré. Les anciens sacs sont remplacés par des plateaux de liasses et lingots animés en fonction des gains et pertes.

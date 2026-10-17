@@ -2666,3 +2666,66 @@ nav {
     font-size: 18px;
   }
 }
+#phase-announcement {
+  position: fixed;
+  z-index: 24;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(780px, 90vw);
+  padding: 26px 32px;
+  text-align: center;
+  pointer-events: none;
+  background: linear-gradient(125deg, #183b41f5, #102731f7);
+  border: 1px solid #ecc47e;
+  border-radius: 18px;
+  box-shadow: 0 18px 90px #06101499;
+  animation: phase-entrance 0.28s ease-out;
+}
+#phase-announcement strong {
+  display: block;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: clamp(32px, 6vw, 64px);
+  line-height: 1.05;
+  color: var(--cream);
+  margin: 9px 0;
+}
+#phase-announcement p {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #e3e7d8;
+}
+#phase-announcement .eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+.cut-guide {
+  fill: none;
+  stroke: #f1d59130;
+  stroke-width: 32;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+@keyframes phase-entrance {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -43%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  #phase-announcement {
+    padding: 19px 24px;
+  }
+  #phase-announcement p {
+    font-size: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #phase-announcement {
+    animation: none;
+  }
+}

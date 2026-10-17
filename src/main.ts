@@ -31,6 +31,16 @@ try {
   $("#scene").innerHTML =
     '<p class="scene-error">Le rendu 3D nécessite WebGL. Active l’accélération graphique puis recharge la page.</p>';
 }
+let phaseAnnouncementTimer: ReturnType<typeof setTimeout> | undefined;
+function announcePhase(phase: string) {
+  const el = $("#phase-announcement");
+  clearTimeout(phaseAnnouncementTimer);
+  el.hidden = true;
+  if (!["promise", "secret"].includes(phase)) return;
+  el.innerHTML = `<span class="eyebrow">${phase === "promise" ? "À TOUS LES COMPLICES · PUBLIC" : "À VOUS DE DÉCIDER · PRIVÉ"}</span><strong>${phase === "promise" ? "Annoncez votre poste" : "Choisissez votre vrai poste"}</strong><p>${phase === "promise" ? "Touchez un poste dans le musée pour annoncer votre plan." : "Respectez votre promesse… ou volez le gain d’un rival."}</p>`;
+  el.hidden = false;
+  phaseAnnouncementTimer = setTimeout(() => (el.hidden = true), 2800);
+}
 function notify(text: string) {
   $("#toast").textContent = text;
   $("#toast").classList.add("visible");
@@ -56,6 +66,7 @@ function render(s: Snapshot) {
           : v.myChoice;
     if (modal) closeModal();
     sound(v.phase);
+    announcePhase(v.phase);
     if (v.phase === "reveal") {
       if (v.report && v.report.alarmAfter > v.report.alarmBefore)
         soundBank.play("siren");
@@ -86,7 +97,7 @@ function render(s: Snapshot) {
     : '<span class="location">MUSÉE BELLEVUE · 23:47</span><span class="quiet landscape-hint">4 complices · 1 écran chacun · 5 manches maximum</span>';
   $("#footer").innerHTML = v
     ? footer(v, selected)
-    : '<span class="quiet">Promettez le meilleur. Préparez le pire.</span><span class="quiet">v2.0 · Fuite dès l’ouverture · Un FBI parmi vous</span>';
+    : '<span class="quiet">Promettez le meilleur. Préparez le pire.</span><span class="quiet">v3.0 · Fuite dès l’ouverture · Un FBI parmi vous</span>';
   if (!v) lobby(s);
   else $("#lobby").innerHTML = "";
   museum?.update(v, s.players, selected);
@@ -408,7 +419,7 @@ document.addEventListener("click", async (e) => {
       notify("Le plein écran n’est pas disponible dans ce navigateur.");
     }
   } else if (action === "invite") {
-    const url = `${location.origin}${location.pathname}?v=2.0.1#room=${session.room}`;
+    const url = `${location.origin}${location.pathname}?v=3.0.0#room=${session.room}`;
     try {
       await navigator.clipboard.writeText(url);
       notify("Invitation copiée.");
@@ -462,6 +473,6 @@ session.resume();
 if (
   !session.authority &&
   !!invite.get("room") &&
-  invite.get("room") === sessionStorage.getItem("pf-v2-joined")
+  invite.get("room") === sessionStorage.getItem("pf-v3-joined")
 )
   session.join(invite.get("room")!);

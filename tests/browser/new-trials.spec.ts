@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("landscape touchscreen: precise canvas cutting and three rotary radio frequencies", async ({
+test("landscape touchscreen: generous canvas cutting and three rotary radio frequencies", async ({
   browser,
 }) => {
   test.setTimeout(60000);
@@ -36,7 +36,7 @@ test("landscape touchscreen: precise canvas cutting and three rotary radio frequ
     const cdp = await ctx.newCDPSession(page);
     // Inaccurate touch trace, then a single tap must reset it without an extra attempt.
     const bad = [
-      ...Array.from({ length: 30 }, (_, i) => [30 + (i % 2) * 15, 40]),
+      ...Array.from({ length: 160 }, (_, i) => [30 + (i % 2) * 15, 40]),
       ...points,
     ];
     for (let i = 0; i < bad.length; i++)
@@ -57,13 +57,21 @@ test("landscape touchscreen: precise canvas cutting and three rotary radio frequ
     await expect(page.locator(".trial-status")).toContainText("trop imprécise");
     await page.locator(".restart-cut").tap();
     await expect(page.locator(".cut-percent")).toHaveText("0 %");
-    for (let i = 0; i < points.length; i++)
+    // Deliberately sparse samples and about 4.5% thumb drift from the outline.
+    const generous = [
+      points[0],
+      ...points
+        .filter((_, i) => i % 2 === 1)
+        .map(([x, y], i) => [x + 22.5 * Math.sin(i), y + 13.5 * Math.cos(i)]),
+      points.at(-1)!,
+    ];
+    for (let i = 0; i < generous.length; i++)
       await cdp.send("Input.dispatchTouchEvent", {
         type: i === 0 ? "touchStart" : "touchMove",
         touchPoints: [
           {
-            x: rect.x + (points[i][0] / 500) * rect.width,
-            y: rect.y + (points[i][1] / 300) * rect.height,
+            x: rect.x + (generous[i][0] / 500) * rect.width,
+            y: rect.y + (generous[i][1] / 300) * rect.height,
             radiusX: 5,
             radiusY: 5,
             id: 0,
@@ -76,7 +84,11 @@ test("landscape touchscreen: precise canvas cutting and three rotary radio frequ
       touchPoints: [],
     });
     await expect(page.locator(".trial-status")).toContainText("Réussi");
-    await expect(page.locator(".cut-accuracy")).toHaveText("100 %");
+    expect(
+      Number(
+        (await page.locator(".cut-accuracy").innerText()).replace(" %", ""),
+      ),
+    ).toBeGreaterThanOrEqual(70);
     await page.screenshot({ path: "test-results/cutting-landscape.png" });
     await page.getByRole("button", { name: "Retour", exact: true }).tap();
     await page.locator('[data-practice="radio"]').tap();

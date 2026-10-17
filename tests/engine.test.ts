@@ -185,7 +185,7 @@ test("each of the four posts pays 12, 6, 4, 3 based on attendance; failed shares
       round(
         g,
         [0, 1, 2, 3].map((i) =>
-          i < n ? action : { action: "pocket", target: String((i + 1) % 4) },
+          i < n ? action : action === "secure" ? "painting" : "secure",
         ),
         [true, true, true, true],
         false,
@@ -216,7 +216,7 @@ test("four failed challenges give zero money and five alarms including time", ()
   );
   assert.equal(g.alarm, 5);
 });
-test("three thieves share four in integers; remainder stays with victim", () => {
+test("three thieves share the current reward; remainder and at least one coin stay with victim", () => {
   const g = game();
   g.players[0].money = 10;
   round(g, [
@@ -225,10 +225,10 @@ test("three thieves share four in integers; remainder stays with victim", () => 
   ]);
   assert.deepEqual(
     g.players.map((p) => p.money),
-    [19, 1, 1, 1],
+    [13, 3, 3, 3],
   );
 });
-test("two thieves on three coins take one each, gains this turn cannot be stolen", () => {
+test("theft takes almost the whole reward even when the victim started with little or no money", () => {
   const g = game();
   g.players[0].money = 3;
   round(g, [
@@ -239,11 +239,12 @@ test("two thieves on three coins take one each, gains this turn cannot be stolen
   ]);
   assert.deepEqual(
     g.players.map((p) => p.money),
-    [13, 1, 1, 12],
+    [5, 5, 5, 12],
   );
   const h = game();
   round(h, ["secure", { action: "pocket", target: "0" }, "loot", "drill"]);
-  assert.equal(h.players[1].money, 0);
+  assert.equal(h.players[1].money, 11);
+  assert.equal(h.players[0].money, 1);
 });
 test("cross theft and result arrival order do not change the common snapshot", () => {
   const a = game(),
@@ -331,7 +332,7 @@ test("surveillance restricts one turn and blocks jam; expiry permits another vot
   assert.equal(legal(g, "3", { action: "drill" }), false);
   assert.equal(legal(g, "3", { action: "secure" }), true);
 });
-test("no surveillance left keeps debate available but rejects suspect and pass", () => {
+test("no surveillance left permits pass to signal readiness but rejects suspects", () => {
   const g = game();
   phase(g, "debate");
   g.charges = 0;
@@ -454,7 +455,7 @@ test("three cooperative rounds escape early, rewards split and theft competes wi
   assert.equal(g.vault, 8);
   assert.deepEqual(
     g.players.map((p) => p.money),
-    [34, 44, 30, 36],
+    [27, 44, 37, 36],
   );
 });
 test("disconnect freezes all phases, resumes exact remaining time, expires without ranking", () => {
@@ -501,4 +502,77 @@ test("recommendations include current turn and command validation rejects malfor
   ])
     assert.equal(apply(g, "0", c as any, 1), false);
   assert.equal(CONFIG.durations.minigame, 18000);
+});
+
+test("four answers including abstentions end the vote immediately and start a full new timer", () => {
+  const g = game();
+  phase(g, "debate");
+  for (const id of ["0", "1", "2"])
+    apply(g, id, { type: "vote", target: "3", turn: g.turn }, 1);
+  advance(g, 2);
+  assert.equal(g.phase, "debate");
+  apply(g, "3", { type: "vote", target: "pass", turn: g.turn }, 3);
+  advance(g, 4);
+  assert.equal(g.phase, "promise");
+  assert.equal(g.watched, "3");
+  assert.equal(g.charges, 1);
+  assert.equal(g.phaseStarted, 4);
+  assert.equal(g.deadline, 4 + CONFIG.durations.promise);
+  const h = game();
+  phase(h, "debate");
+  h.charges = 0;
+  for (const id of ["0", "1", "2", "3"])
+    assert.ok(apply(h, id, { type: "vote", target: "pass", turn: h.turn }, 1));
+  advance(h, 2);
+  assert.equal(h.phase, "promise");
+  assert.equal(h.charges, 0);
+});
+test("repeating a theft on the next round is private and hard, switching or waiting resets vigilance", () => {
+  const g = game();
+  g.lastThefts = { "0": "1" };
+  phase(g, "secret");
+  g.choices = { "0": { action: "pocket", target: "1" } };
+  const observer = publicView(g, "2");
+  assert.equal(observer.myLastTheft, null);
+  assert.equal(Object.hasOwn(observer, "lastThefts"), false);
+  advance(g, g.deadline);
+  assert.equal(g.trials["0"].difficulty, 2);
+  const h = game();
+  h.lastThefts = { "0": "1" };
+  phase(h, "secret");
+  h.choices = { "0": { action: "pocket", target: "2" } };
+  advance(h, h.deadline);
+  assert.equal(h.trials["0"].difficulty, 1);
+  const k = game();
+  k.lastThefts = { "0": "1" };
+  round(k, ["secure", "drill", "loot", "painting"], undefined, false);
+  assert.deepEqual(k.lastThefts, {});
+});
+test("failed targets expose only their reserve; simultaneous proceeds are not stolen recursively", () => {
+  const g = game();
+  g.players[0].money = 8;
+  round(
+    g,
+    ["secure", { action: "pocket", target: "0" }, "secure", "painting"],
+    [false, true, true, true],
+    false,
+  );
+  assert.equal(g.players[0].money, 4);
+  assert.equal(g.players[1].money, 4);
+  const h = game();
+  round(
+    h,
+    [
+      "loot",
+      { action: "pocket", target: "0" },
+      { action: "pocket", target: "1" },
+      "secure",
+    ],
+    undefined,
+    false,
+  );
+  assert.deepEqual(
+    h.players.map((p) => p.money),
+    [1, 11, 0, 12],
+  );
 });

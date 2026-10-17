@@ -116,17 +116,15 @@ for x,y in [(-1.4,3),(3.2,3)]:
     cube('Display plinth',(x,y,.55),(.85,.65,1.05),walnut,.06)
     cube('Display rim',(x,y,1.1),(.95,.75,.1),gold,.025)
     uv('Museum egg',(x,y,1.36),(.19,.19,.28),gold)
-# Entry rug and bags, four original curved duffels.
+# Entry rug and four colour-coded wealth stands; runtime adds banknotes and ingots.
 cube('Entry carpet',(0,-2.55,.13),(7.9,1.85,.06),red,.06)
 for y in [-3.39,-1.71]:cube('Carpet border',(0,y,.17),(7.65,.035,.012),gold,.005)
-for i,c in enumerate([( .85,.46,.04),(.02,.46,.43),(.82,.23,.045),(.38,.12,.47)]):
-    m=mat('Bag'+str(i),c,0,.8);bag=empty('PROP_Bag_'+str(i),(-3+i*1.8,-2.8,0));groups['bag'+str(i)]=bag
-    cube('Duffel body',(0,0,.35),(.74,.49,.55),m,.17,bag)
-    cube('Duffel end',(0,-.26,.34),(.54,.05,.35),black,.09,bag)
-    cube('Name badge',(0,-.30,.38),(.20,.018,.13),gold,.02,bag)
-    for x in [-.23,.23]:cube('Bag strap',(x,0,.38),(.06,.52,.59),black,.026,bag)
-    uv('Handle',(0,0,.67),(.17,.045,.12),black,bag)
-    empty('ANCHOR_bag'+str(i),(-3+i*1.8,-2.8,1.1))
+for i,c in enumerate([(.85,.46,.04),(.02,.46,.43),(.82,.23,.045),(.38,.12,.47)]):
+    m=mat('Wealth colour '+str(i),c,0,.65)
+    stand=empty('PROP_Wealth_'+str(i),(-3+i*1.8,-2.8,0))
+    cube('Wealth tray',(0,0,.20),(1.35,.82,.10),walnut,.05,stand)
+    cube('Coloured wealth rim',(0,0,.26),(1.30,.77,.045),m,.018,stand)
+    cube('Wealth name plate',(0,-.415,.22),(.24,.025,.09),gold,.012,stand)
 for x in [-5.5,5.5]:
     cyl('Planter',(x,-2.45,.35),.32,.6,gold)
     for i in range(7):

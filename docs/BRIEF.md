@@ -1,4 +1,4 @@
-# Plan Foireux — règles v2, corrections de Julien du 17 octobre 2026
+# Plan Foireux — règles v3, corrections de Julien du 17 octobre 2026
 
 Ce document intègre les dernières demandes et remplace les règles contradictoires de `BRIEF-v1-archive.md`, conservé comme archive du document initial.
 
@@ -13,13 +13,14 @@ Coffre : 8 points. Alarme : défaite à 5 ou plus, après calcul complet. Cinq m
 ## Choix et gains
 
 - Promesses publiques, 20 secondes : seuls les quatre postes sont annonçables. On ne peut pas annoncer Faire les poches, même via une commande réseau. Noms et portraits sont associés au poste promis.
-- Choix secrets, 12 secondes : un des quatre postes, ou Faire les poches en touchant un rival ou son sac. Les autres voient encore la promesse, jamais le vrai choix ni la cible.
+- Choix secrets, 12 secondes : un des quatre postes, ou Faire les poches en touchant un rival ou sa pile de butin. Les autres voient encore la promesse, jamais le vrai choix ni la cible. Une grande annonce centrale distingue les promesses publiques des vrais postes privés.
 - Forer : chaque réussite ajoute 2 au coffre.
 - Sécuriser : chaque réussite retire 2 alarmes.
 - Casiers : défi de goupilles.
-- Voler la toile : découper un contour fermé dans le délai, avec au moins 85 % de précision.
+- Voler la toile : découper un contour fermé dans le délai, avec au moins 70 % de précision. Tolérance spatiale doublée, interpolation entre les positions du doigt et petits retours sur le contour acceptés ; les sauts au bout du parcours restent interdits.
 - Chaque poste possède une cagnotte de 12 pièces par manche. Part déterminée par TOUS ses participants réels : seul 12, à deux 6, à trois 4, à quatre 3. Une personne qui rate perd sa part ; elle n’augmente pas les parts des autres. Le progrès collectif des réussites reste individuel et cumulable.
-- Faire les poches : jusqu’à 4 pièces au total de la poche initiale de la victime. Partage entier entre les voleurs réussis ; reliquat conservé par la victime. Gains de la manche non volables. Prendre 4 au meneur réduit l’écart de 8.
+- Faire les poches : après les récompenses de poste, prendre 90 % arrondis au supérieur du gain de la manche, en laissant au moins une pièce. Un gain de 12 peut donc perdre 11 ; 6 peut perdre 5. Si la cible ne gagne rien, jusqu’à 4 pièces de sa réserve initiale. Partage entier entre les voleurs réussis ; reliquat conservé par la victime. Les produits des autres vols ne sont pas revolés en cascade.
+- Retenter la même cible à la manche suivante déclenche sa vigilance : fenêtres de vol de 0,8 s au lieu de 1,65 s, trois prises de 1,35 s et perte d’une prise complète si repéré. Changer de cible ou passer un tour sans vol rétablit la difficulté normale. L’hôte conserve cet historique privé, chaque joueur ne reçoit que le sien.
 
 Ces valeurs sont une nouvelle base de prototype. Les tests automatisés vérifient le calcul, pas l’équilibrage ou le plaisir entre amis.
 
@@ -35,12 +36,14 @@ Les épreuves durent 18 secondes. Perceuse : bande de pression réduite à 13 %,
 
 Alarme finale = max(0, précédente +1 temps +nombre de défis ratés −2 × sécurités réussies). Un échec brouillé compte une seule fois. Pas d’alarme de brouillage additionnelle. Les quatre résultats sont calculés simultanément ; aucune alarme provisoire ne termine la partie.
 
-À chaque révélation, une fenêtre explique chaque contribution de l’alarme et montre les portraits, postes promis et réels, réussite/échec, argent actuel, gains et pertes des quatre joueurs. La révélation dure 12 secondes. Si la partie continue, le débat dure 30 secondes et la fenêtre propose le vote, avec compteurs publics en direct pour chacun et Passer. Chaque vote reste modifiable jusqu’à l’échéance. Les votes individuels ne sont pas projetés pendant le débat, seuls les totaux le sont.
+À chaque révélation, une fenêtre montre les portraits, postes promis et réels, réussite/échec, argent actuel, gains et pertes des quatre joueurs. Le calcul de l’alarme apparaît seulement si son niveau augmente, comme le son de sirène. « Alarmes désactivées par N joueurs » remplace « sécurités réussies ». La révélation dure 12 secondes. Si la partie continue, le débat dure au maximum 30 secondes et la fenêtre propose le vote, avec compteurs publics en direct pour chacun et Passer. Dès que les quatre joueurs ont répondu, la manche suivante commence, sans attendre le compteur. Un vote reste modifiable en attendant la quatrième réponse. Sans charge, Continuer remplace Passer. Les votes individuels ne sont pas projetés pendant le débat, seuls les totaux le sont.
 
 Trois voix sur quatre imposent une surveillance d’une manche : coffre ou sécurité et brouilleur bloqué, rôle non révélé. Deux charges communes, pas d’élimination. Aucun vote sans effet après la manche qui termine la partie.
 
 ## Visuel et musique
 
 Voiture décorative retirée des sources Blender et du GLB. Quatrième poste de tableau identifiable et cliquable. Visages et noms sur les postes, sélection publique/privée explicite, zones tactiles de 44 pixels minimum, téléphone paysage prioritaire.
+
+Les quatre sacs 3D sont remplacés par de petits plateaux de butin. Les liasses et lingots reprennent les unités de Money Tour, avec biseaux, papiers superposés, bandes et poinçons. Les piles s’animent à la hausse et à la baisse selon le solde public ; les instances sont regroupées par matériau pour le mobile.
 
 Musiques fournies par Julien dans son dossier `Plan foireux/songs` : Sneaky Museum Heist à l’accueil ; les deux Sneaking Motif alternent en partie. Lecture au premier geste autorisé par le navigateur, volume modéré, mute persistant et pause lors d’une interruption ou quand l’onglet est masqué. Fichiers locaux au jeu, aucune lecture distante tierce.

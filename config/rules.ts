@@ -7,6 +7,7 @@ export const CONFIG = {
   loot: 12,
   painting: 12,
   theft: 4,
+  theftIncomeRate: 0.9,
   bonus: 8,
   reconnect: 90_000,
   durations: {
