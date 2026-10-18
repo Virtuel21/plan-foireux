@@ -18,6 +18,9 @@ export type Trial = {
   cutSamples: number;
   cutX: number;
   cutY: number;
+  /** Missing in old in-progress saves: retain their original contour. */
+  cutVersion?: 2;
+  cutShape?: number;
   /** Optional in pre-statue host saves; normalised to zero when restored. */
   statueNoise?: number;
   done: boolean;
@@ -26,6 +29,7 @@ export function newTrial(
   action: TrialAction,
   seed: number,
   difficulty: 1 | 2 = 1,
+  cutShape?: number,
 ): Trial {
   return {
     action,
@@ -45,6 +49,8 @@ export function newTrial(
     cutSamples: 0,
     cutX: 0.5,
     cutY: 0.15,
+    cutVersion: 2,
+    ...(action === "painting" && cutShape !== undefined ? { cutShape } : {}),
     statueNoise: 0,
     done: false,
   };
@@ -181,12 +187,64 @@ export function lever(t: Trial): boolean {
   return t.done;
 }
 /** Ordered closed silhouette. Coordinates normalised to the artwork, independent of DPI. */
-export function cutPath(t: Pick<Trial, "seed">): [number, number][] {
-  return Array.from({ length: 81 }, (_, i) => {
-    const a = -Math.PI / 2 + (i * Math.PI * 2) / 80;
-    const r = 1 + 0.08 * Math.sin(3 * a + (t.seed % 3) * 0.4);
-    return [0.5 + Math.cos(a) * 0.32 * r, 0.5 + Math.sin(a) * 0.35 * r];
+export function cutPath(
+  t: Pick<Trial, "seed" | "cutVersion" | "cutShape">,
+): [number, number][] {
+  if (!t.cutVersion)
+    return Array.from({ length: 81 }, (_, i) => {
+      const a = -Math.PI / 2 + (i * Math.PI * 2) / 80;
+      const r = 1 + 0.08 * Math.sin(3 * a + (t.seed % 3) * 0.4);
+      return [0.5 + Math.cos(a) * 0.32 * r, 0.5 + Math.sin(a) * 0.35 * r];
+    });
+  // Six recognisable silhouettes, with seed-specific proportions and rotation.
+  // Resampling by distance gives each outline the same 80 fair cutting steps.
+  const seed = t.seed >>> 0;
+  const kind = t.cutShape ?? seed % 6;
+  const variation =
+    ((Math.imul(seed, 1664525) + 1013904223) >>> 0) / 0x100000000;
+  const rotation = (variation - 0.5) * 0.55;
+  const raw: [number, number][] = Array.from({ length: 321 }, (_, i) => {
+    const a = -Math.PI / 2 + (i * Math.PI * 2) / 320;
+    const c = Math.cos(a),
+      s = Math.sin(a);
+    const r =
+      kind === 0
+        ? 1 + 0.04 * Math.cos(3 * a)
+        : kind === 1
+          ? 0.9 / (Math.abs(c) ** 4 + Math.abs(s) ** 4) ** 0.25
+          : kind === 2
+            ? 1.1 / (Math.abs(c) + Math.abs(s))
+            : kind === 3
+              ? 1 + 0.15 * Math.cos(4 * a)
+              : kind === 4
+                ? 1 + 0.19 * Math.cos(5 * a + Math.PI / 2)
+                : 1 + 0.13 * s - 0.12 * Math.cos(2 * a);
+    const x = c * r * (0.28 + variation * 0.025);
+    const y = s * r * (0.3 + (1 - variation) * 0.025);
+    return [
+      0.5 + x * Math.cos(rotation) - y * Math.sin(rotation),
+      0.5 + x * Math.sin(rotation) + y * Math.cos(rotation),
+    ];
   });
+  const lengths = [0];
+  for (let i = 1; i < raw.length; i++)
+    lengths.push(
+      lengths[i - 1] +
+        Math.hypot(raw[i][0] - raw[i - 1][0], raw[i][1] - raw[i - 1][1]),
+    );
+  let index = 1;
+  const path: [number, number][] = Array.from({ length: 81 }, (_, i) => {
+    const distance = (lengths.at(-1)! * i) / 80;
+    while (index < raw.length - 1 && lengths[index] < distance) index++;
+    const ratio =
+      (distance - lengths[index - 1]) / (lengths[index] - lengths[index - 1]);
+    return [
+      raw[index - 1][0] + (raw[index][0] - raw[index - 1][0]) * ratio,
+      raw[index - 1][1] + (raw[index][1] - raw[index - 1][1]) * ratio,
+    ];
+  });
+  path[80] = [...path[0]];
+  return path;
 }
 export const cutAccuracy = (t: Trial) =>
   Math.round(100 * (1 - t.cutErrors / Math.max(1, t.cutSamples)));

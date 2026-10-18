@@ -55,3 +55,18 @@ Les cagnottes à partager sont Caméras 6, Forer 10, Statue 16 et Toile 24. Les 
 Le gardien dort sur sa chaise à gauche du banc central. Sa respiration est visuelle ; aucun réveil ni mini-jeu associé n’est ajouté. Aux caméras, un à quatre joueurs occupent l’allée libre à l’ouest de la couronne, avec des trajets aller-retour par le couloir central. Les emplacements de la statue utilisent son côté nord-ouest, dégagé du banc et des cordons.
 
 Les signes du boîtier sont centrés dans les plaques physiques, colorées selon le câble attendu. Les prises libres restent des disques colorés avec un grand « + » sombre et une bordure claire. Les deux boutons rotatifs et l’antenne du talkie sont contenus dans son assemblage, y compris en paysage étroit.
+
+
+## Confort, zoom et fiches PC — 18 octobre 2026
+
+Le musée conserve les tokens existants : encre #11232c, panneau #17303a, crème #f5ecd7, laiton #f0c36b et turquoise #68dbc5. DM Sans reste la police d’information ; Barlow Condensed porte les titres. Les nouveaux SVG reprennent le trait des icônes existantes.
+
+Les fiches de joueurs sont déplacées dans une colonne de 224 pixels à droite du musée sur PC. Les repères de tête deviennent compacts : pièce et montant, puis main et « Voler » uniquement si l’action est autorisée. Les fiches latérales affichent les promesses publiques et se synchronisent avec le choix local, sans exposer le choix secret adverse. Le panneau mobile existant reste la commande des postes et complices.
+
+Les réglages ont trois curseurs natifs et une coupure générale ; aucune validation n’est requise et le volume du morceau en cours change immédiatement. Les valeurs sont mémorisées. Le focus reste dans la fenêtre et Échap permet de fermer.
+
+Le canvas utilise des gestes réservés à la caméra. Le pincement zoome, le glissement déplace la vue agrandie ; un seuil de déplacement et une protection après le geste empêchent une sélection accidentelle. Boutons +/− et recentrer, molette et clavier complètent les gestes. Les commandes se trouvent dans la scène uniquement en partie afin de dégager l’accueil sur téléphone. Le cadrage des rayons de sélection et des repères utilise la même caméra.
+
+Le boîtier garde son modèle et son interrupteur physique, désormais animé automatiquement. Les ouvertures des prises ont un centre sombre, une bague colorée pleine et une bordure crème. Les symboles des plaques, les embouts et les cibles natives de 44 pixels restent disponibles pour les gestes et le clavier. Le texte de l’épreuve annonce la validation automatique.
+
+Les contours de découpe sont rééchantillonnés à distances régulières pour garder 80 étapes sur six silhouettes. La graine et la version de contour font partie de la progression sauvegardée ; les reprises anciennes gardent leur tracé.

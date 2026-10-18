@@ -109,7 +109,7 @@ try {
       await page.locator(`[data-cable="${cable}"]`).tap();
       await page.getByRole('button', { name: `Borne ${['1 △', '2 ○', '3 ╳'][cable]}`, exact: true }).tap();
     }
-    await page.getByRole('button', { name: 'Valider les circuits', exact: true }).tap();
+
   }
   await expect(page.locator('.trial-status')).toContainText('Réussi');
   const switchTriangles = Number(await page.locator('.electrical-board').getAttribute('data-switch-native-triangles'));

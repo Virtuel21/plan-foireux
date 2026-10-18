@@ -22,7 +22,7 @@ function getModel() {
 void getModel().catch(() => {});
 
 export function electricalMarkup() {
-  return `<div class="electrical-board" aria-label="Boîtier de dérivation interactif en 3D" aria-busy="true"><div class="electrical-loading" role="status">Chargement du boîtier…</div>${ELECTRICAL.symbols.map((symbol, i) => `<span class="electrical-source-label" data-source="${i}" style="--wire:${ELECTRICAL.colors[i]}">${symbol}</span><button class="electrical-control electrical-plug" data-cable="${i}" aria-label="Sélectionner l’embout du circuit ${symbol}" style="--wire:${ELECTRICAL.colors[i]}" disabled></button><button class="electrical-control electrical-socket" data-terminal="${i}" aria-label="Borne ${symbol}" disabled><span>${symbol}</span></button>`).join("")}<button class="electrical-control electrical-switch" aria-label="Valider les circuits" title="Actionner l’interrupteur du boîtier" disabled><span>ACTIVER</span></button></div>`;
+  return `<div class="electrical-board" aria-label="Boîtier de dérivation interactif en 3D" aria-busy="true"><div class="electrical-loading" role="status">Chargement du boîtier…</div>${ELECTRICAL.symbols.map((symbol, i) => `<span class="electrical-source-label" data-source="${i}" style="--wire:${ELECTRICAL.colors[i]}">${symbol}</span><button class="electrical-control electrical-plug" data-cable="${i}" aria-label="Sélectionner l’embout du circuit ${symbol}" style="--wire:${ELECTRICAL.colors[i]}" disabled></button><button class="electrical-control electrical-socket" data-terminal="${i}" aria-label="Borne ${symbol}" disabled><span>${symbol}</span></button>`).join("")}</div>`;
 }
 
 /** Physical model + cables. The transparent, projected DOM targets retain native
@@ -53,7 +53,6 @@ export class ElectricalBoard {
   private plugPoints: T.Vector3[] = [];
   private plugs: HTMLButtonElement[];
   private terminals: HTMLButtonElement[];
-  private switchButton: HTMLButtonElement;
 
   constructor(
     private root: HTMLElement,
@@ -64,8 +63,6 @@ export class ElectricalBoard {
     this.terminals = [
       ...root.querySelectorAll<HTMLButtonElement>("[data-terminal]"),
     ];
-    this.switchButton =
-      root.querySelector<HTMLButtonElement>(".electrical-switch")!;
     this.camera.position.set(0, 0, 4);
     this.camera.lookAt(0, 0, 0);
     this.scene.add(new T.HemisphereLight(0xffedcf, 0x33515a, 2.6));
@@ -244,7 +241,12 @@ export class ElectricalBoard {
     connect(this.trial, this.selected, terminal);
     this.selected = -1;
     this.dragPoint = undefined;
-    this.onChange("plug");
+    const full = this.trial.connections.every((i) => i >= 0);
+    if (full) {
+      lever(this.trial);
+      this.switchUntil = performance.now() + 320;
+    }
+    this.onChange(full ? "switch" : "plug");
     this.update(this.paused);
   }
 
@@ -318,14 +320,6 @@ export class ElectricalBoard {
     this.terminals.forEach((button, i) =>
       button.addEventListener("click", () => this.attach(i)),
     );
-    this.switchButton.addEventListener("click", () => {
-      if (!this.allowed()) return;
-      lever(this.trial);
-      this.switchUntil = performance.now() + 320;
-      this.selected = -1;
-      this.onChange("switch");
-      this.update(this.paused);
-    });
   }
 
   private resize() {
@@ -503,18 +497,9 @@ export class ElectricalBoard {
       );
       button.disabled = !this.allowed() || (cable >= 0 && t.correct[cable]);
     });
-    this.switchButton.disabled = !this.allowed();
-    this.switchButton.classList.toggle(
-      "ready",
-      t.connections.every((i) => i >= 0),
-    );
-    this.switchButton.setAttribute("aria-pressed", String(t.done));
     this.placeTargets(
-      [...this.terminals, this.switchButton],
-      [
-        ...ELECTRICAL.sockets.map((point) => this.point(point)),
-        this.point(ELECTRICAL.switch),
-      ],
+      this.terminals,
+      ELECTRICAL.sockets.map((point) => this.point(point)),
     );
     const loose = this.plugs
       .map((button, i) => ({ button, i }))

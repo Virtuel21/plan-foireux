@@ -365,6 +365,8 @@ function validProgress(
     JSON.stringify(t).length > 3000 ||
     t.action !== current.action ||
     t.seed !== current.seed ||
+    t.cutVersion !== current.cutVersion ||
+    t.cutShape !== current.cutShape ||
     t.difficulty !== current.difficulty
   )
     return false;
@@ -600,6 +602,8 @@ export function advance(
           : g.choices[p.id].action,
         Math.floor(privateRandom() * 0xffffffff),
         g.choices[p.id].action === "pocket" && g.lastThefts[p.id] ? 2 : 1,
+        // Five rounds, six families: a player's paintings never repeat a family.
+        ((g.seed >>> 0) + g.round + g.players.indexOf(p)) % 6,
       );
       g.wallets[p.id] = p.money;
     }

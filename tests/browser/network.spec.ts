@@ -128,7 +128,7 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
             })
             .tap();
         }
-        await p.getByRole("button", { name: "Valider les circuits" }).tap();
+
         for (let i = 0; i < 3; i++) {
           await p.locator(`[data-cable="${i}"]`).tap();
           await p
@@ -138,7 +138,7 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
             })
             .tap();
         }
-        await p.getByRole("button", { name: "Valider les circuits" }).tap();
+
         await expect(p.locator(".trial-status")).toContainText("Réussi");
       })(),
       carryStatue(pages[3], "touch"),
@@ -258,7 +258,6 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
                 })
                 .tap();
             }
-            await p.getByRole("button", { name: "Valider les circuits" }).tap();
           }
         } else {
           const knob = p.locator('[data-knob="0"]');

@@ -76,6 +76,29 @@ export function hud(v: View) {
   const me = v.players.find((p) => p.id === v.myId)!;
   return `<div class="hud-vault" aria-label="Coffre ${v.vault} sur 8">${icon("lock")}<span class="hud-label">Coffre</span><div class="segments">${Array.from({ length: 8 }, (_, i) => `<i class="${i < v.vault ? "filled" : ""}"></i>`).join("")}</div><strong>${v.vault}/8</strong></div><div class="alarm ${v.alarm >= 4 ? "critical" : ""}" aria-label="Alarme ${v.alarm} sur 5">${Array.from({ length: 5 }, (_, i) => `<span class="siren ${i < v.alarm ? "on" : ""}">${icon("alarm")}</span>`).join("")}</div><div class="my-money">${icon("coin")}<strong>${me.money}</strong><span>pièces</span></div><div class="surveillance-count" aria-label="${v.charges} surveillances restantes">${icon("eye")}<strong>${v.charges}/2</strong></div>`;
 }
+export function crewControls(v: View, selected: Choice | null) {
+  if (["role", "transition", "minigame", "ended"].includes(v.phase)) return "";
+  return `<h2>Les complices</h2><p>${v.phase === "secret" ? "Un rival bien payé ?" : "Le plan de chacun"}</p>${v.players
+    .map((p, i) => {
+      const canSteal =
+        v.phase === "secret" &&
+        v.pausedAt === null &&
+        legal(v, v.myId, { action: "pocket", target: p.id });
+      const canVote =
+        v.phase === "debate" && v.charges > 0 && v.pausedAt === null;
+      const chosen = canVote
+        ? v.myVote === p.id
+        : selected?.action === "pocket" && selected.target === p.id;
+      const finding = ["reveal", "debate"].includes(v.phase)
+        ? v.report?.findings.find((f) => f.id === p.id)
+        : null;
+      const content = `<img src="${ASSET_BASE}portraits/${i}.png" alt=""><span class="crew-details"><strong>${esc(p.name)}${p.id === v.myId ? " · vous" : ""}</strong><span class="coin-amount">${icon("coin")}${p.money}</span><small>${finding ? `${LABELS[finding.choice.action]} ${finding.success ? "✓" : "×"} · +${finding.gain}${finding.loss ? ` −${finding.loss}` : ""}` : p.promise ? `Promis : ${LABELS[p.promise.action]}` : "Aucun poste annoncé"}</small>${v.watched === p.id ? `<small>${icon("eye")}Surveillé</small>` : ""}${canSteal ? `<span class="crew-steal">${icon("steal")}Voler${chosen ? icon("check") : ""}</span>` : canVote ? "<small>Surveiller</small>" : ""}</span>`;
+      return canSteal || canVote
+        ? `<button class="crew-card${chosen ? " selected" : ""}" data-select="player:${esc(p.id)}" aria-label="${canSteal ? "Voler" : "Surveiller"} ${esc(p.name)}" aria-pressed="${chosen}" style="--player:${p.color}">${content}</button>`
+        : `<div class="crew-card" style="--player:${p.color}">${content}</div>`;
+    })
+    .join("")}`;
+}
 export function footer(v: View, selected: Choice | null) {
   if (v.phase === "promise" || v.phase === "secret") {
     const covered =

@@ -231,6 +231,36 @@ test("repeat theft is much harder but still possible with near-perfect timing", 
   assert.equal(caught.stage, 1);
   assert.equal(caught.progress, 0);
 });
+
+test("all six cutting families vary, close cleanly, stay in frame and can be completed with sparse thumb samples", () => {
+  const signatures = new Set<string>();
+  for (let seed = 0; seed < 120; seed++) {
+    const trial = newTrial("painting", seed);
+    const path = cutPath(trial);
+    signatures.add(JSON.stringify(path));
+    assert.deepEqual(path[0], path.at(-1));
+    assert.ok(
+      path.every(([x, y]) => x >= 0.1 && x <= 0.9 && y >= 0.1 && y <= 0.9),
+    );
+    const restored = JSON.parse(JSON.stringify(trial));
+    assert.deepEqual(cutPath(restored), path);
+    cutAt(trial, ...path[0]);
+    for (let i = 1; i < path.length; i += 2)
+      cutAt(
+        trial,
+        path[i][0] + 0.035 * Math.sin(i),
+        path[i][1] + 0.035 * Math.cos(i),
+      );
+    cutAt(trial, ...path[80]);
+    assert.equal(trial.done, true, `seed ${seed}`);
+    assert.ok(cutAccuracy(trial) >= 70, `seed ${seed}`);
+  }
+  assert.equal(signatures.size, 120);
+  const legacy = newTrial("painting", 5);
+  delete legacy.cutVersion;
+  for (const point of cutPath(legacy)) cutAt(legacy, ...point);
+  assert.equal(legacy.done, true);
+});
 test("every hard theft starting offset remains achievable at both 30 and 60 FPS", () => {
   for (const fps of [30, 60])
     for (let seed = 0; seed < 7; seed++) {

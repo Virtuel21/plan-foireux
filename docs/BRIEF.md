@@ -51,4 +51,19 @@ Voiture décorative retirée des sources Blender et du GLB. Quatrième poste de 
 
 Les quatre sacs 3D sont remplacés par de petits plateaux de butin. Les liasses et lingots reprennent les unités de Money Tour, avec biseaux, papiers superposés, bandes et poinçons. Les piles s’animent à la hausse et à la baisse selon le solde public ; les instances sont regroupées par matériau pour le mobile.
 
+Réglages accessibles à l’accueil et pendant les phases de choix : volume général, musique et effets indépendants, appliqués immédiatement et mémorisés sur cet appareil. La coupure générale reste accessible en un geste.
+
 Musiques fournies par Julien dans son dossier `Plan foireux/songs` : Sneaky Museum Heist à l’accueil ; les deux Sneaking Motif alternent en partie. Lecture au premier geste autorisé par le navigateur, volume modéré, mute persistant et pause lors d’une interruption ou quand l’onglet est masqué. Fichiers locaux au jeu, aucune lecture distante tierce.
+
+
+## Confort et lisibilité — demande du 18 octobre 2026
+
+En partie, la scène se zoome de 100 à 260 % par pincement et boutons +/− ; la vue agrandie se déplace au doigt ou à la souris. Recentrer remet le cadrage initial. Le zoom et le décalage sont mémorisés localement ; un geste de déplacement ou un pincement ne choisit jamais un poste ni une victime. La projection des objets cliquables suit la caméra. Au clavier : +/−, flèches et R sur le canvas.
+
+Sur PC, les fiches détaillées des quatre joueurs se trouvent à droite, hors de la scène. Au-dessus de leur tête restent le montant avec l’icône pièce et, uniquement pendant un choix secret légal, une main accompagnée du mot « Voler ». Les fiches conservent les noms, promesses publiques et résultats révélés ; aucune action privée adverse n’y apparaît avant le bilan.
+
+Le boîtier électrique n’exige plus de bouton Activer. Le troisième branchement déclenche la vérification du panneau, puis le deuxième panneau démarre automatiquement si tout est correct. Les bons branchements restent acquis après une combinaison erronée ; les mauvais sont libérés. Prises et embouts disposent de collerettes contrastées, de symboles et de cibles de 44 pixels.
+
+Les nouvelles découpes utilisent six familles de silhouettes : ovale, rectangle arrondi, losange, trèfle, étoile et écusson. Leurs proportions et leur inclinaison varient. Un joueur ne retrouve pas la même famille pendant les cinq manches ; en entraînement, la famille précédente ne peut pas être répétée immédiatement. Les anciennes sauvegardes en cours conservent leur ancien contour. La précision minimale reste de 70 % et le geste peut être repris sans changer la forme de l’épreuve en cours.
+
+Les propositions de nouvelles trahisons et d’événements collectifs dans GAMEPLAY_PROPOSITIONS.md sont à l’étude ; elles ne sont pas activées dans les règles courantes.

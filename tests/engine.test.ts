@@ -60,6 +60,45 @@ test("four seats, one independently drawn FBI; public layout seed does not draw 
   assert.throws(() => createGame(players().slice(1), 1));
   assert.throws(() => createGame([players()[0], ...players().slice(0, 3)], 1));
 });
+
+test("painting families differ throughout all five rounds and a guest cannot replace its contour", () => {
+  const g = game();
+  const shapes = new Set<number>();
+  for (let round = 1; round <= 5; round++) {
+    g.round = round;
+    phase(g, "secret");
+    g.choices = Object.fromEntries(
+      g.players.map((p) => [p.id, { action: "painting" }]),
+    );
+    advance(g, g.deadline, () => 0.5);
+    const t = g.trials["0"];
+    shapes.add(t.cutShape!);
+    phase(g, "minigame");
+    assert.equal(
+      apply(
+        g,
+        "0",
+        {
+          type: "progress",
+          turn: g.turn,
+          trial: { ...t, cutShape: (t.cutShape! + 1) % 6 },
+        },
+        1,
+      ),
+      false,
+    );
+    assert.equal(
+      apply(
+        g,
+        "0",
+        { type: "progress", turn: g.turn, trial: structuredClone(t) },
+        1,
+      ),
+      true,
+    );
+  }
+  assert.equal(shapes.size, 5);
+});
 test("private changes and early success do not alter another client projection", () => {
   const g = game();
   phase(g, "secret");

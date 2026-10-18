@@ -1,4 +1,5 @@
 import "./style.css";
+import "./comfort.css";
 import { Session, type Snapshot } from "./session";
 import { Museum, LABELS } from "./scene";
 import { Minigame } from "./minigame";
@@ -9,12 +10,13 @@ import {
   footer,
   hud,
   mobileControls,
+  crewControls,
   PHASES,
   report,
   rules,
 } from "./views";
 import { icon } from "./icons";
-import { soundBank } from "./audio";
+import { soundBank, type AudioChannel } from "./audio";
 
 const $ = (q: string) => document.querySelector<HTMLElement>(q)!;
 let museum: Museum | null = null,
@@ -27,8 +29,8 @@ let minigame: Minigame | null = null,
   modal = "",
   previousFocus: HTMLElement | null = null;
 let practiceTimer: ReturnType<typeof setInterval> | undefined;
+let lastPracticeShape = -1;
 let mobileMarkup = "";
-let muted = localStorage.getItem("pf-muted") === "1";
 const session = new Session(
   localStorage.getItem("pf-name") || "Julien",
   render,
@@ -56,12 +58,12 @@ function notify(text: string) {
   setTimeout(() => $("#toast").classList.remove("visible"), 4500);
 }
 function sound(type: string) {
-  soundBank.muted = muted;
   soundBank.play(
     type === "click" ? "ui" : type === "success" ? "confirm" : "phase",
   );
 }
 function render(s: Snapshot) {
+  const muted = soundBank.muted;
   snapshot = s;
   const v = s.view,
     changed = v?.turn !== turn;
@@ -100,7 +102,7 @@ function render(s: Snapshot) {
   soundBank.loop("ambience", !!v && v.pausedAt === null && v.phase !== "ended");
   soundBank.music(!!v && v.phase !== "ended", !!v && v.pausedAt !== null);
   $("#top").innerHTML =
-    `<a class="brand" href="${location.pathname}" aria-label="Plan Foireux, accueil">${icon("mask")}<span>PLAN <b>FOIREUX</b><small>UN CASSE PRESQUE PARFAIT</small></span></a>${v ? `<div class="hud">${hud(v)}</div>` : '<span class="edition">LE MUSÉE DES MAUVAISES IDÉES · VOL. 01</span>'}<nav aria-label="Options"><button class="icon-button" data-action="sound" aria-label="${muted ? "Activer" : "Couper"} les sons">${icon(muted ? "mute" : "sound")}</button>${v ? `<button class="icon-button" data-action="role" aria-label="Revoir mon rôle en privé">${icon("mask")}</button>` : ""}<button class="icon-button" data-action="fullscreen" aria-label="Plein écran">${icon("grid")}</button><button class="icon-button" data-action="rules" aria-label="Règles du jeu">${icon("help")}</button></nav>`;
+    `<a class="brand" href="${location.pathname}" aria-label="Plan Foireux, accueil">${icon("mask")}<span>PLAN <b>FOIREUX</b><small>UN CASSE PRESQUE PARFAIT</small></span></a>${v ? `<div class="hud">${hud(v)}</div>` : '<span class="edition">LE MUSÉE DES MAUVAISES IDÉES · VOL. 01</span>'}<nav aria-label="Options"><button class="icon-button" data-action="settings" aria-label="Réglages">${icon("settings")}</button><button class="icon-button" data-action="sound" aria-label="${muted ? "Activer" : "Couper"} les sons">${icon(muted ? "mute" : "sound")}</button>${v ? `<button class="icon-button" data-action="role" aria-label="Revoir mon rôle en privé">${icon("mask")}</button>` : ""}<button class="icon-button" data-action="fullscreen" aria-label="Plein écran">${icon("grid")}</button><button class="icon-button" data-action="rules" aria-label="Règles du jeu">${icon("help")}</button></nav>`;
   $("#phase").innerHTML = v
     ? `<div class="phase-copy"><span class="round">TOUR <b>${v.round}</b><span>/ 5</span></span><h1>${PHASES[v.phase]}</h1>${v.phase === "secret" ? '<span class="private-label">PRIVÉ</span>' : ""}</div><time id="countdown" aria-label="Temps restant">00:00</time>`
     : '<span class="location">MUSÉE BELLEVUE · 23:47</span><span class="quiet landscape-hint">4 complices · 1 écran chacun · 5 manches maximum</span>';
@@ -110,6 +112,18 @@ function render(s: Snapshot) {
   if (!v) lobby(s);
   else $("#lobby").innerHTML = "";
   museum?.update(v, s.players, selected);
+  const nextCrew = v ? crewControls(v, selected) : "";
+  const crew = $("#crew-controls");
+  if (crew.innerHTML !== nextCrew) {
+    const focus = document.activeElement?.closest<HTMLElement>(
+      "#crew-controls [data-select]",
+    )?.dataset.select;
+    crew.innerHTML = nextCrew;
+    if (focus)
+      [...crew.querySelectorAll<HTMLElement>("[data-select]")]
+        .find((el) => el.dataset.select === focus)
+        ?.focus({ preventScroll: true });
+  }
   const nextMobileMarkup = v ? mobileControls(v, selected) : "";
   if (nextMobileMarkup !== mobileMarkup) {
     const controlFocus = document.activeElement?.closest<HTMLElement>(
@@ -245,6 +259,8 @@ function openModal(kind: string) {
   const v = snapshot.view;
   let content = "";
   if (kind === "rules") content = rules;
+  if (kind === "settings")
+    content = `<h2>Réglages</h2><p>Le casse a son ambiance. À vous de doser.</p><div class="audio-settings">${(["master", "music", "effects"] as const).map((channel) => `<label for="volume-${channel}"><span>${{ master: "Volume général", music: "Musique", effects: "Effets sonores" }[channel]}<output for="volume-${channel}">${soundBank.levels[channel]} %</output></span><input id="volume-${channel}" data-volume="${channel}" type="range" min="0" max="100" step="1" value="${soundBank.levels[channel]}" aria-valuetext="${soundBank.levels[channel]} %"></label>`).join("")}</div><button data-action="sound" class="settings-mute" aria-pressed="${soundBank.muted}">${icon(soundBank.muted ? "mute" : "sound")}<span>${soundBank.muted ? "Réactiver le son" : "Couper tous les sons"}</span></button><p class="settings-note">Réglages enregistrés sur cet appareil.</p><div class="settings-zoom">${icon("plus")}<p><strong>Explorer le musée</strong><br>Pincez pour zoomer, puis glissez pour déplacer la scène. Les boutons +, − et recentrer sont aussi disponibles.</p></div>`;
   if (kind === "report" && v) content = report(v);
   if (kind === "role" && v)
     content = `<div class="role-card ${v.myRole}">${icon(v.myRole === "agent" ? "shield" : "mask")}<span class="eyebrow">À GARDER POUR VOUS</span><h2>${v.myRole === "agent" ? "Vous êtes le FBI." : "Vous êtes braqueur."}</h2><p>${v.myRole === "agent" ? "Faites atteindre 5 alarmes, ou gardez le coffre fermé pendant cinq manches. En choix secret, sélectionnez une cible avec le brouilleur : votre défi devient un talkie-walkie. Réglez trois fréquences pour faire échouer sa tâche. Votre poste de couverture réussit aussi. Profil bas vous laisse jouer le défi normal." : "Ouvrez le coffre en cinq manches maximum, avec l’alarme sous 5 : la fuite démarre dès l’ouverture. Tous les braqueurs gagnent la fuite. Le plus riche devient Roi des Voleurs."}</p><small>Votre apparence ne révèle rien. Vous pouvez revoir cette carte avec le masque en haut de l’écran.</small><button data-action="close" class="primary">Je garde mon rôle secret</button></div>`;
@@ -319,9 +335,14 @@ function startPractice(action: Parameters<typeof newTrial>[0]) {
   $("#trial-root").innerHTML =
     '<div class="trial-shell"><div class="trial-meta"><span>ENTRAÎNEMENT</span><time class="trial-clock">00:18</time><button data-action="end-practice" class="subtle">Retour</button></div><div id="trial"></div></div>';
   let started: number | null = null;
+  const seed = crypto.getRandomValues(new Uint32Array(1))[0];
+  let shape = seed % 6;
+  if (shape === lastPracticeShape)
+    shape = (shape + 1 + (Math.floor(seed / 6) % 5)) % 6;
+  if (action === "painting") lastPracticeShape = shape;
   minigame = new Minigame(
     $("#trial"),
-    newTrial(action, crypto.getRandomValues(new Uint32Array(1))[0]),
+    newTrial(action, seed, 1, shape),
     () => {},
     1,
     true,
@@ -351,6 +372,15 @@ function startPractice(action: Parameters<typeof newTrial>[0]) {
 }
 document.addEventListener("input", (e) => {
   const target = e.target as HTMLInputElement;
+  if (target.dataset.volume) {
+    soundBank.setLevel(
+      target.dataset.volume as AudioChannel,
+      Number(target.value),
+    );
+    target.setAttribute("aria-valuetext", `${target.value} %`);
+    target.closest("label")!.querySelector("output")!.textContent =
+      `${target.value} %`;
+  }
   if (target.id === "nickname") {
     session.name = target.value.trim().slice(0, 18) || "Complice";
     localStorage.setItem("pf-name", session.name);
@@ -405,6 +435,7 @@ document.addEventListener("click", async (e) => {
     else session.createRoom();
   } else if (
     action === "rules" ||
+    action === "settings" ||
     action === "role" ||
     action === "report" ||
     action === "practice"
@@ -429,11 +460,13 @@ document.addEventListener("click", async (e) => {
   } else if (action === "end-practice") {
     endPractice();
   } else if (action === "sound") {
-    muted = !muted;
-    soundBank.muted = muted;
-    if (muted) soundBank.silence();
-    else soundBank.unlock();
-    localStorage.setItem("pf-muted", muted ? "1" : "0");
+    soundBank.setMuted(!soundBank.muted);
+    const muteButton =
+      document.querySelector<HTMLButtonElement>(".settings-mute");
+    if (muteButton) {
+      muteButton.setAttribute("aria-pressed", String(soundBank.muted));
+      muteButton.innerHTML = `${icon(soundBank.muted ? "mute" : "sound")}<span>${soundBank.muted ? "Réactiver le son" : "Couper tous les sons"}</span>`;
+    }
     sound("click");
     render(snapshot);
   } else if (action === "fullscreen") {

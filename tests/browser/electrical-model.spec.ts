@@ -37,14 +37,6 @@ async function connectPanel(page: Page, mode: "tap" | "drag" | "keyboard") {
       await terminal.click();
     }
   }
-  const toggle = page.getByRole("button", {
-    name: "Valider les circuits",
-    exact: true,
-  });
-  if (mode === "keyboard") {
-    await toggle.focus();
-    await page.keyboard.press("Enter");
-  } else await toggle.click();
 }
 
 async function plateCircuits(page: Page) {
@@ -129,10 +121,10 @@ for (const [width, height] of [
           `overlapping controls ${i}`,
         ).toBe(false);
       }
-    // The switch is part of the board rather than a detached footer action.
+    // All validation is automatic; the native switch is decorative.
     await expect(
       board.getByRole("button", { name: "Valider les circuits" }),
-    ).toHaveCount(1);
+    ).toHaveCount(0);
     const firstPanel = await plateCircuits(page);
     await page.screenshot({
       path: `work/ui-controls-qa/electrical-initial-${width}x${height}.png`,
@@ -157,25 +149,30 @@ for (const [width, height] of [
   });
 }
 
-test("socket clicks unplug a cable and a wrong switch attempt releases it", async ({
+test("wrong full panels release only wrong wires automatically and sockets allow unplugging", async ({
   page,
 }) => {
   await openBoard(page);
   const board = page.locator(".electrical-board");
-  const firstSocket = page.locator('[data-terminal="0"]');
-  const firstId = await firstSocket.getAttribute("aria-label");
-  const wrongCable = firstId?.includes("1 △") ? 1 : 0;
-  await page.locator(`[data-cable="${wrongCable}"]`).click();
-  await firstSocket.click();
+  const socket = page.locator('[data-terminal="0"]');
+  const first = Number(await socket.getAttribute("data-circuit"));
+  const wrong = (first + 1) % 3;
+  await page.locator(`[data-cable="${wrong}"]`).click();
+  await socket.click();
   await expect(board).not.toHaveAttribute("data-connections", "-1,-1,-1");
-  await firstSocket.click();
+  await socket.click();
   await expect(board).toHaveAttribute("data-connections", "-1,-1,-1");
-  await firstSocket.click();
-  await page
-    .getByRole("button", { name: "Valider les circuits", exact: true })
-    .click();
+  // Fill all three with the same wrong cyclic permutation; no button to press.
+  for (let terminal = 0; terminal < 3; terminal++) {
+    const target = page.locator(`[data-terminal="${terminal}"]`);
+    const circuit = Number(await target.getAttribute("data-circuit"));
+    await page.locator(`[data-cable="${(circuit + 1) % 3}"]`).click();
+    await target.click();
+  }
   await expect(board).toHaveAttribute("data-connections", "-1,-1,-1");
   await expect(board).toHaveAttribute("data-panel", "1");
+  await connectPanel(page, "tap");
+  await expect(board).toHaveAttribute("data-panel", "2");
 });
 
 test("a failed model request can be retried by reopening training", async ({

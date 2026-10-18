@@ -25,7 +25,7 @@ try {
     if (phase === 'minigame') {
       if (action === 'secure' && attempts++ === 0) {
         for(let panel=0;panel<2;panel++){ for (let i = 0; i < 3; i++) { await page.locator(`[data-cable="${i}"]`).tap(); await page.getByRole('button', { name: `Borne ${['1 △', '2 ○', '3 ╳'][i]}`, exact: true }).tap(); }
-        await page.getByRole('button', { name: 'Valider les circuits' }).tap(); }
+         }
       } else if (action === 'drill') {
         const done = (await page.locator('#trial').getAttribute('class'))?.includes('trial-done');
         const press = !done && await page.locator('.meter').evaluate(e => { const n = e.querySelector('.meter-needle').getBoundingClientRect(), b = e.querySelector('.target-band').getBoundingClientRect(); return n.x < b.x + b.width * .5; });

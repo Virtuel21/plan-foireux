@@ -16,7 +16,7 @@ import { StatueBoard, statueMarkup } from "./statue";
 import "./radio.css";
 export const INSTRUCTIONS = {
   secure:
-    "Branche les câbles dans les prises du boîtier, puis actionne son interrupteur. Deux panneaux à terminer.",
+    "Relie les trois câbles aux prises de même symbole. Validation automatique, puis un deuxième panneau.",
   drill:
     "Maintiens pour accélérer, relâche pour refroidir. Stabilise trois points dans la zone verte étroite.",
   loot: "Soulève la statue, porte-la et dépose-la sans bruit. Garde ton appui dans la zone verte.",
@@ -60,7 +60,7 @@ export class Minigame {
     const t = this.state,
       hints = {
         secure:
-          "Relie chaque embout à la prise portant son symbole, puis touche l’interrupteur en bas à droite. Glisser, toucher ou Tab + Entrée.",
+          "Relie les symboles identiques. Glisse un embout ou touche l’embout puis la prise. Tab + Entrée fonctionne aussi.",
         drill:
           "1. Maintiens le bouton · 2. Relâche avant le rouge. Espace fonctionne aussi.",
         loot: "Maintiens la statue et glisse de gauche à droite pour équilibrer son poids. Relâche si le socle grince. Au clavier : flèches + Espace sur la statue.",
@@ -77,7 +77,7 @@ export class Minigame {
         : t.action === "pocket"
           ? "Presque tout le gain du tour"
           : `${postReward(t.action)} pièces à partager`;
-    root.innerHTML = `<div class="trial-head"><div><span class="eyebrow">${practice ? "ENTRAÎNEMENT · SANS ENJEU" : "ÉPREUVE PRIVÉE"}</span><h2>${LABELS[t.action]} <small class="trial-reward">${reward}</small></h2></div><div class="trial-dots" aria-label="Progression"></div></div><p class="trial-instruction">${INSTRUCTIONS[t.action]}${t.action === "pocket" && t.difficulty === 2 ? " Tout le groupe est vigilant après ton dernier vol : ouvertures courtes, une prise perdue si tu es repéré." : ""}</p><div class="trial-stage ${t.action}">${t.action === "secure" ? this.wires() : t.action === "radio" ? this.radio() : t.action === "painting" ? this.painting() : t.action === "loot" ? statueMarkup() : this.mechanism()}</div><div class="trial-bottom"><span class="trial-status" role="status">À toi de jouer</span>${t.action === "secure" ? '<span class="electrical-switch-hint">Actionne l’interrupteur du boîtier pour valider.</span>' : t.action === "painting" ? '<button class="subtle restart-cut">Recommencer la découpe</button>' : t.action === "radio" ? '<span class="radio-private">Transmission privée · 3 fréquences</span>' : `<button class="primary operate">${t.action === "loot" ? "Maintenir pour soulever" : t.action === "drill" ? "Maintenir pour forer" : "Maintenir pour avancer"}</button>`}</div><p class="gesture-example"><span class="demo-dot"></span>${hints[t.action]}</p>`;
+    root.innerHTML = `<div class="trial-head"><div><span class="eyebrow">${practice ? "ENTRAÎNEMENT · SANS ENJEU" : "ÉPREUVE PRIVÉE"}</span><h2>${LABELS[t.action]} <small class="trial-reward">${reward}</small></h2></div><div class="trial-dots" aria-label="Progression"></div></div><p class="trial-instruction">${INSTRUCTIONS[t.action]}${t.action === "pocket" && t.difficulty === 2 ? " Tout le groupe est vigilant après ton dernier vol : ouvertures courtes, une prise perdue si tu es repéré." : ""}</p><div class="trial-stage ${t.action}">${t.action === "secure" ? this.wires() : t.action === "radio" ? this.radio() : t.action === "painting" ? this.painting() : t.action === "loot" ? statueMarkup() : this.mechanism()}</div><div class="trial-bottom"><span class="trial-status" role="status">À toi de jouer</span>${t.action === "secure" ? '<span class="electrical-switch-hint">Les trois branchements valident automatiquement le panneau.</span>' : t.action === "painting" ? '<button class="subtle restart-cut">Recommencer la découpe</button>' : t.action === "radio" ? '<span class="radio-private">Transmission privée · 3 fréquences</span>' : `<button class="primary operate">${t.action === "loot" ? "Maintenir pour soulever" : t.action === "drill" ? "Maintenir pour forer" : "Maintenir pour avancer"}</button>`}</div><p class="gesture-example"><span class="demo-dot"></span>${hints[t.action]}</p>`;
     this.bindSpecial();
     if (t.action === "secure") {
       this.electrical = new ElectricalBoard(
@@ -391,7 +391,7 @@ export class Minigame {
       );
     else if (t.action === "secure")
       this.feedback(
-        `Panneau ${Math.min(2, t.panel + 1)} / 2 · Relie les trois câbles, puis actionne l’interrupteur.`,
+        `Panneau ${Math.min(2, t.panel + 1)} / 2 · Relie les trois câbles. Validation automatique.`,
       );
     else if (t.action === "loot")
       this.feedback(

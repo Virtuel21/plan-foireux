@@ -22,6 +22,14 @@ L’entraînement propose six épreuves : les quatre postes, le vol et le talkie
 
 Les modèles Meshy natifs et leurs textures originales remplacent le décor et les avatars procéduraux. Deux bases partagées donnent quatre couleurs de joueur ; trois animations sont conservées : attendre, marcher, forer. Le vrai coffre est généré directement dans Meshy-T2.5 à environ 3 000 triangles. La géométrie et les cartes PBR des sources Meshy ne sont pas simplifiées après coup. Le poste « Désactiver les caméras » est attaché à la caméra, avec une petite boîte fermée ; le grand boîtier est réservé au mini-jeu de câbles. Les écarts aux concepts et la provenance figurent dans `docs/ASSETS.md`.
 
+## Réglages, zoom et lisibilité
+
+Le bouton Réglages ouvre trois volumes mémorisés : général, musique et effets. En partie, pincez pour zoomer la scène, glissez pour déplacer la vue agrandie et utilisez Recentrer pour retrouver le cadre initial. Les boutons +/−, la molette et le clavier sont aussi disponibles.
+
+Sur PC, les fiches des complices sont à droite du musée. Au-dessus des têtes : montant en pièces, puis une main et « Voler » uniquement quand le vol est permis. Le boîtier électrique valide automatiquement chaque panneau au troisième branchement, sans bouton Activer. Les découpes utilisent six familles de formes, différentes à chaque manche.
+
+Les pistes de nouvelles trahisons et d’événements communs sont arbitrées dans [docs/GAMEPLAY_PROPOSITIONS.md](docs/GAMEPLAY_PROPOSITIONS.md). Elles restent des propositions, sans activation dans la version courante.
+
 ## Développer
 
 Node 22 :

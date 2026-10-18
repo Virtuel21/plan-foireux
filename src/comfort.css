@@ -1,0 +1,289 @@
+.audio-settings {
+  display: grid;
+  gap: 22px;
+  margin: 28px 0;
+}
+.audio-settings label {
+  display: block;
+}
+.audio-settings label > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 700;
+}
+.audio-settings output {
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.audio-settings input {
+  width: 100%;
+  min-height: 44px;
+  margin: 4px 0 0;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.settings-mute {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+}
+.settings-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+.settings-zoom {
+  display: flex;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.settings-zoom p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.settings-zoom > svg {
+  color: var(--gold);
+}
+#scene canvas {
+  touch-action: none;
+}
+body:not(.in-game) .scene-navigation {
+  display: none;
+}
+.scene-navigation {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid #b79a5d;
+  border-radius: 10px;
+  background: #132b35ed;
+  z-index: 4;
+}
+.scene-navigation button {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  width: 44px;
+  height: 44px;
+  border-color: transparent;
+  background: transparent;
+}
+.scene-navigation output {
+  min-width: 48px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.world-labels .actor-marker {
+  max-width: none;
+  min-height: 44px;
+  padding: 3px 8px;
+  flex-direction: column;
+  gap: 2px !important;
+  border-radius: 10px;
+  border: 1px solid var(--player);
+  background: #102730ed;
+}
+.actor-marker .coin-amount {
+  font-size: 15px;
+}
+.actor-marker .coin-amount svg {
+  width: 18px;
+  height: 18px;
+}
+.steal-label {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--cream);
+  font-size: 12px;
+}
+.steal-label .icon {
+  width: 19px;
+  height: 19px;
+  color: var(--gold);
+}
+.actor-marker.stealable {
+  border-color: var(--gold);
+  box-shadow: 0 2px 12px #0005;
+}
+#crew-controls {
+  display: none;
+}
+@media (min-width: 901px) and (min-height: 501px) {
+  .in-game #scene {
+    right: 224px;
+  }
+  .in-game #crew-controls:not(:empty) {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 224px;
+    overflow-y: auto;
+    padding: 16px 12px;
+    gap: 10px;
+    background: #142c35;
+    border-left: 1px solid var(--line);
+  }
+}
+#crew-controls h2 {
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 26px;
+  margin: 0;
+}
+#crew-controls > p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: -5px 0 4px;
+}
+.crew-card {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 10px 8px;
+  border: 1px solid #536c70;
+  border-left: 3px solid var(--player);
+  border-radius: 8px;
+  background: #1b3540;
+  min-width: 0;
+  text-align: left;
+}
+.crew-card > img {
+  width: 35px;
+  height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.crew-details {
+  flex: 1;
+  min-width: 0;
+}
+.crew-details > strong {
+  display: block;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.crew-details .coin-amount {
+  margin: 4px 0;
+  font-size: 15px;
+}
+.crew-details > small {
+  display: block;
+  color: #c9d7d3;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.crew-details small .icon {
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+}
+.crew-steal {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  margin-top: 7px;
+  color: var(--gold);
+  font-size: 13px;
+}
+.crew-steal .icon {
+  width: 18px;
+  height: 18px;
+}
+@media (max-width: 600px) {
+  #top nav {
+    gap: 0;
+  }
+  #top nav .icon-button {
+    padding: 8px;
+  }
+  .scene-navigation {
+    gap: 0;
+    right: 6px;
+    bottom: 6px;
+    padding: 0;
+  }
+  .scene-navigation output {
+    min-width: 42px;
+  }
+}
+/* The physical socket opening gets an opaque collar, centre and strong outline. */
+.electrical-board .electrical-socket::before {
+  inset: 4px;
+  opacity: 1;
+  border: 3px solid #fff5ce;
+  background: var(--wire);
+  box-shadow:
+    0 0 0 3px #102832,
+    0 0 12px var(--wire);
+}
+.electrical-socket::after {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  background: #10232c;
+  border: 2px solid #fff1c2;
+  transform: translateY(var(--anchor-y, 0px));
+  pointer-events: none;
+}
+.electrical-board .electrical-socket.occupied::before {
+  border-color: var(--wire);
+  background: #234950;
+}
+.electrical-board .electrical-socket.correct::before {
+  border-color: #b1ffe0;
+  background: #276d5d;
+}
+.electrical-board .electrical-plug::before {
+  inset: 4px;
+  border-width: 3px;
+}
+.electrical-board .electrical-plug::after {
+  font-size: 27px;
+}
+.electrical-board .electrical-source-label {
+  border-width: 2px;
+  color: #fff4d4;
+}
+.electrical-switch-hint {
+  text-align: right;
+  max-width: 50%;
+}
+@media (max-height: 540px) and (orientation: landscape) {
+  .audio-settings {
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .settings-zoom {
+    padding-top: 10px;
+  }
+}
+@media (max-width: 360px) and (orientation: portrait) {
+  .in-game #top .brand small {
+    display: none;
+  }
+  .in-game #top .brand {
+    gap: 4px;
+  }
+  .in-game #top .brand > span {
+    font-size: 18px;
+  }
+  .in-game #top .brand > .icon {
+    width: 20px;
+    height: 20px;
+  }
+}

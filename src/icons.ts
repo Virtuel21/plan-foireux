@@ -1,4 +1,9 @@
 const paths: Record<string, string> = {
+  settings:
+    '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--panel)"/><circle cx="15" cy="17" r="3" fill="var(--panel)"/>',
+  steal:
+    '<path d="M5 14V9a2 2 0 0 1 4 0v4-8a2 2 0 0 1 4 0v8-6a2 2 0 0 1 4 0v7l2-2a2 2 0 0 1 3 3l-5 6H9l-6-7a2 2 0 0 1 2-3Z"/>',
+  reset: '<path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/>',
   alarm:
     '<path d="M6 17V9a6 6 0 0 1 12 0v8M4 17h16v4H4ZM12 1V0M3 4l-2-2m20 2 2-2M1 10h2m18 0h2"/><path d="M9 13V9a3 3 0 0 1 3-3"/>',
   wrench: '<path d="m14 4 3 3 4-2a6 6 0 0 1-7 8l-7 8-4-4 8-7a6 6 0 0 1 3-6Z"/>',

@@ -46,7 +46,6 @@ async function wires(page: Page, drag = false) {
         await terminal.click();
       }
     }
-    await page.getByRole("button", { name: "Valider les circuits" }).click();
   }
   await expect(page.locator(".trial-status")).toContainText("Réussi");
 }
@@ -77,6 +76,12 @@ for (const [width, height] of [
       { timeout: 10000 },
     );
     const mobile = width <= 900 || height <= 500;
+    const header = (await page.locator("#top").boundingBox())!;
+    const brand = (await page.locator("#top .brand").boundingBox())!;
+    expect(brand.y).toBeGreaterThanOrEqual(header.y);
+    expect(brand.y + brand.height).toBeLessThanOrEqual(
+      header.y + header.height,
+    );
     const buttons = page.locator(
       mobile ? ".mobile-post-card:visible" : ".world-labels button:visible",
     );
@@ -156,7 +161,6 @@ test("landscape cables playable by taps, mouse drag, and keyboard", async ({
         .focus();
       await page.keyboard.press("Enter");
     }
-    await page.getByRole("button", { name: "Valider les circuits" }).click();
   }
   await expect(page.locator(".trial-status")).toContainText("Réussi");
 });

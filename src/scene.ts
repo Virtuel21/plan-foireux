@@ -22,6 +22,7 @@ import {
 } from "./station-paths";
 import { WealthPiles } from "./wealth";
 import { escapeHTML as esc } from "./html";
+import { SceneNavigation } from "./scene-navigation";
 
 export const LABELS = {
   drill: "Forer",
@@ -72,6 +73,7 @@ export class Museum {
   lastStats = 0;
   ready = false;
   suspended = false;
+  navigation?: SceneNavigation;
   lines: HTMLDivElement[] = [];
   constructor(
     public container: HTMLElement,
@@ -172,13 +174,20 @@ export class Museum {
       this.update(this.view, this.roster, this.selection);
     });
     const canvas = this.renderer.domElement;
+    this.navigation = new SceneNavigation(canvas, container, () =>
+      this.resize(),
+    );
     let down: { x: number; y: number } | null = null;
     canvas.addEventListener(
       "pointerdown",
       (e) => (down = { x: e.clientX, y: e.clientY }),
     );
     canvas.addEventListener("pointerup", (e) => {
-      if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10)
+      if (
+        this.navigation?.suppressSelection ||
+        !down ||
+        Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10
+      )
         return;
       down = null;
       const r = canvas.getBoundingClientRect();
@@ -345,7 +354,18 @@ export class Museum {
       const finding = reveal
         ? v?.report?.findings.find((f) => f.id === p.id)
         : null;
-      a.button.innerHTML = `<span class="player-dot">${esc(p.name[0])}</span><span><strong>${esc(p.name)}${v?.myId === p.id ? " · vous" : ""}</strong><small>${p.money} pièces${v?.watched === p.id ? " · Surveillé" : ""}</small>${finding ? `<em>${LABELS[finding.choice.action]} ${finding.success ? "✓" : "×"} · +${finding.gain}${finding.loss ? ` −${finding.loss}` : ""}</em>` : p.promise ? `<em>Promis : ${LABELS[p.promise.action]}${p.promise.target ? ` → ${esc(players.find((x) => x.id === p.promise!.target)?.name)}` : ""}</em>` : ""}</span>`;
+      const canSteal =
+        !!v &&
+        v.phase === "secret" &&
+        v.pausedAt === null &&
+        legal(v, v.myId, { action: "pocket", target: p.id });
+      a.button.innerHTML = `<span class="coin-amount">${icon("coin")}${p.money}</span>${canSteal ? `<span class="steal-label">${icon("steal")}Voler</span>` : ""}`;
+      a.button.classList.toggle("stealable", canSteal);
+      a.button.setAttribute(
+        "aria-label",
+        `${canSteal ? "Voler " : ""}${p.name} · ${p.money} pièces`,
+      );
+      a.button.title = p.name;
       const selectedPlayer =
         v?.phase === "debate" ? v.myVote === p.id : selected?.target === p.id;
       a.button.classList.toggle("selected", selectedPlayer);
@@ -431,8 +451,21 @@ export class Museum {
     this.camera.right = (height * ratio) / 2;
     this.camera.top = height / 2;
     this.camera.bottom = -height / 2;
+    const nav = this.navigation;
+    this.camera.zoom = nav?.zoom ?? 1;
+    this.camera.position.set(8.2, 11, 15.5);
+    this.camera.updateMatrixWorld();
+    this.camera.position.addScaledVector(
+      new T.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0),
+      (-(nav?.panX ?? 0) * height * ratio) / this.camera.zoom,
+    );
+    this.camera.position.addScaledVector(
+      new T.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 1),
+      ((nav?.panY ?? 0) * height) / this.camera.zoom,
+    );
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(w, h);
+    const rendered = this.renderer.getSize(new T.Vector2());
+    if (rendered.x !== w || rendered.y !== h) this.renderer.setSize(w, h);
     this.nextLayout = 0;
   }
   transitionFocus(choice: Choice | null) {
