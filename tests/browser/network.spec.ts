@@ -262,7 +262,7 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
         } else {
           const knob = p.locator('[data-knob="0"]');
           for (let stage = 0; stage < 3; stage++) {
-            let direction = "ArrowRight";
+            let direction = 1;
             for (let j = 0; j < 60; j++) {
               if (
                 await p
@@ -271,10 +271,15 @@ test("four WebRTC browsers hosted locally: secret choices, guest reload, synchro
               )
                 break;
               const value = Number(await knob.getAttribute("aria-valuenow"));
-              if (value >= 96) direction = "ArrowLeft";
-              else if (value <= 3) direction = "ArrowRight";
-              await knob.focus();
-              await p.keyboard.press(direction);
+              if (value >= 96) direction = -1;
+              else if (value <= 3) direction = 1;
+              const bounds = (await knob.boundingBox())!;
+              await knob.tap({
+                position: {
+                  x: bounds.width * (direction > 0 ? 0.7 : 0.3),
+                  y: bounds.height / 2,
+                },
+              });
             }
             await p.waitForTimeout(950);
           }

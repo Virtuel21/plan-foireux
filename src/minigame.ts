@@ -41,8 +41,6 @@ export class Minigame {
   previousCooldown = 0;
   previousStage = 0;
   drawing = false;
-  knobY = 0;
-  knobValue = 0;
   lastDots = "";
   electrical?: ElectricalBoard;
   statue?: StatueBoard;
@@ -65,7 +63,7 @@ export class Minigame {
           "1. Maintiens le bouton · 2. Relâche avant le rouge. Espace fonctionne aussi.",
         loot: "Maintiens la statue et glisse de gauche à droite pour équilibrer son poids. Relâche si le socle grince. Au clavier : flèches + Espace sur la statue.",
         radio:
-          "Glisse un bouton vers le haut/bas, ou utilise les flèches sur le bouton. Rouge : loin · orange : proche · vert : reste stable.",
+          "Clic ou tap à gauche du bouton : − ; à droite : +. Tu peux aussi glisser vers le haut/bas ou utiliser les flèches. Rouge : loin · orange : proche · vert : reste stable.",
         painting:
           "Glisse le doigt sur le contour en partant du point blanc. Tu peux relever le doigt. Au clavier : flèches sur la toile.",
         pocket:
@@ -139,21 +137,73 @@ export class Minigame {
       .querySelectorAll<HTMLButtonElement>("[data-knob]")
       .forEach((knob) => {
         const factor = knob.dataset.knob === "0" ? 0.005 : 0.001;
+        const step = knob.dataset.knob === "0" ? 0.04 : 0.008;
+        let drag:
+          | {
+              pointerId: number;
+              x: number;
+              y: number;
+              value: number;
+              moved: boolean;
+            }
+          | undefined;
+        let suppressClick = false;
+        const adjust = (value: number) => {
+          t.needle = Math.max(0, Math.min(1, value));
+          this.draw();
+        };
         knob.addEventListener("pointerdown", (e) => {
-          if (this.paused || t.done) return;
+          if (this.paused || t.done || !e.isPrimary || e.button !== 0) return;
           e.preventDefault();
+          knob.focus({ preventScroll: true });
           knob.setPointerCapture(e.pointerId);
-          this.knobY = e.clientY;
-          this.knobValue = t.needle;
+          suppressClick = false;
+          drag = {
+            pointerId: e.pointerId,
+            x: e.clientX,
+            y: e.clientY,
+            value: t.needle,
+            moved: false,
+          };
         });
         knob.addEventListener("pointermove", (e) => {
-          if (!knob.hasPointerCapture(e.pointerId) || this.paused || t.done)
+          if (
+            !drag ||
+            drag.pointerId !== e.pointerId ||
+            !knob.hasPointerCapture(e.pointerId) ||
+            this.paused ||
+            t.done
+          )
             return;
-          t.needle = Math.max(
-            0,
-            Math.min(1, this.knobValue + (this.knobY - e.clientY) * factor),
-          );
-          this.draw();
+          drag.moved ||=
+            Math.hypot(e.clientX - drag.x, e.clientY - drag.y) >= 4;
+          if (drag.moved) adjust(drag.value + (drag.y - e.clientY) * factor);
+        });
+        for (const type of [
+          "pointerup",
+          "pointercancel",
+          "lostpointercapture",
+        ]) {
+          knob.addEventListener(type, (event) => {
+            const e = event as PointerEvent;
+            if (!drag || drag.pointerId !== e.pointerId) return;
+            // A drag also emits click: do not add a tap step on release.
+            suppressClick = drag.moved || type !== "pointerup";
+            drag = undefined;
+            if (knob.hasPointerCapture(e.pointerId))
+              knob.releasePointerCapture(e.pointerId);
+          });
+        }
+        knob.addEventListener("click", (e) => {
+          const dragged = suppressClick && e.detail > 0;
+          suppressClick = false;
+          if (dragged || this.paused || t.done) return;
+          const bounds = knob.getBoundingClientRect();
+          const direction =
+            e.detail === 0 || e.clientX >= bounds.left + bounds.width / 2
+              ? 1
+              : -1;
+          adjust(t.needle + direction * step);
         });
         knob.addEventListener("keydown", (e) => {
           if (
@@ -165,16 +215,10 @@ export class Minigame {
           )
             return;
           e.preventDefault();
-          t.needle = Math.max(
-            0,
-            Math.min(
-              1,
-              t.needle +
-                (["ArrowUp", "ArrowRight"].includes(e.key) ? 1 : -1) *
-                  (knob.dataset.knob === "0" ? 0.04 : 0.008),
-            ),
+          adjust(
+            t.needle +
+              (["ArrowUp", "ArrowRight"].includes(e.key) ? 1 : -1) * step,
           );
-          this.draw();
         });
       });
     const board = this.root.querySelector<SVGSVGElement>(".cut-board");
